@@ -591,18 +591,34 @@ function closeLightbox() {
   state.currentLightboxIndex = -1;
 }
 
-function navigateNext() {
-  if (state.currentLightboxIndex < state.filteredImages.length - 1) {
-    state.currentLightboxIndex++;
-    updateLightboxContent(state.filteredImages[state.currentLightboxIndex]);
+function navigateLightboxByOffset(offset: number) {
+  const newIndex = state.currentLightboxIndex + offset;
+  if (newIndex >= 0 && newIndex < state.filteredImages.length) {
+    state.currentLightboxIndex = newIndex;
+    const currentImage = state.filteredImages[state.currentLightboxIndex];
+
+    // Update lightbox
+    updateLightboxContent(currentImage);
+
+    // Update selection to match current preview (like macOS)
+    state.selectedIds.clear();
+    state.selectedIds.add(currentImage.id);
+    state.lastSelectedIndex = state.currentLightboxIndex;
+    state.selectionAnchor = state.currentLightboxIndex;
+
+    // Sync grid UI
+    updateAllCheckboxes();
+    updateSelectionCount();
+    updatePreviewPane();
   }
 }
 
+function navigateNext() {
+  navigateLightboxByOffset(1);
+}
+
 function navigatePrevious() {
-  if (state.currentLightboxIndex > 0) {
-    state.currentLightboxIndex--;
-    updateLightboxContent(state.filteredImages[state.currentLightboxIndex]);
-  }
+  navigateLightboxByOffset(-1);
 }
 
 function getGridColumns(): number {
@@ -982,7 +998,7 @@ document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLigh
 
 // Keyboard navigation
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-  // Lightbox navigation
+  // Lightbox navigation - same visual behavior as grid
   if (state.lightboxActive) {
     if (e.key === 'ArrowRight') {
       e.preventDefault();
@@ -990,6 +1006,14 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       navigatePrevious();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const columns = getGridColumns();
+      navigateLightboxByOffset(columns);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const columns = getGridColumns();
+      navigateLightboxByOffset(-columns);
     } else if (e.key === 'Escape' || e.key === ' ') {
       e.preventDefault();
       closeLightbox();
