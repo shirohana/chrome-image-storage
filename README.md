@@ -8,8 +8,15 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Local storage**: Images are saved as blobs in IndexedDB (not just URLs)
 - **Metadata tracking**: Saves image URL, source page, dimensions, file size, and type
 - **Image viewer**: Click the extension icon to view all saved images
+- **View modes**: Grid, compact, and list views for browsing images
 - **Search**: Filter images by URL or page title
-- **Export**: Export all images as a ZIP with metadata.json
+- **Type filter**: Filter by image type (PNG, JPEG, WebP, GIF, SVG)
+- **Sorting**: Sort by date, file size, dimensions, or URL
+- **Grouping**: Organize images by source domain
+- **Multi-select**: Select multiple images with checkboxes
+- **Bulk operations**: Delete or export multiple selected images
+- **Lightbox**: Click images to view full-size
+- **Export**: Export all or selected images as a ZIP with metadata.json
 - **Native context menu**: Extension adds menu item alongside browser's default menu
 
 ## Installation
@@ -53,23 +60,41 @@ This will watch for changes and rebuild automatically.
 2. This opens the image viewer in a new tab
 3. View all your saved images with their metadata
 
-### Searching Images
+### Managing Images
 
-Use the search bar in the viewer to filter images by:
-- Image URL
-- Source page URL
-- Page title
+**View Modes**: Switch between grid, compact, and list views using the buttons in the toolbar.
+
+**Search**: Use the search bar to filter images by image URL, source page URL, or page title.
+
+**Filter by Type**: Use the type dropdown to filter by image format (PNG, JPEG, WebP, GIF, SVG).
+
+**Sorting**: Sort images by newest/oldest, largest/smallest file size, dimensions, or URL using the sort dropdown.
+
+**Grouping**: Group images by source domain to organize by website.
+
+**Lightbox**: Click any image to view it in full size. Close with the × button or by clicking outside.
+
+### Multi-Select and Bulk Operations
+
+1. Click checkboxes on image cards to select multiple images
+2. Use "Select All" or "Deselect All" for quick selection
+3. Click "Delete Selected" to remove multiple images at once
+4. Click "Export Selected" to export only selected images
 
 ### Deleting Images
 
-Click the "Delete" button on any image card to remove it from storage.
+- **Single delete**: Click the "Delete" button on any image card
+- **Delete selected**: Select multiple images and click "Delete Selected"
+- **Delete all**: Click "Delete All" to remove all images
 
 ### Exporting Images
 
 1. Open the image viewer
-2. Click "Export All" button
+2. Choose one of the export options:
+   - **Export All**: Export all images
+   - **Export Selected**: Export only selected images
 3. Download a ZIP file containing:
-   - All images (in `images/` folder)
+   - Images in `images/` folder (named by image ID)
    - `metadata.json` with complete image information
 
 ## Architecture

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-Early prototype (~2 hours of coding). Still under active development. Keep it simple and make it work first.
+Early prototype with core features completed. All planned "Quick Wins" and "Useful Features" from roadmap are implemented. Keep it simple and make it work first.
 
 ## Build Commands
 
@@ -24,7 +24,15 @@ Chrome extensions run in three separate JavaScript contexts:
    - **Critical**: No DOM access - use `createImageBitmap()` not `new Image()`
 
 2. **Viewer Page** (`src/viewer/`)
-   - Full-page UI with grid/compact/list views, search, sorting, lightbox
+   - Full-page UI with multiple features:
+     - View modes: grid/compact/list
+     - Search by URL or page title
+     - Filter by image type (PNG, JPEG, WebP, etc.)
+     - Sort by date, size, dimensions, or URL
+     - Group by domain
+     - Multi-select with checkboxes
+     - Bulk operations: delete selected, export selected
+     - Lightbox for full-size viewing
    - Listens for `IMAGE_SAVED` messages to auto-refresh
 
 3. **Content Script** (`src/content/`)
@@ -47,6 +55,10 @@ Chrome extensions run in three separate JavaScript contexts:
 2. **Service Worker APIs**: Use `createImageBitmap()` for dimensions, not `new Image()`
 3. **Icon Paths**: Full paths like `src/icons/icon-48.png` in notifications
 4. **View Modes**: CSS classes `.image-grid`, `.image-grid.compact`, `.image-grid.list`
+5. **Event Listeners**: Extract `attachEventListeners()` function for code reuse between grouped and ungrouped rendering
+6. **Grouping**: Use `Map<string, SavedImage[]>` for domain grouping, render sections with headers
+7. **Selection State**: Use `Set<string>` to track selected image IDs, persists across re-renders
+8. **Export Filenames**: Use image IDs instead of sequential numbers for easier metadata matching
 
 ## Development Philosophy
 
