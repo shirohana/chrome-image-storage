@@ -3,11 +3,62 @@ import type { SavedImage } from '../types';
 
 let allImages: SavedImage[] = [];
 let currentSort = 'savedAt-desc';
+let currentTypeFilter = 'all';
 
 async function loadImages() {
   allImages = await getAllImages();
+  populateTypeFilter();
   applySorting();
-  renderImages(allImages);
+  applyFilters();
+}
+
+function populateTypeFilter() {
+  const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
+  const mimeTypes = new Set(allImages.map(img => img.mimeType));
+
+  const mimeTypeLabels: Record<string, string> = {
+    'image/png': 'PNG',
+    'image/jpeg': 'JPEG',
+    'image/jpg': 'JPEG',
+    'image/gif': 'GIF',
+    'image/webp': 'WebP',
+    'image/svg+xml': 'SVG',
+  };
+
+  typeFilter.innerHTML = '<option value="all">All Types</option>';
+
+  const sortedTypes = Array.from(mimeTypes).sort();
+  sortedTypes.forEach(mimeType => {
+    const label = mimeTypeLabels[mimeType] || mimeType;
+    const option = document.createElement('option');
+    option.value = mimeType;
+    option.textContent = label;
+    typeFilter.appendChild(option);
+  });
+
+  typeFilter.value = currentTypeFilter;
+}
+
+function applyFilters() {
+  let filtered = allImages;
+
+  // Apply type filter
+  if (currentTypeFilter !== 'all') {
+    filtered = filtered.filter(img => img.mimeType === currentTypeFilter);
+  }
+
+  // Apply search filter
+  const searchInput = document.getElementById('search-input') as HTMLInputElement;
+  const query = searchInput.value.toLowerCase();
+  if (query) {
+    filtered = filtered.filter(img =>
+      img.imageUrl.toLowerCase().includes(query) ||
+      img.pageUrl.toLowerCase().includes(query) ||
+      (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
+    );
+  }
+
+  renderImages(filtered);
   updateImageCount();
 }
 
@@ -142,13 +193,7 @@ function closeLightbox() {
 }
 
 function handleSearch(e: Event) {
-  const query = (e.target as HTMLInputElement).value.toLowerCase();
-  const filtered = allImages.filter(img =>
-    img.imageUrl.toLowerCase().includes(query) ||
-    img.pageUrl.toLowerCase().includes(query) ||
-    (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
-  );
-  renderImages(filtered);
+  applyFilters();
 }
 
 document.getElementById('search-input')!.addEventListener('input', handleSearch);
@@ -206,6 +251,14 @@ if (savedViewMode) {
   setViewMode(savedViewMode);
 }
 
+// Type filter
+const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
+
+typeFilter.addEventListener('change', () => {
+  currentTypeFilter = typeFilter.value;
+  applyFilters();
+});
+
 // Sorting
 const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
 
@@ -213,7 +266,7 @@ sortSelect.addEventListener('change', () => {
   currentSort = sortSelect.value;
   localStorage.setItem('sortBy', currentSort);
   applySorting();
-  renderImages(allImages);
+  applyFilters();
 });
 
 // Load saved sort preference

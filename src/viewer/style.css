@@ -99,6 +99,7 @@ h1 {
   align-items: center;
 }
 
+.type-filter,
 .sort-select {
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -109,6 +110,7 @@ h1 {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+.type-filter:focus,
 .sort-select:focus {
   outline: none;
   border-color: #007bff;
