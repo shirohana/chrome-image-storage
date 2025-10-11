@@ -32,6 +32,9 @@ const state = {
   currentView: 'all' as 'all' | 'trash',
   lightboxActive: false,
   currentLightboxIndex: -1,
+  previewPaneVisible: false,
+  lastSelectedIndex: -1,
+  selectionAnchor: -1,
 };
 
 // Settings
@@ -306,6 +309,7 @@ function handleCheckboxChange(e: Event) {
 
   updateSelectionCount();
   updateImageCard(id);
+  updatePreviewPane();
 }
 
 function updateImageCard(id: string) {
@@ -347,6 +351,114 @@ function updateSelectionCount() {
       selectionCountEl.style.display = 'none';
     }
   }
+}
+
+function togglePreviewPane() {
+  state.previewPaneVisible = !state.previewPaneVisible;
+  const previewPane = document.getElementById('preview-pane')!;
+  if (state.previewPaneVisible) {
+    previewPane.classList.add('visible');
+    document.body.classList.add('preview-pane-open');
+  } else {
+    previewPane.classList.remove('visible');
+    document.body.classList.remove('preview-pane-open');
+  }
+  localStorage.setItem('previewPaneVisible', state.previewPaneVisible.toString());
+}
+
+function updatePreviewPane() {
+  const content = document.getElementById('preview-pane-content')!;
+  const selectedImages = state.filteredImages.filter(img => state.selectedIds.has(img.id));
+
+  if (selectedImages.length === 0) {
+    content.innerHTML = '<div class="preview-empty">No items selected</div>';
+  } else if (selectedImages.length === 1) {
+    renderSinglePreview(selectedImages[0], content);
+  } else {
+    renderMultiPreview(selectedImages, content);
+  }
+}
+
+function renderSinglePreview(image: SavedImage, container: HTMLElement) {
+  const url = getOrCreateObjectURL(image);
+  const date = new Date(image.savedAt).toLocaleString();
+  const fileSize = formatFileSize(image.fileSize);
+
+  container.innerHTML = `
+    <div class="preview-single">
+      <div class="preview-image-container">
+        <img src="${url}" alt="Preview" class="preview-image">
+      </div>
+      <div class="preview-metadata">
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Dimensions</span>
+          <span class="preview-meta-value">${image.width} × ${image.height}</span>
+        </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">File Size</span>
+          <span class="preview-meta-value">${fileSize}</span>
+        </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Type</span>
+          <span class="preview-meta-value">${image.mimeType}</span>
+        </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Saved</span>
+          <span class="preview-meta-value">${date}</span>
+        </div>
+      </div>
+      <div class="preview-actions">
+        <button class="btn btn-secondary preview-download-btn" data-id="${image.id}">Download</button>
+        <button class="btn btn-primary preview-view-btn" data-id="${image.id}">View</button>
+      </div>
+    </div>
+  `;
+
+  // Attach event listeners
+  const downloadBtn = container.querySelector('.preview-download-btn');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => handleDownload({ target: downloadBtn } as any));
+  }
+  const viewBtn = container.querySelector('.preview-view-btn');
+  if (viewBtn) {
+    viewBtn.addEventListener('click', () => {
+      const index = state.filteredImages.findIndex(img => img.id === image.id);
+      if (index !== -1) openLightbox(index);
+    });
+  }
+}
+
+function renderMultiPreview(images: SavedImage[], container: HTMLElement) {
+  const count = images.length;
+  const thumbnails = images.map(image => {
+    const url = getOrCreateObjectURL(image);
+    return `
+      <div class="preview-thumbnail" data-id="${image.id}">
+        <img src="${url}" alt="Thumbnail">
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="preview-multi">
+      <div class="preview-multi-header">
+        <span class="preview-multi-count">${count} items selected</span>
+      </div>
+      <div class="preview-thumbnails">
+        ${thumbnails}
+      </div>
+    </div>
+  `;
+
+  // Attach click handlers to thumbnails
+  const thumbElements = container.querySelectorAll('.preview-thumbnail');
+  thumbElements.forEach(thumb => {
+    thumb.addEventListener('click', () => {
+      const id = thumb.getAttribute('data-id')!;
+      const index = state.filteredImages.findIndex(img => img.id === id);
+      if (index !== -1) openLightbox(index);
+    });
+  });
 }
 
 function formatFileSize(bytes: number): string {
@@ -493,6 +605,117 @@ function navigatePrevious() {
   }
 }
 
+function getGridColumns(): number {
+  const grid = document.getElementById('image-grid')!;
+  const viewMode = grid.className;
+
+  // In list view, treat as 1 column (vertical navigation)
+  if (viewMode.includes('list')) {
+    return 1;
+  }
+
+  // Get computed style to find grid column count
+  const gridStyle = window.getComputedStyle(grid);
+  const gridTemplateColumns = gridStyle.gridTemplateColumns;
+
+  // Count the number of column definitions
+  if (gridTemplateColumns && gridTemplateColumns !== 'none') {
+    const columns = gridTemplateColumns.split(' ').length;
+    return columns;
+  }
+
+  // Fallback: estimate based on view mode
+  if (viewMode.includes('compact')) {
+    return 6; // Approximate for compact view
+  }
+  return 4; // Approximate for normal grid view
+}
+
+function navigateGridByOffset(offset: number) {
+  if (state.filteredImages.length === 0) return;
+
+  let currentIndex = state.lastSelectedIndex;
+  if (currentIndex === -1) {
+    if (state.selectedIds.size === 1) {
+      const selectedId = Array.from(state.selectedIds)[0];
+      currentIndex = state.filteredImages.findIndex(img => img.id === selectedId);
+    } else {
+      currentIndex = 0; // Start from beginning
+    }
+  }
+
+  const newIndex = currentIndex + offset;
+  const clampedIndex = Math.max(0, Math.min(newIndex, state.filteredImages.length - 1));
+
+  if (clampedIndex !== currentIndex) {
+    const newImage = state.filteredImages[clampedIndex];
+    state.selectedIds.clear();
+    state.selectedIds.add(newImage.id);
+    state.lastSelectedIndex = clampedIndex;
+    state.selectionAnchor = clampedIndex;
+
+    updateAllCheckboxes();
+    updateSelectionCount();
+    updatePreviewPane();
+    scrollToImage(newImage.id);
+  }
+}
+
+function navigateGridByOffsetExpand(offset: number) {
+  if (state.filteredImages.length === 0) return;
+
+  // If nothing selected, select first item and set as anchor
+  if (state.selectedIds.size === 0 || state.selectionAnchor === -1) {
+    const firstImage = state.filteredImages[0];
+    state.selectedIds.clear();
+    state.selectedIds.add(firstImage.id);
+    state.lastSelectedIndex = 0;
+    state.selectionAnchor = 0;
+    updateAllCheckboxes();
+    updateSelectionCount();
+    updatePreviewPane();
+    scrollToImage(firstImage.id);
+    return;
+  }
+
+  // Move focus by offset
+  const newFocus = state.lastSelectedIndex + offset;
+  const clampedFocus = Math.max(0, Math.min(newFocus, state.filteredImages.length - 1));
+
+  if (clampedFocus !== state.lastSelectedIndex) {
+    state.lastSelectedIndex = clampedFocus;
+
+    // Select range from anchor to new focus
+    state.selectedIds.clear();
+    const start = Math.min(state.selectionAnchor, clampedFocus);
+    const end = Math.max(state.selectionAnchor, clampedFocus);
+    for (let i = start; i <= end; i++) {
+      state.selectedIds.add(state.filteredImages[i].id);
+    }
+
+    updateAllCheckboxes();
+    updateSelectionCount();
+    updatePreviewPane();
+    scrollToImage(state.filteredImages[clampedFocus].id);
+  }
+}
+
+function updateAllCheckboxes() {
+  const allCheckboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
+  allCheckboxes.forEach(cb => {
+    const cbId = cb.dataset.id!;
+    cb.checked = state.selectedIds.has(cbId);
+    updateImageCard(cbId);
+  });
+}
+
+function scrollToImage(id: string) {
+  const card = document.querySelector(`.image-card[data-id="${id}"]`);
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
 function handleSearch(e: Event) {
   applyFilters();
 }
@@ -504,6 +727,12 @@ const imageGrid = document.getElementById('image-grid')!;
 
 imageGrid.addEventListener('click', (e: Event) => {
   const target = e.target as HTMLElement;
+  const mouseEvent = e as MouseEvent;
+
+  // Prevent default text selection on shift-click
+  if (mouseEvent.shiftKey) {
+    mouseEvent.preventDefault();
+  }
 
   // Handle specific elements first (priority order)
 
@@ -545,26 +774,42 @@ imageGrid.addEventListener('click', (e: Event) => {
     return;
   }
 
-  // 4. Anywhere else on the card → toggle selection
+  // 4. Anywhere else on the card → handle selection based on modifier keys
   const card = target.closest('.image-card');
   if (card) {
     const id = card.getAttribute('data-id')!;
+    const clickedIndex = state.filteredImages.findIndex(img => img.id === id);
 
-    // Toggle selection state
-    if (state.selectedIds.has(id)) {
-      state.selectedIds.delete(id);
+    if (mouseEvent.metaKey || mouseEvent.ctrlKey) {
+      // Cmd/Ctrl + Click: Toggle item in selection
+      if (state.selectedIds.has(id)) {
+        state.selectedIds.delete(id);
+      } else {
+        state.selectedIds.add(id);
+      }
+      state.lastSelectedIndex = clickedIndex;
+      state.selectionAnchor = clickedIndex;
+    } else if (mouseEvent.shiftKey && state.selectionAnchor !== -1) {
+      // Shift + Click: Select range from anchor to current
+      const start = Math.min(state.selectionAnchor, clickedIndex);
+      const end = Math.max(state.selectionAnchor, clickedIndex);
+
+      state.selectedIds.clear();
+      for (let i = start; i <= end; i++) {
+        state.selectedIds.add(state.filteredImages[i].id);
+      }
+      state.lastSelectedIndex = clickedIndex;
     } else {
+      // Normal click: Single-select (clear others, select this one)
+      state.selectedIds.clear();
       state.selectedIds.add(id);
+      state.lastSelectedIndex = clickedIndex;
+      state.selectionAnchor = clickedIndex;
     }
 
-    // Update checkbox to reflect new state
-    const checkbox = card.querySelector('.image-checkbox') as HTMLInputElement;
-    if (checkbox) {
-      checkbox.checked = state.selectedIds.has(id);
-    }
-
+    updateAllCheckboxes();
     updateSelectionCount();
-    updateImageCard(id);
+    updatePreviewPane();
   }
 });
 
@@ -595,6 +840,7 @@ document.getElementById('select-all-btn')!.addEventListener('click', () => {
   });
   applyFilters();
   updateSelectionCount();
+  updatePreviewPane();
 });
 
 document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
@@ -605,6 +851,7 @@ document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
   state.selectedIds.clear();
   applyFilters();
   updateSelectionCount();
+  updatePreviewPane();
 });
 
 document.getElementById('restore-selected-btn')!.addEventListener('click', async () => {
@@ -713,23 +960,76 @@ if (savedSort) {
   sortSelect.value = savedSort;
 }
 
+// Preview pane toggle
+const previewPaneToggle = document.getElementById('preview-pane-toggle')!;
+previewPaneToggle.addEventListener('click', togglePreviewPane);
+
+const previewPaneClose = document.getElementById('preview-pane-close')!;
+previewPaneClose.addEventListener('click', togglePreviewPane);
+
+// Load saved preview pane visibility
+const savedPreviewPaneVisible = localStorage.getItem('previewPaneVisible');
+if (savedPreviewPaneVisible === 'true') {
+  state.previewPaneVisible = true;
+  const previewPane = document.getElementById('preview-pane')!;
+  previewPane.classList.add('visible');
+  document.body.classList.add('preview-pane-open');
+}
+
 // Lightbox controls
 document.querySelector('.lightbox-close')!.addEventListener('click', closeLightbox);
 document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLightbox);
 
-// Keyboard navigation for lightbox
+// Keyboard navigation
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (!state.lightboxActive) return;
+  // Lightbox navigation
+  if (state.lightboxActive) {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      navigateNext();
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      navigatePrevious();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      closeLightbox();
+    }
+    return;
+  }
 
-  if (e.key === 'ArrowRight') {
-    e.preventDefault();
-    navigateNext();
-  } else if (e.key === 'ArrowLeft') {
-    e.preventDefault();
-    navigatePrevious();
-  } else if (e.key === 'Escape') {
-    e.preventDefault();
-    closeLightbox();
+  // Grid navigation with arrow keys
+  if (state.filteredImages.length > 0) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const columns = getGridColumns();
+      if (e.shiftKey) {
+        navigateGridByOffsetExpand(columns);
+      } else {
+        navigateGridByOffset(columns);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      const columns = getGridColumns();
+      if (e.shiftKey) {
+        navigateGridByOffsetExpand(-columns);
+      } else {
+        navigateGridByOffset(-columns);
+      }
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        navigateGridByOffsetExpand(1);
+      } else {
+        navigateGridByOffset(1);
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        navigateGridByOffsetExpand(-1);
+      } else {
+        navigateGridByOffset(-1);
+      }
+    }
   }
 });
 

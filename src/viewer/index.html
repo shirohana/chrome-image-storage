@@ -48,6 +48,9 @@
         <input type="text" id="search-input" placeholder="Search by URL or page title...">
       </div>
       <div class="view-controls">
+        <button id="preview-pane-toggle" class="btn btn-secondary" title="Toggle preview pane">
+          Preview
+        </button>
         <select id="type-filter" class="type-filter">
           <option value="all">All Types</option>
         </select>
@@ -79,6 +82,16 @@
     </div>
 
     <div id="image-grid" class="image-grid"></div>
+  </div>
+
+  <div id="preview-pane" class="preview-pane">
+    <div class="preview-pane-header">
+      <h3>Preview</h3>
+      <button id="preview-pane-close" class="btn-icon">&times;</button>
+    </div>
+    <div id="preview-pane-content" class="preview-pane-content">
+      <div class="preview-empty">No items selected</div>
+    </div>
   </div>
 
   <div id="lightbox" class="lightbox">
