@@ -102,4 +102,10 @@ document.getElementById('export-btn')!.addEventListener('click', async () => {
   await exportImages(allImages);
 });
 
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === 'IMAGE_SAVED') {
+    loadImages();
+  }
+});
+
 loadImages();
