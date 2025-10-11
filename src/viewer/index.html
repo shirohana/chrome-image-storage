@@ -16,8 +16,26 @@
       </div>
     </header>
 
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="Search by URL or page title...">
+    <div class="toolbar">
+      <div class="search-bar">
+        <input type="text" id="search-input" placeholder="Search by URL or page title...">
+      </div>
+      <div class="view-controls">
+        <select id="sort-select" class="sort-select">
+          <option value="savedAt-desc">Newest first</option>
+          <option value="savedAt-asc">Oldest first</option>
+          <option value="fileSize-desc">Largest first</option>
+          <option value="fileSize-asc">Smallest first</option>
+          <option value="dimensions-desc">Biggest dimensions</option>
+          <option value="dimensions-asc">Smallest dimensions</option>
+          <option value="url-asc">URL (A-Z)</option>
+          <option value="url-desc">URL (Z-A)</option>
+        </select>
+        <div class="view-mode-toggle">
+          <button class="view-mode-btn active" data-view="grid" title="Grid view">⊞</button>
+          <button class="view-mode-btn" data-view="compact" title="Compact view">⊟</button>
+        </div>
+      </div>
     </div>
 
     <div id="empty-state" class="empty-state">

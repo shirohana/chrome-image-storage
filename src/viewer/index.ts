@@ -2,12 +2,39 @@ import { getAllImages, deleteImage } from '../storage/service';
 import type { SavedImage } from '../types';
 
 let allImages: SavedImage[] = [];
+let currentSort = 'savedAt-desc';
 
 async function loadImages() {
   allImages = await getAllImages();
-  allImages.sort((a, b) => b.savedAt - a.savedAt);
+  applySorting();
   renderImages(allImages);
   updateImageCount();
+}
+
+function applySorting() {
+  const [field, direction] = currentSort.split('-');
+  const isAsc = direction === 'asc';
+
+  allImages.sort((a, b) => {
+    let comparison = 0;
+
+    switch (field) {
+      case 'savedAt':
+        comparison = a.savedAt - b.savedAt;
+        break;
+      case 'fileSize':
+        comparison = a.fileSize - b.fileSize;
+        break;
+      case 'dimensions':
+        comparison = (a.width * a.height) - (b.width * b.height);
+        break;
+      case 'url':
+        comparison = a.imageUrl.localeCompare(b.imageUrl);
+        break;
+    }
+
+    return isAsc ? comparison : -comparison;
+  });
 }
 
 function renderImages(images: SavedImage[]) {
@@ -107,5 +134,49 @@ chrome.runtime.onMessage.addListener((message) => {
     loadImages();
   }
 });
+
+// View mode switching
+const grid = document.getElementById('image-grid')!;
+const viewModeBtns = document.querySelectorAll('.view-mode-btn');
+
+function setViewMode(mode: 'grid' | 'compact') {
+  grid.className = `image-grid ${mode === 'compact' ? 'compact' : ''}`;
+
+  viewModeBtns.forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
+  });
+
+  localStorage.setItem('viewMode', mode);
+}
+
+viewModeBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const mode = btn.getAttribute('data-view') as 'grid' | 'compact';
+    setViewMode(mode);
+  });
+});
+
+// Load saved view mode
+const savedViewMode = localStorage.getItem('viewMode') as 'grid' | 'compact' | null;
+if (savedViewMode) {
+  setViewMode(savedViewMode);
+}
+
+// Sorting
+const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
+
+sortSelect.addEventListener('change', () => {
+  currentSort = sortSelect.value;
+  localStorage.setItem('sortBy', currentSort);
+  applySorting();
+  renderImages(allImages);
+});
+
+// Load saved sort preference
+const savedSort = localStorage.getItem('sortBy');
+if (savedSort) {
+  currentSort = savedSort;
+  sortSelect.value = savedSort;
+}
 
 loadImages();

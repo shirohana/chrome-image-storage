@@ -69,8 +69,15 @@ h1 {
   background: #c82333;
 }
 
-.search-bar {
+.toolbar {
   margin-bottom: 30px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.search-bar {
+  flex: 1;
 }
 
 #search-input {
@@ -84,6 +91,55 @@ h1 {
 #search-input:focus {
   outline: none;
   border-color: #007bff;
+}
+
+.view-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sort-select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.view-mode-toggle {
+  display: flex;
+  gap: 4px;
+  background: white;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.view-mode-btn {
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  transition: background 0.2s;
+}
+
+.view-mode-btn:hover {
+  background: #f0f0f0;
+}
+
+.view-mode-btn.active {
+  background: #007bff;
+  color: white;
 }
 
 .empty-state {
@@ -105,6 +161,28 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+}
+
+.image-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.image-grid.compact .image-preview {
+  height: 120px;
+}
+
+.image-grid.compact .image-info {
+  padding: 10px;
+}
+
+.image-grid.compact .image-meta {
+  font-size: 11px;
+}
+
+.image-grid.compact .image-actions button {
+  padding: 6px;
+  font-size: 11px;
 }
 
 .image-card {
