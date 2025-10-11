@@ -30,6 +30,8 @@ const state = {
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
   currentView: 'all' as 'all' | 'trash',
+  lightboxActive: false,
+  currentLightboxIndex: -1,
 };
 
 // Settings
@@ -411,24 +413,84 @@ function handleImageClick(e: Event) {
   if (!imageCard) return;
 
   const id = imageCard.getAttribute('data-id')!;
-  const image = state.images.find(img => img.id === id);
-  if (image) {
-    openLightbox(image);
+  const index = state.filteredImages.findIndex(img => img.id === id);
+  if (index !== -1) {
+    openLightbox(index);
   }
 }
 
-function openLightbox(image: SavedImage) {
-  const lightbox = document.getElementById('lightbox')!;
-  const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
-  const url = URL.createObjectURL(image.blob);
+function openLightbox(index: number) {
+  const image = state.filteredImages[index];
+  if (!image) return;
 
-  lightboxImage.src = url;
+  state.currentLightboxIndex = index;
+  state.lightboxActive = true;
+
+  updateLightboxContent(image);
+
+  const lightbox = document.getElementById('lightbox')!;
   lightbox.classList.add('active');
+}
+
+function updateLightboxContent(image: SavedImage) {
+  const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
+  const url = getOrCreateObjectURL(image);
+  lightboxImage.src = url;
+
+  updateLightboxMetadata(image);
+}
+
+function updateLightboxMetadata(image: SavedImage) {
+  const metadata = document.querySelector('.lightbox-metadata');
+  if (!metadata) return;
+
+  const date = new Date(image.savedAt).toLocaleString();
+  const fileSize = formatFileSize(image.fileSize);
+
+  metadata.innerHTML = `
+    <h3>Image Details</h3>
+    <div class="metadata-row">
+      <span class="metadata-label">Dimensions:</span>
+      <span class="metadata-value">${image.width} × ${image.height}</span>
+    </div>
+    <div class="metadata-row">
+      <span class="metadata-label">File Size:</span>
+      <span class="metadata-value">${fileSize}</span>
+    </div>
+    <div class="metadata-row">
+      <span class="metadata-label">Type:</span>
+      <span class="metadata-value">${image.mimeType}</span>
+    </div>
+    <div class="metadata-row">
+      <span class="metadata-label">Saved:</span>
+      <span class="metadata-value">${date}</span>
+    </div>
+    <div class="metadata-row">
+      <span class="metadata-label">Page:</span>
+      <span class="metadata-value" title="${image.pageUrl}">${image.pageTitle || image.pageUrl}</span>
+    </div>
+  `;
 }
 
 function closeLightbox() {
   const lightbox = document.getElementById('lightbox')!;
   lightbox.classList.remove('active');
+  state.lightboxActive = false;
+  state.currentLightboxIndex = -1;
+}
+
+function navigateNext() {
+  if (state.currentLightboxIndex < state.filteredImages.length - 1) {
+    state.currentLightboxIndex++;
+    updateLightboxContent(state.filteredImages[state.currentLightboxIndex]);
+  }
+}
+
+function navigatePrevious() {
+  if (state.currentLightboxIndex > 0) {
+    state.currentLightboxIndex--;
+    updateLightboxContent(state.filteredImages[state.currentLightboxIndex]);
+  }
 }
 
 function handleSearch(e: Event) {
@@ -654,6 +716,22 @@ if (savedSort) {
 // Lightbox controls
 document.querySelector('.lightbox-close')!.addEventListener('click', closeLightbox);
 document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLightbox);
+
+// Keyboard navigation for lightbox
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (!state.lightboxActive) return;
+
+  if (e.key === 'ArrowRight') {
+    e.preventDefault();
+    navigateNext();
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    navigatePrevious();
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    closeLightbox();
+  }
+});
 
 // Settings panel toggle
 const settingsBtn = document.getElementById('settings-btn')!;
