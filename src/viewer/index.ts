@@ -48,7 +48,7 @@ function renderImages(images: SavedImage[]) {
   }
 
   emptyState.style.display = 'none';
-  grid.style.display = 'grid';
+  grid.style.display = '';
 
   grid.innerHTML = images.map(image => {
     const url = URL.createObjectURL(image.blob);
@@ -139,8 +139,12 @@ chrome.runtime.onMessage.addListener((message) => {
 const grid = document.getElementById('image-grid')!;
 const viewModeBtns = document.querySelectorAll('.view-mode-btn');
 
-function setViewMode(mode: 'grid' | 'compact') {
-  grid.className = `image-grid ${mode === 'compact' ? 'compact' : ''}`;
+function setViewMode(mode: 'grid' | 'compact' | 'list') {
+  if (mode === 'grid') {
+    grid.className = 'image-grid';
+  } else {
+    grid.className = `image-grid ${mode}`;
+  }
 
   viewModeBtns.forEach(btn => {
     btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
@@ -151,13 +155,13 @@ function setViewMode(mode: 'grid' | 'compact') {
 
 viewModeBtns.forEach(btn => {
   btn.addEventListener('click', () => {
-    const mode = btn.getAttribute('data-view') as 'grid' | 'compact';
+    const mode = btn.getAttribute('data-view') as 'grid' | 'compact' | 'list';
     setViewMode(mode);
   });
 });
 
 // Load saved view mode
-const savedViewMode = localStorage.getItem('viewMode') as 'grid' | 'compact' | null;
+const savedViewMode = localStorage.getItem('viewMode') as 'grid' | 'compact' | 'list' | null;
 if (savedViewMode) {
   setViewMode(savedViewMode);
 }
