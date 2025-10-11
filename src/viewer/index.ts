@@ -1,14 +1,37 @@
 import { getAllImages, deleteImage, deleteAllImages } from '../storage/service';
 import type { SavedImage } from '../types';
 
-let allImages: SavedImage[] = [];
-let currentSort = 'savedAt-desc';
-let currentTypeFilter = 'all';
-let currentGroupBy = 'none';
-let selectedImageIds = new Set<string>();
+// Constants
+const ViewMode = {
+  GRID: 'grid',
+  COMPACT: 'compact',
+  LIST: 'list',
+} as const;
+
+const SortField = {
+  SAVED_AT: 'savedAt',
+  FILE_SIZE: 'fileSize',
+  DIMENSIONS: 'dimensions',
+  URL: 'url',
+} as const;
+
+const SortDirection = {
+  ASC: 'asc',
+  DESC: 'desc',
+} as const;
+
+// State
+const state = {
+  images: [] as SavedImage[],
+  sort: 'savedAt-desc',
+  typeFilter: 'all',
+  groupBy: 'none',
+  selectedIds: new Set<string>(),
+  objectUrls: new Map<string, string>(),
+};
 
 async function loadImages() {
-  allImages = await getAllImages();
+  state.images = await getAllImages();
   populateTypeFilter();
   applySorting();
   applyFilters();
@@ -16,7 +39,7 @@ async function loadImages() {
 
 function populateTypeFilter() {
   const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
-  const mimeTypes = new Set(allImages.map(img => img.mimeType));
+  const mimeTypes = new Set(state.images.map(img => img.mimeType));
 
   const mimeTypeLabels: Record<string, string> = {
     'image/png': 'PNG',
@@ -38,15 +61,15 @@ function populateTypeFilter() {
     typeFilter.appendChild(option);
   });
 
-  typeFilter.value = currentTypeFilter;
+  typeFilter.value = state.typeFilter;
 }
 
 function applyFilters() {
-  let filtered = allImages;
+  let filtered = state.images;
 
   // Apply type filter
-  if (currentTypeFilter !== 'all') {
-    filtered = filtered.filter(img => img.mimeType === currentTypeFilter);
+  if (state.typeFilter !== 'all') {
+    filtered = filtered.filter(img => img.mimeType === state.typeFilter);
   }
 
   // Apply search filter
@@ -65,10 +88,10 @@ function applyFilters() {
 }
 
 function applySorting() {
-  const [field, direction] = currentSort.split('-');
+  const [field, direction] = state.sort.split('-');
   const isAsc = direction === 'asc';
 
-  allImages.sort((a, b) => {
+  state.images.sort((a, b) => {
     let comparison = 0;
 
     switch (field) {
@@ -90,11 +113,59 @@ function applySorting() {
   });
 }
 
+// URL lifecycle management
+function getOrCreateObjectURL(image: SavedImage): string {
+  if (state.objectUrls.has(image.id)) {
+    return state.objectUrls.get(image.id)!;
+  }
+  const url = URL.createObjectURL(image.blob);
+  state.objectUrls.set(image.id, url);
+  return url;
+}
+
+function revokeObjectURLs() {
+  for (const url of state.objectUrls.values()) {
+    URL.revokeObjectURL(url);
+  }
+  state.objectUrls.clear();
+}
+
+// Create image card HTML (shared by grouped and ungrouped rendering)
+function createImageCardHTML(image: SavedImage): string {
+  const url = getOrCreateObjectURL(image);
+  const date = new Date(image.savedAt).toLocaleString();
+  const fileSize = formatFileSize(image.fileSize);
+  const isSelected = state.selectedIds.has(image.id);
+
+  return `
+    <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
+      <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
+      <img src="${url}" alt="Saved image" class="image-preview">
+      <div class="image-info">
+        <div class="image-meta">
+          <div><strong>Saved:</strong> ${date}</div>
+          <div><strong>Size:</strong> ${fileSize}</div>
+          <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
+          <div><strong>Type:</strong> ${image.mimeType}</div>
+        </div>
+        <div class="image-url" title="${image.imageUrl}">
+          <strong>From:</strong> ${image.pageTitle || image.pageUrl}
+        </div>
+        <div class="image-actions">
+          <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
+          <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderImages(images: SavedImage[]) {
   const grid = document.getElementById('image-grid')!;
   const emptyState = document.getElementById('empty-state')!;
 
   if (images.length === 0) {
+    revokeObjectURLs();
     emptyState.style.display = 'block';
     grid.style.display = 'none';
     return;
@@ -103,7 +174,7 @@ function renderImages(images: SavedImage[]) {
   emptyState.style.display = 'none';
   grid.style.display = '';
 
-  if (currentGroupBy === 'domain') {
+  if (state.groupBy === 'domain') {
     renderGroupedImages(images);
   } else {
     renderUngroupedImages(images);
@@ -112,71 +183,29 @@ function renderImages(images: SavedImage[]) {
 
 function renderUngroupedImages(images: SavedImage[]) {
   const grid = document.getElementById('image-grid')!;
-
-  grid.innerHTML = images.map(image => {
-    const url = URL.createObjectURL(image.blob);
-    const date = new Date(image.savedAt).toLocaleString();
-    const fileSize = formatFileSize(image.fileSize);
-    const isSelected = selectedImageIds.has(image.id);
-
-    return `
-      <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
-        <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
-        <img src="${url}" alt="Saved image" class="image-preview">
-        <div class="image-info">
-          <div class="image-meta">
-            <div><strong>Saved:</strong> ${date}</div>
-            <div><strong>Size:</strong> ${fileSize}</div>
-            <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
-            <div><strong>Type:</strong> ${image.mimeType}</div>
-          </div>
-          <div class="image-url" title="${image.imageUrl}">
-            <strong>From:</strong> ${image.pageTitle || image.pageUrl}
-          </div>
-          <div class="image-actions">
-            <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
-            <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  attachEventListeners();
-}
-
-function attachEventListeners() {
-  const grid = document.getElementById('image-grid')!;
-
-  grid.querySelectorAll('.view-btn').forEach(btn => {
-    btn.addEventListener('click', handleViewOriginal);
-  });
-
-  grid.querySelectorAll('.delete-btn').forEach(btn => {
-    btn.addEventListener('click', handleDelete);
-  });
-
-  grid.querySelectorAll('.image-preview').forEach(img => {
-    img.addEventListener('click', handleImageClick);
-  });
-
-  grid.querySelectorAll('.image-checkbox').forEach(checkbox => {
-    checkbox.addEventListener('change', handleCheckboxChange);
-  });
+  grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
 }
 
 function handleViewOriginal(e: Event) {
-  const id = (e.target as HTMLElement).dataset.id!;
-  const image = allImages.find(img => img.id === id);
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.view-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
+  const image = state.images.find(img => img.id === id);
   if (image) {
     window.open(image.imageUrl, '_blank');
   }
 }
 
 async function handleDelete(e: Event) {
-  const id = (e.target as HTMLElement).dataset.id!;
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.delete-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
   await deleteImage(id);
-  selectedImageIds.delete(id);
+  state.selectedIds.delete(id);
   await loadImages();
 }
 
@@ -185,9 +214,9 @@ function handleCheckboxChange(e: Event) {
   const id = checkbox.dataset.id!;
 
   if (checkbox.checked) {
-    selectedImageIds.add(id);
+    state.selectedIds.add(id);
   } else {
-    selectedImageIds.delete(id);
+    state.selectedIds.delete(id);
   }
 
   updateSelectionCount();
@@ -197,7 +226,7 @@ function handleCheckboxChange(e: Event) {
 function updateImageCard(id: string) {
   const card = document.querySelector(`.image-card[data-id="${id}"]`);
   if (card) {
-    if (selectedImageIds.has(id)) {
+    if (state.selectedIds.has(id)) {
       card.classList.add('selected');
     } else {
       card.classList.remove('selected');
@@ -207,14 +236,14 @@ function updateImageCard(id: string) {
 
 function updateImageCount() {
   const countEl = document.querySelector('.image-count')!;
-  const count = allImages.length;
+  const count = state.images.length;
   countEl.textContent = `${count} image${count !== 1 ? 's' : ''}`;
 }
 
 function updateSelectionCount() {
   const selectionCountEl = document.getElementById('selection-count');
   if (selectionCountEl) {
-    const count = selectedImageIds.size;
+    const count = state.selectedIds.size;
     if (count > 0) {
       selectionCountEl.textContent = `${count} selected`;
       selectionCountEl.style.display = 'inline';
@@ -272,34 +301,7 @@ function renderGroupedImages(images: SavedImage[]) {
         <div class="group-content image-grid">
     `;
 
-    html += groupImages.map(image => {
-      const url = URL.createObjectURL(image.blob);
-      const date = new Date(image.savedAt).toLocaleString();
-      const fileSize = formatFileSize(image.fileSize);
-      const isSelected = selectedImageIds.has(image.id);
-
-      return `
-        <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
-          <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
-          <img src="${url}" alt="Saved image" class="image-preview">
-          <div class="image-info">
-            <div class="image-meta">
-              <div><strong>Saved:</strong> ${date}</div>
-              <div><strong>Size:</strong> ${fileSize}</div>
-              <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
-              <div><strong>Type:</strong> ${image.mimeType}</div>
-            </div>
-            <div class="image-url" title="${image.imageUrl}">
-              <strong>From:</strong> ${image.pageTitle || image.pageUrl}
-            </div>
-            <div class="image-actions">
-              <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
-              <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
+    html += groupImages.map(image => createImageCardHTML(image)).join('');
 
     html += `
         </div>
@@ -308,7 +310,6 @@ function renderGroupedImages(images: SavedImage[]) {
   }
 
   grid.innerHTML = html;
-  attachEventListeners();
 }
 
 function handleImageClick(e: Event) {
@@ -316,7 +317,7 @@ function handleImageClick(e: Event) {
   if (!imageCard) return;
 
   const id = imageCard.getAttribute('data-id')!;
-  const image = allImages.find(img => img.id === id);
+  const image = state.images.find(img => img.id === id);
   if (image) {
     openLightbox(image);
   }
@@ -342,15 +343,39 @@ function handleSearch(e: Event) {
 
 document.getElementById('search-input')!.addEventListener('input', handleSearch);
 
+// Event delegation for image grid
+const imageGrid = document.getElementById('image-grid')!;
+
+imageGrid.addEventListener('click', (e: Event) => {
+  const target = e.target as HTMLElement;
+
+  if (target.matches('.view-btn') || target.closest('.view-btn')) {
+    const btn = target.matches('.view-btn') ? target : target.closest('.view-btn');
+    if (btn) handleViewOriginal(e);
+  } else if (target.matches('.delete-btn') || target.closest('.delete-btn')) {
+    const btn = target.matches('.delete-btn') ? target : target.closest('.delete-btn');
+    if (btn) handleDelete(e);
+  } else if (target.matches('.image-preview')) {
+    handleImageClick(e);
+  }
+});
+
+imageGrid.addEventListener('change', (e: Event) => {
+  const target = e.target as HTMLElement;
+  if (target.matches('.image-checkbox')) {
+    handleCheckboxChange(e);
+  }
+});
+
 document.getElementById('export-btn')!.addEventListener('click', async () => {
   const { exportImages } = await import('./export');
-  await exportImages(allImages);
+  await exportImages(state.images);
 });
 
 document.getElementById('export-selected-btn')!.addEventListener('click', async () => {
-  if (selectedImageIds.size === 0) return;
+  if (state.selectedIds.size === 0) return;
 
-  const selectedImages = allImages.filter(img => selectedImageIds.has(img.id));
+  const selectedImages = state.images.filter(img => state.selectedIds.has(img.id));
   const { exportImages } = await import('./export');
   await exportImages(selectedImages);
 });
@@ -359,7 +384,7 @@ document.getElementById('select-all-btn')!.addEventListener('click', () => {
   const checkboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
   checkboxes.forEach(checkbox => {
     checkbox.checked = true;
-    selectedImageIds.add(checkbox.dataset.id!);
+    state.selectedIds.add(checkbox.dataset.id!);
   });
   applyFilters();
   updateSelectionCount();
@@ -370,33 +395,33 @@ document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
   checkboxes.forEach(checkbox => {
     checkbox.checked = false;
   });
-  selectedImageIds.clear();
+  state.selectedIds.clear();
   applyFilters();
   updateSelectionCount();
 });
 
 document.getElementById('delete-selected-btn')!.addEventListener('click', async () => {
-  const count = selectedImageIds.size;
+  const count = state.selectedIds.size;
   if (count === 0) return;
 
   const confirmed = confirm(`Are you sure you want to delete ${count} selected image${count !== 1 ? 's' : ''}? This cannot be undone.`);
   if (confirmed) {
-    for (const id of selectedImageIds) {
+    for (const id of state.selectedIds) {
       await deleteImage(id);
     }
-    selectedImageIds.clear();
+    state.selectedIds.clear();
     await loadImages();
   }
 });
 
 document.getElementById('delete-all-btn')!.addEventListener('click', async () => {
-  const count = allImages.length;
+  const count = state.images.length;
   if (count === 0) return;
 
   const confirmed = confirm(`Are you sure you want to delete all ${count} image${count !== 1 ? 's' : ''}? This cannot be undone.`);
   if (confirmed) {
     await deleteAllImages();
-    selectedImageIds.clear();
+    state.selectedIds.clear();
     await loadImages();
   }
 });
@@ -442,7 +467,7 @@ if (savedViewMode) {
 const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
 
 typeFilter.addEventListener('change', () => {
-  currentTypeFilter = typeFilter.value;
+  state.typeFilter = typeFilter.value;
   applyFilters();
 });
 
@@ -450,7 +475,7 @@ typeFilter.addEventListener('change', () => {
 const groupBySelect = document.getElementById('group-by') as HTMLSelectElement;
 
 groupBySelect.addEventListener('change', () => {
-  currentGroupBy = groupBySelect.value;
+  state.groupBy = groupBySelect.value;
   applyFilters();
 });
 
@@ -458,8 +483,8 @@ groupBySelect.addEventListener('change', () => {
 const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
 
 sortSelect.addEventListener('change', () => {
-  currentSort = sortSelect.value;
-  localStorage.setItem('sortBy', currentSort);
+  state.sort = sortSelect.value;
+  localStorage.setItem('sortBy', state.sort);
   applySorting();
   applyFilters();
 });
@@ -467,7 +492,7 @@ sortSelect.addEventListener('change', () => {
 // Load saved sort preference
 const savedSort = localStorage.getItem('sortBy');
 if (savedSort) {
-  currentSort = savedSort;
+  state.sort = savedSort;
   sortSelect.value = savedSort;
 }
 
