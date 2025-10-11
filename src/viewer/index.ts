@@ -421,20 +421,61 @@ const imageGrid = document.getElementById('image-grid')!;
 imageGrid.addEventListener('click', (e: Event) => {
   const target = e.target as HTMLElement;
 
+  // Handle specific elements first (priority order)
+
+  // 1. Action buttons
   if (target.matches('.view-btn') || target.closest('.view-btn')) {
     const btn = target.matches('.view-btn') ? target : target.closest('.view-btn');
     if (btn) handleViewOriginal(e);
-  } else if (target.matches('.delete-btn') || target.closest('.delete-btn')) {
+    return;
+  }
+  if (target.matches('.delete-btn') || target.closest('.delete-btn')) {
     const btn = target.matches('.delete-btn') ? target : target.closest('.delete-btn');
     if (btn) handleDelete(e);
-  } else if (target.matches('.restore-btn') || target.closest('.restore-btn')) {
+    return;
+  }
+  if (target.matches('.restore-btn') || target.closest('.restore-btn')) {
     const btn = target.matches('.restore-btn') ? target : target.closest('.restore-btn');
     if (btn) handleRestore(e);
-  } else if (target.matches('.permanent-delete-btn') || target.closest('.permanent-delete-btn')) {
+    return;
+  }
+  if (target.matches('.permanent-delete-btn') || target.closest('.permanent-delete-btn')) {
     const btn = target.matches('.permanent-delete-btn') ? target : target.closest('.permanent-delete-btn');
     if (btn) handlePermanentDelete(e);
-  } else if (target.matches('.image-preview')) {
+    return;
+  }
+
+  // 2. Image preview (opens lightbox)
+  if (target.matches('.image-preview')) {
     handleImageClick(e);
+    return;
+  }
+
+  // 3. Checkbox (let the change event handle it)
+  if (target.matches('.image-checkbox')) {
+    return;
+  }
+
+  // 4. Anywhere else on the card → toggle selection
+  const card = target.closest('.image-card');
+  if (card) {
+    const id = card.getAttribute('data-id')!;
+
+    // Toggle selection state
+    if (state.selectedIds.has(id)) {
+      state.selectedIds.delete(id);
+    } else {
+      state.selectedIds.add(id);
+    }
+
+    // Update checkbox to reflect new state
+    const checkbox = card.querySelector('.image-checkbox') as HTMLInputElement;
+    if (checkbox) {
+      checkbox.checked = state.selectedIds.has(id);
+    }
+
+    updateSelectionCount();
+    updateImageCard(id);
   }
 });
 
