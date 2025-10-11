@@ -29,17 +29,10 @@ export async function saveImage(
 }
 
 async function getImageDimensions(blob: Blob): Promise<{ width: number; height: number }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-
-    img.onload = () => {
-      resolve({ width: img.width, height: img.height });
-      URL.revokeObjectURL(url);
-    };
-
-    img.src = url;
-  });
+  const imageBitmap = await createImageBitmap(blob);
+  const dimensions = { width: imageBitmap.width, height: imageBitmap.height };
+  imageBitmap.close();
+  return dimensions;
 }
 
 export async function getAllImages(): Promise<SavedImage[]> {

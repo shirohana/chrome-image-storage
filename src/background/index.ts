@@ -9,7 +9,7 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({ url: chrome.runtime.getURL('viewer/index.html') });
+  chrome.tabs.create({ url: chrome.runtime.getURL('src/viewer/index.html') });
 });
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -18,11 +18,11 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const pageUrl = info.pageUrl || tab.url || '';
     const pageTitle = tab.title || '';
 
-    const imageId = await saveImage(imageUrl, pageUrl, pageTitle);
+    await saveImage(imageUrl, pageUrl, pageTitle);
 
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: chrome.runtime.getURL('icons/icon-48.png'),
+      iconUrl: chrome.runtime.getURL('src/icons/icon-48.png'),
       title: 'Image Saved',
       message: 'Image has been saved to your storage',
     });
