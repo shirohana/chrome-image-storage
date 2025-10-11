@@ -4,6 +4,7 @@ import type { SavedImage } from '../types';
 let allImages: SavedImage[] = [];
 let currentSort = 'savedAt-desc';
 let currentTypeFilter = 'all';
+let selectedImageIds = new Set<string>();
 
 async function loadImages() {
   allImages = await getAllImages();
@@ -105,9 +106,11 @@ function renderImages(images: SavedImage[]) {
     const url = URL.createObjectURL(image.blob);
     const date = new Date(image.savedAt).toLocaleString();
     const fileSize = formatFileSize(image.fileSize);
+    const isSelected = selectedImageIds.has(image.id);
 
     return `
-      <div class="image-card" data-id="${image.id}">
+      <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
+        <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
         <img src="${url}" alt="Saved image" class="image-preview">
         <div class="image-info">
           <div class="image-meta">
@@ -139,6 +142,10 @@ function renderImages(images: SavedImage[]) {
   grid.querySelectorAll('.image-preview').forEach(img => {
     img.addEventListener('click', handleImageClick);
   });
+
+  grid.querySelectorAll('.image-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', handleCheckboxChange);
+  });
 }
 
 function handleViewOriginal(e: Event) {
@@ -152,13 +159,52 @@ function handleViewOriginal(e: Event) {
 async function handleDelete(e: Event) {
   const id = (e.target as HTMLElement).dataset.id!;
   await deleteImage(id);
+  selectedImageIds.delete(id);
   await loadImages();
+}
+
+function handleCheckboxChange(e: Event) {
+  const checkbox = e.target as HTMLInputElement;
+  const id = checkbox.dataset.id!;
+
+  if (checkbox.checked) {
+    selectedImageIds.add(id);
+  } else {
+    selectedImageIds.delete(id);
+  }
+
+  updateSelectionCount();
+  updateImageCard(id);
+}
+
+function updateImageCard(id: string) {
+  const card = document.querySelector(`.image-card[data-id="${id}"]`);
+  if (card) {
+    if (selectedImageIds.has(id)) {
+      card.classList.add('selected');
+    } else {
+      card.classList.remove('selected');
+    }
+  }
 }
 
 function updateImageCount() {
   const countEl = document.querySelector('.image-count')!;
   const count = allImages.length;
   countEl.textContent = `${count} image${count !== 1 ? 's' : ''}`;
+}
+
+function updateSelectionCount() {
+  const selectionCountEl = document.getElementById('selection-count');
+  if (selectionCountEl) {
+    const count = selectedImageIds.size;
+    if (count > 0) {
+      selectionCountEl.textContent = `${count} selected`;
+      selectionCountEl.style.display = 'inline';
+    } else {
+      selectionCountEl.style.display = 'none';
+    }
+  }
 }
 
 function formatFileSize(bytes: number): string {
@@ -203,6 +249,48 @@ document.getElementById('export-btn')!.addEventListener('click', async () => {
   await exportImages(allImages);
 });
 
+document.getElementById('export-selected-btn')!.addEventListener('click', async () => {
+  if (selectedImageIds.size === 0) return;
+
+  const selectedImages = allImages.filter(img => selectedImageIds.has(img.id));
+  const { exportImages } = await import('./export');
+  await exportImages(selectedImages);
+});
+
+document.getElementById('select-all-btn')!.addEventListener('click', () => {
+  const checkboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = true;
+    selectedImageIds.add(checkbox.dataset.id!);
+  });
+  applyFilters();
+  updateSelectionCount();
+});
+
+document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
+  const checkboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = false;
+  });
+  selectedImageIds.clear();
+  applyFilters();
+  updateSelectionCount();
+});
+
+document.getElementById('delete-selected-btn')!.addEventListener('click', async () => {
+  const count = selectedImageIds.size;
+  if (count === 0) return;
+
+  const confirmed = confirm(`Are you sure you want to delete ${count} selected image${count !== 1 ? 's' : ''}? This cannot be undone.`);
+  if (confirmed) {
+    for (const id of selectedImageIds) {
+      await deleteImage(id);
+    }
+    selectedImageIds.clear();
+    await loadImages();
+  }
+});
+
 document.getElementById('delete-all-btn')!.addEventListener('click', async () => {
   const count = allImages.length;
   if (count === 0) return;
@@ -210,6 +298,7 @@ document.getElementById('delete-all-btn')!.addEventListener('click', async () =>
   const confirmed = confirm(`Are you sure you want to delete all ${count} image${count !== 1 ? 's' : ''}? This cannot be undone.`);
   if (confirmed) {
     await deleteAllImages();
+    selectedImageIds.clear();
     await loadImages();
   }
 });

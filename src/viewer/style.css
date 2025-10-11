@@ -32,13 +32,20 @@ h1 {
 
 .header-actions {
   display: flex;
-  gap: 20px;
+  gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.image-count {
+.image-count,
+#selection-count {
   color: #666;
   font-size: 14px;
+  font-weight: 500;
+}
+
+#selection-count {
+  color: #007bff;
 }
 
 .btn {
@@ -58,6 +65,15 @@ h1 {
 
 .btn-primary:hover {
   background: #0056b3;
+}
+
+.btn-secondary {
+  background: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background: #5a6268;
 }
 
 .btn-danger {
@@ -239,12 +255,27 @@ h1 {
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 
 .image-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.image-card.selected {
+  box-shadow: 0 0 0 3px #007bff;
+}
+
+.image-checkbox {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 20px;
+  height: 20px;
+  z-index: 10;
+  cursor: pointer;
 }
 
 .image-preview {
