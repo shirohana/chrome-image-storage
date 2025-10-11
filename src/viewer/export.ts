@@ -7,10 +7,9 @@ export async function exportImages(images: SavedImage[]): Promise<void> {
   const metadata: ImageMetadata[] = [];
   const imagesFolder = zip.folder('images')!;
 
-  for (let i = 0; i < images.length; i++) {
-    const image = images[i];
+  for (const image of images) {
     const extension = getExtensionFromMimeType(image.mimeType);
-    const filename = `${String(i + 1).padStart(3, '0')}${extension}`;
+    const filename = `${image.id}${extension}`;
 
     imagesFolder.file(filename, image.blob);
 
