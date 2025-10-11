@@ -84,6 +84,10 @@ function renderImages(images: SavedImage[]) {
   grid.querySelectorAll('.delete-btn').forEach(btn => {
     btn.addEventListener('click', handleDelete);
   });
+
+  grid.querySelectorAll('.image-preview').forEach(img => {
+    img.addEventListener('click', handleImageClick);
+  });
 }
 
 function handleViewOriginal(e: Event) {
@@ -110,6 +114,31 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function handleImageClick(e: Event) {
+  const imageCard = (e.target as HTMLElement).closest('.image-card');
+  if (!imageCard) return;
+
+  const id = imageCard.getAttribute('data-id')!;
+  const image = allImages.find(img => img.id === id);
+  if (image) {
+    openLightbox(image);
+  }
+}
+
+function openLightbox(image: SavedImage) {
+  const lightbox = document.getElementById('lightbox')!;
+  const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
+  const url = URL.createObjectURL(image.blob);
+
+  lightboxImage.src = url;
+  lightbox.classList.add('active');
+}
+
+function closeLightbox() {
+  const lightbox = document.getElementById('lightbox')!;
+  lightbox.classList.remove('active');
 }
 
 function handleSearch(e: Event) {
@@ -193,5 +222,9 @@ if (savedSort) {
   currentSort = savedSort;
   sortSelect.value = savedSort;
 }
+
+// Lightbox controls
+document.querySelector('.lightbox-close')!.addEventListener('click', closeLightbox);
+document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLightbox);
 
 loadImages();
