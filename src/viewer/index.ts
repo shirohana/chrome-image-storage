@@ -990,9 +990,22 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     } else if (e.key === 'ArrowLeft') {
       e.preventDefault();
       navigatePrevious();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === 'Escape' || e.key === ' ') {
       e.preventDefault();
       closeLightbox();
+    }
+    return;
+  }
+
+  // Space key: toggle full-size preview for selected item
+  if (e.key === ' ') {
+    e.preventDefault();
+    if (state.selectedIds.size === 1) {
+      const selectedId = Array.from(state.selectedIds)[0];
+      const index = state.filteredImages.findIndex(img => img.id === selectedId);
+      if (index !== -1) {
+        openLightbox(index);
+      }
     }
     return;
   }
