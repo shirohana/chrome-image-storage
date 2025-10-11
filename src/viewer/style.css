@@ -116,6 +116,7 @@ h1 {
 }
 
 .type-filter,
+.group-by,
 .sort-select {
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -127,6 +128,7 @@ h1 {
 }
 
 .type-filter:focus,
+.group-by:focus,
 .sort-select:focus {
   outline: none;
   border-color: #007bff;
@@ -378,4 +380,34 @@ h1 {
   object-fit: contain;
   display: block;
   cursor: pointer;
+}
+
+.group-section {
+  margin-bottom: 40px;
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.group-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.group-count {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.group-content {
+  margin-bottom: 20px;
 }

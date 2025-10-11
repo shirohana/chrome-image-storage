@@ -4,6 +4,7 @@ import type { SavedImage } from '../types';
 let allImages: SavedImage[] = [];
 let currentSort = 'savedAt-desc';
 let currentTypeFilter = 'all';
+let currentGroupBy = 'none';
 let selectedImageIds = new Set<string>();
 
 async function loadImages() {
@@ -102,6 +103,16 @@ function renderImages(images: SavedImage[]) {
   emptyState.style.display = 'none';
   grid.style.display = '';
 
+  if (currentGroupBy === 'domain') {
+    renderGroupedImages(images);
+  } else {
+    renderUngroupedImages(images);
+  }
+}
+
+function renderUngroupedImages(images: SavedImage[]) {
+  const grid = document.getElementById('image-grid')!;
+
   grid.innerHTML = images.map(image => {
     const url = URL.createObjectURL(image.blob);
     const date = new Date(image.savedAt).toLocaleString();
@@ -130,6 +141,12 @@ function renderImages(images: SavedImage[]) {
       </div>
     `;
   }).join('');
+
+  attachEventListeners();
+}
+
+function attachEventListeners() {
+  const grid = document.getElementById('image-grid')!;
 
   grid.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', handleViewOriginal);
@@ -211,6 +228,87 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function getDomainFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch {
+    return 'Unknown';
+  }
+}
+
+function groupImagesByDomain(images: SavedImage[]): Map<string, SavedImage[]> {
+  const groups = new Map<string, SavedImage[]>();
+
+  for (const image of images) {
+    const domain = getDomainFromUrl(image.pageUrl);
+    if (!groups.has(domain)) {
+      groups.set(domain, []);
+    }
+    groups.get(domain)!.push(image);
+  }
+
+  return groups;
+}
+
+function renderGroupedImages(images: SavedImage[]) {
+  const grid = document.getElementById('image-grid')!;
+  const groups = groupImagesByDomain(images);
+  const sortedDomains = Array.from(groups.keys()).sort();
+
+  let html = '';
+  for (const domain of sortedDomains) {
+    const groupImages = groups.get(domain)!;
+    const count = groupImages.length;
+
+    html += `
+      <div class="group-section">
+        <div class="group-header">
+          <h3 class="group-title">${domain}</h3>
+          <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="group-content image-grid">
+    `;
+
+    html += groupImages.map(image => {
+      const url = URL.createObjectURL(image.blob);
+      const date = new Date(image.savedAt).toLocaleString();
+      const fileSize = formatFileSize(image.fileSize);
+      const isSelected = selectedImageIds.has(image.id);
+
+      return `
+        <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
+          <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
+          <img src="${url}" alt="Saved image" class="image-preview">
+          <div class="image-info">
+            <div class="image-meta">
+              <div><strong>Saved:</strong> ${date}</div>
+              <div><strong>Size:</strong> ${fileSize}</div>
+              <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
+              <div><strong>Type:</strong> ${image.mimeType}</div>
+            </div>
+            <div class="image-url" title="${image.imageUrl}">
+              <strong>From:</strong> ${image.pageTitle || image.pageUrl}
+            </div>
+            <div class="image-actions">
+              <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
+              <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = html;
+  attachEventListeners();
 }
 
 function handleImageClick(e: Event) {
@@ -345,6 +443,14 @@ const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
 
 typeFilter.addEventListener('change', () => {
   currentTypeFilter = typeFilter.value;
+  applyFilters();
+});
+
+// Group by
+const groupBySelect = document.getElementById('group-by') as HTMLSelectElement;
+
+groupBySelect.addEventListener('change', () => {
+  currentGroupBy = groupBySelect.value;
   applyFilters();
 });
 
