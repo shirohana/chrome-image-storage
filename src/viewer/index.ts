@@ -30,6 +30,18 @@ const state = {
   objectUrls: new Map<string, string>(),
 };
 
+// Settings
+async function loadSettings() {
+  const result = await chrome.storage.local.get(['showNotifications']);
+  return {
+    showNotifications: result.showNotifications ?? false, // Default: OFF
+  };
+}
+
+async function saveSettings(settings: { showNotifications: boolean }) {
+  await chrome.storage.local.set(settings);
+}
+
 async function loadImages() {
   state.images = await getAllImages();
   populateTypeFilter();
@@ -207,6 +219,7 @@ async function handleDelete(e: Event) {
   await deleteImage(id);
   state.selectedIds.delete(id);
   await loadImages();
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
 }
 
 function handleCheckboxChange(e: Event) {
@@ -411,6 +424,7 @@ document.getElementById('delete-selected-btn')!.addEventListener('click', async 
     }
     state.selectedIds.clear();
     await loadImages();
+    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
   }
 });
 
@@ -423,6 +437,7 @@ document.getElementById('delete-all-btn')!.addEventListener('click', async () =>
     await deleteAllImages();
     state.selectedIds.clear();
     await loadImages();
+    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
   }
 });
 
@@ -499,5 +514,25 @@ if (savedSort) {
 // Lightbox controls
 document.querySelector('.lightbox-close')!.addEventListener('click', closeLightbox);
 document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLightbox);
+
+// Settings panel toggle
+const settingsBtn = document.getElementById('settings-btn')!;
+const settingsPanel = document.getElementById('settings-panel')!;
+
+settingsBtn.addEventListener('click', () => {
+  const isVisible = settingsPanel.style.display !== 'none';
+  settingsPanel.style.display = isVisible ? 'none' : 'block';
+});
+
+// Settings initialization and handling
+const showNotificationsToggle = document.getElementById('show-notifications-toggle') as HTMLInputElement;
+
+loadSettings().then(settings => {
+  showNotificationsToggle.checked = settings.showNotifications;
+});
+
+showNotificationsToggle.addEventListener('change', async () => {
+  await saveSettings({ showNotifications: showNotificationsToggle.checked });
+});
 
 loadImages();
