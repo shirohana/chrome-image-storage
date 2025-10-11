@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Storage</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Image Storage</h1>
+      <div class="header-actions">
+        <span class="image-count">0 images</span>
+        <button id="export-btn" class="btn btn-primary">Export All</button>
+      </div>
+    </header>
+
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search by URL or page title...">
+    </div>
+
+    <div id="empty-state" class="empty-state">
+      <p>No images saved yet</p>
+      <p class="hint">Right-click on any image and select "Save to Image Storage"</p>
+    </div>
+
+    <div id="image-grid" class="image-grid"></div>
+  </div>
+
+  <script type="module" src="./index.ts"></script>
+</body>
+</html>

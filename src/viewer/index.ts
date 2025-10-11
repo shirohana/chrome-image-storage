@@ -1,0 +1,105 @@
+import { getAllImages, deleteImage } from '../storage/service';
+import type { SavedImage } from '../types';
+
+let allImages: SavedImage[] = [];
+
+async function loadImages() {
+  allImages = await getAllImages();
+  allImages.sort((a, b) => b.savedAt - a.savedAt);
+  renderImages(allImages);
+  updateImageCount();
+}
+
+function renderImages(images: SavedImage[]) {
+  const grid = document.getElementById('image-grid')!;
+  const emptyState = document.getElementById('empty-state')!;
+
+  if (images.length === 0) {
+    emptyState.style.display = 'block';
+    grid.style.display = 'none';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+  grid.style.display = 'grid';
+
+  grid.innerHTML = images.map(image => {
+    const url = URL.createObjectURL(image.blob);
+    const date = new Date(image.savedAt).toLocaleString();
+    const fileSize = formatFileSize(image.fileSize);
+
+    return `
+      <div class="image-card" data-id="${image.id}">
+        <img src="${url}" alt="Saved image" class="image-preview">
+        <div class="image-info">
+          <div class="image-meta">
+            <div><strong>Saved:</strong> ${date}</div>
+            <div><strong>Size:</strong> ${fileSize}</div>
+            <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
+            <div><strong>Type:</strong> ${image.mimeType}</div>
+          </div>
+          <div class="image-url" title="${image.imageUrl}">
+            <strong>From:</strong> ${image.pageTitle || image.pageUrl}
+          </div>
+          <div class="image-actions">
+            <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
+            <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  grid.querySelectorAll('.view-btn').forEach(btn => {
+    btn.addEventListener('click', handleViewOriginal);
+  });
+
+  grid.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', handleDelete);
+  });
+}
+
+function handleViewOriginal(e: Event) {
+  const id = (e.target as HTMLElement).dataset.id!;
+  const image = allImages.find(img => img.id === id);
+  if (image) {
+    window.open(image.imageUrl, '_blank');
+  }
+}
+
+async function handleDelete(e: Event) {
+  const id = (e.target as HTMLElement).dataset.id!;
+  await deleteImage(id);
+  await loadImages();
+}
+
+function updateImageCount() {
+  const countEl = document.querySelector('.image-count')!;
+  const count = allImages.length;
+  countEl.textContent = `${count} image${count !== 1 ? 's' : ''}`;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function handleSearch(e: Event) {
+  const query = (e.target as HTMLInputElement).value.toLowerCase();
+  const filtered = allImages.filter(img =>
+    img.imageUrl.toLowerCase().includes(query) ||
+    img.pageUrl.toLowerCase().includes(query) ||
+    (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
+  );
+  renderImages(filtered);
+}
+
+document.getElementById('search-input')!.addEventListener('input', handleSearch);
+
+document.getElementById('export-btn')!.addEventListener('click', async () => {
+  const { exportImages } = await import('./export');
+  await exportImages(allImages);
+});
+
+loadImages();
