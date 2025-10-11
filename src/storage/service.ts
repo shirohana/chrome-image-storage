@@ -44,13 +44,45 @@ export async function getImage(id: string): Promise<SavedImage | undefined> {
 }
 
 export async function deleteImage(id: string): Promise<void> {
+  const image = await imageDB.get(id);
+  if (image) {
+    image.isDeleted = true;
+    await imageDB.update(image);
+  }
+}
+
+export async function restoreImage(id: string): Promise<void> {
+  const image = await imageDB.get(id);
+  if (image) {
+    image.isDeleted = false;
+    await imageDB.update(image);
+  }
+}
+
+export async function permanentlyDeleteImage(id: string): Promise<void> {
   return imageDB.delete(id);
 }
 
 export async function getImageCount(): Promise<number> {
-  return imageDB.count();
+  const images = await imageDB.getAll();
+  return images.filter(img => !img.isDeleted).length;
 }
 
 export async function deleteAllImages(): Promise<void> {
-  return imageDB.clear();
+  const images = await imageDB.getAll();
+  for (const image of images) {
+    if (!image.isDeleted) {
+      image.isDeleted = true;
+      await imageDB.update(image);
+    }
+  }
+}
+
+export async function emptyTrash(): Promise<void> {
+  const images = await imageDB.getAll();
+  for (const image of images) {
+    if (image.isDeleted) {
+      await imageDB.delete(image.id);
+    }
+  }
 }

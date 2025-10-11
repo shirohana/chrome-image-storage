@@ -24,6 +24,7 @@ export async function exportImages(images: SavedImage[]): Promise<void> {
       height: image.height,
       savedAt: image.savedAt,
       tags: image.tags,
+      isDeleted: image.isDeleted,
     });
   }
 

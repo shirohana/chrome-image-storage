@@ -1,4 +1,4 @@
-import { getAllImages, deleteImage, deleteAllImages } from '../storage/service';
+import { getAllImages, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash } from '../storage/service';
 import type { SavedImage } from '../types';
 
 // Constants
@@ -23,11 +23,13 @@ const SortDirection = {
 // State
 const state = {
   images: [] as SavedImage[],
+  filteredImages: [] as SavedImage[],
   sort: 'savedAt-desc',
   typeFilter: 'all',
   groupBy: 'none',
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
+  currentView: 'all' as 'all' | 'trash',
 };
 
 // Settings
@@ -79,6 +81,13 @@ function populateTypeFilter() {
 function applyFilters() {
   let filtered = state.images;
 
+  // Apply view filter (all or trash)
+  if (state.currentView === 'all') {
+    filtered = filtered.filter(img => !img.isDeleted);
+  } else {
+    filtered = filtered.filter(img => img.isDeleted);
+  }
+
   // Apply type filter
   if (state.typeFilter !== 'all') {
     filtered = filtered.filter(img => img.mimeType === state.typeFilter);
@@ -95,8 +104,12 @@ function applyFilters() {
     );
   }
 
+  // Store filtered images for select all
+  state.filteredImages = filtered;
+
   renderImages(filtered);
   updateImageCount();
+  updateViewBadges();
 }
 
 function applySorting() {
@@ -149,6 +162,16 @@ function createImageCardHTML(image: SavedImage): string {
   const fileSize = formatFileSize(image.fileSize);
   const isSelected = state.selectedIds.has(image.id);
 
+  const actions = state.currentView === 'trash'
+    ? `
+      <button class="btn btn-primary restore-btn" data-id="${image.id}">Restore</button>
+      <button class="btn btn-danger permanent-delete-btn" data-id="${image.id}">Delete Forever</button>
+    `
+    : `
+      <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
+      <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
+    `;
+
   return `
     <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
       <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
@@ -164,8 +187,7 @@ function createImageCardHTML(image: SavedImage): string {
           <strong>From:</strong> ${image.pageTitle || image.pageUrl}
         </div>
         <div class="image-actions">
-          <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
-          <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
+          ${actions}
         </div>
       </div>
     </div>
@@ -222,6 +244,32 @@ async function handleDelete(e: Event) {
   chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
 }
 
+async function handleRestore(e: Event) {
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.restore-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
+  await restoreImage(id);
+  state.selectedIds.delete(id);
+  await loadImages();
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+}
+
+async function handlePermanentDelete(e: Event) {
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.permanent-delete-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
+  const confirmed = confirm('Are you sure you want to permanently delete this image? This cannot be undone.');
+  if (confirmed) {
+    await permanentlyDeleteImage(id);
+    state.selectedIds.delete(id);
+    await loadImages();
+  }
+}
+
 function handleCheckboxChange(e: Event) {
   const checkbox = e.target as HTMLInputElement;
   const id = checkbox.dataset.id!;
@@ -249,8 +297,19 @@ function updateImageCard(id: string) {
 
 function updateImageCount() {
   const countEl = document.querySelector('.image-count')!;
-  const count = state.images.length;
+  const count = state.images.filter(img => !img.isDeleted).length;
   countEl.textContent = `${count} image${count !== 1 ? 's' : ''}`;
+}
+
+function updateViewBadges() {
+  const allImagesBadge = document.getElementById('all-images-badge')!;
+  const trashBadge = document.getElementById('trash-badge')!;
+
+  const allCount = state.images.filter(img => !img.isDeleted).length;
+  const trashCount = state.images.filter(img => img.isDeleted).length;
+
+  allImagesBadge.textContent = allCount.toString();
+  trashBadge.textContent = trashCount.toString();
 }
 
 function updateSelectionCount() {
@@ -368,6 +427,12 @@ imageGrid.addEventListener('click', (e: Event) => {
   } else if (target.matches('.delete-btn') || target.closest('.delete-btn')) {
     const btn = target.matches('.delete-btn') ? target : target.closest('.delete-btn');
     if (btn) handleDelete(e);
+  } else if (target.matches('.restore-btn') || target.closest('.restore-btn')) {
+    const btn = target.matches('.restore-btn') ? target : target.closest('.restore-btn');
+    if (btn) handleRestore(e);
+  } else if (target.matches('.permanent-delete-btn') || target.closest('.permanent-delete-btn')) {
+    const btn = target.matches('.permanent-delete-btn') ? target : target.closest('.permanent-delete-btn');
+    if (btn) handlePermanentDelete(e);
   } else if (target.matches('.image-preview')) {
     handleImageClick(e);
   }
@@ -394,10 +459,9 @@ document.getElementById('export-selected-btn')!.addEventListener('click', async 
 });
 
 document.getElementById('select-all-btn')!.addEventListener('click', () => {
-  const checkboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
-  checkboxes.forEach(checkbox => {
-    checkbox.checked = true;
-    state.selectedIds.add(checkbox.dataset.id!);
+  // Only select currently visible/filtered images
+  state.filteredImages.forEach(image => {
+    state.selectedIds.add(image.id);
   });
   applyFilters();
   updateSelectionCount();
@@ -413,32 +477,40 @@ document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
   updateSelectionCount();
 });
 
+document.getElementById('restore-selected-btn')!.addEventListener('click', async () => {
+  const count = state.selectedIds.size;
+  if (count === 0) return;
+
+  for (const id of state.selectedIds) {
+    await restoreImage(id);
+  }
+  state.selectedIds.clear();
+  updateSelectionCount();
+  await loadImages();
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+});
+
 document.getElementById('delete-selected-btn')!.addEventListener('click', async () => {
   const count = state.selectedIds.size;
   if (count === 0) return;
 
-  const confirmed = confirm(`Are you sure you want to delete ${count} selected image${count !== 1 ? 's' : ''}? This cannot be undone.`);
-  if (confirmed) {
-    for (const id of state.selectedIds) {
-      await deleteImage(id);
-    }
-    state.selectedIds.clear();
-    await loadImages();
-    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
+  for (const id of state.selectedIds) {
+    await deleteImage(id);
   }
+  state.selectedIds.clear();
+  updateSelectionCount();
+  await loadImages();
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
 });
 
 document.getElementById('delete-all-btn')!.addEventListener('click', async () => {
-  const count = state.images.length;
+  const count = state.filteredImages.length;
   if (count === 0) return;
 
-  const confirmed = confirm(`Are you sure you want to delete all ${count} image${count !== 1 ? 's' : ''}? This cannot be undone.`);
-  if (confirmed) {
-    await deleteAllImages();
-    state.selectedIds.clear();
-    await loadImages();
-    chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
-  }
+  await deleteAllImages();
+  state.selectedIds.clear();
+  await loadImages();
+  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -533,6 +605,59 @@ loadSettings().then(settings => {
 
 showNotificationsToggle.addEventListener('change', async () => {
   await saveSettings({ showNotifications: showNotificationsToggle.checked });
+});
+
+// View toggle (All Images / Trash)
+const allImagesBtn = document.getElementById('all-images-btn')!;
+const trashBtn = document.getElementById('trash-btn')!;
+const emptyTrashBtn = document.getElementById('empty-trash-btn')!;
+const deleteAllBtn = document.getElementById('delete-all-btn')!;
+const exportBtn = document.getElementById('export-btn')!;
+const restoreSelectedBtn = document.getElementById('restore-selected-btn')!;
+const deleteSelectedBtn = document.getElementById('delete-selected-btn')!;
+const exportSelectedBtn = document.getElementById('export-selected-btn')!;
+
+function switchView(view: 'all' | 'trash') {
+  state.currentView = view;
+  state.selectedIds.clear();
+
+  // Update button states
+  allImagesBtn.classList.toggle('active', view === 'all');
+  trashBtn.classList.toggle('active', view === 'trash');
+
+  // Show/hide appropriate buttons
+  if (view === 'trash') {
+    emptyTrashBtn.style.display = 'inline-block';
+    restoreSelectedBtn.style.display = 'inline-block';
+    deleteAllBtn.style.display = 'none';
+    exportBtn.style.display = 'none';
+    deleteSelectedBtn.style.display = 'none';
+    exportSelectedBtn.style.display = 'none';
+  } else {
+    emptyTrashBtn.style.display = 'none';
+    restoreSelectedBtn.style.display = 'none';
+    deleteAllBtn.style.display = 'inline-block';
+    exportBtn.style.display = 'inline-block';
+    deleteSelectedBtn.style.display = 'inline-block';
+    exportSelectedBtn.style.display = 'inline-block';
+  }
+
+  applyFilters();
+}
+
+allImagesBtn.addEventListener('click', () => switchView('all'));
+trashBtn.addEventListener('click', () => switchView('trash'));
+
+// Empty trash
+emptyTrashBtn.addEventListener('click', async () => {
+  const trashedCount = state.images.filter(img => img.isDeleted).length;
+  if (trashedCount === 0) return;
+
+  const confirmed = confirm(`Are you sure you want to permanently delete all ${trashedCount} image${trashedCount !== 1 ? 's' : ''} in trash? This cannot be undone.`);
+  if (confirmed) {
+    await emptyTrash();
+    await loadImages();
+  }
 });
 
 loadImages();

@@ -10,6 +10,7 @@ export interface SavedImage {
   height: number;
   savedAt: number;
   tags?: string[];
+  isDeleted?: boolean;
 }
 
 export interface ImageMetadata {
@@ -23,6 +24,7 @@ export interface ImageMetadata {
   height: number;
   savedAt: number;
   tags?: string[];
+  isDeleted?: boolean;
 }
 
 export interface CaptureImageMessage {

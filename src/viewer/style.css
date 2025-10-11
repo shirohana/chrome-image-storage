@@ -92,6 +92,58 @@ h1 {
   align-items: center;
 }
 
+.view-toggle {
+  display: flex;
+  gap: 0;
+  background: white;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.view-toggle-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 4px;
+  transition: background 0.2s;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.view-toggle-btn:hover {
+  background: #f0f0f0;
+}
+
+.view-toggle-btn.active {
+  background: #007bff;
+  color: white;
+}
+
+.view-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: #e0e0e0;
+  color: #666;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.view-toggle-btn.active .view-badge {
+  background: rgba(255, 255, 255, 0.3);
+  color: white;
+}
+
 .search-bar {
   flex: 1;
 }

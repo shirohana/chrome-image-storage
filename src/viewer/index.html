@@ -15,10 +15,12 @@
         <span id="selection-count" style="display: none;">0 selected</span>
         <button id="select-all-btn" class="btn btn-secondary">Select All</button>
         <button id="deselect-all-btn" class="btn btn-secondary">Deselect All</button>
+        <button id="restore-selected-btn" class="btn btn-primary" style="display: none;">Restore Selected</button>
         <button id="delete-selected-btn" class="btn btn-danger">Delete Selected</button>
         <button id="export-selected-btn" class="btn btn-primary">Export Selected</button>
         <button id="delete-all-btn" class="btn btn-danger">Delete All</button>
         <button id="export-btn" class="btn btn-primary">Export All</button>
+        <button id="empty-trash-btn" class="btn btn-danger" style="display: none;">Empty Trash</button>
         <button id="settings-btn" class="btn btn-secondary">⚙</button>
       </div>
     </header>
@@ -32,6 +34,16 @@
     </div>
 
     <div class="toolbar">
+      <div class="view-toggle">
+        <button id="all-images-btn" class="view-toggle-btn active">
+          All Images
+          <span class="view-badge" id="all-images-badge">0</span>
+        </button>
+        <button id="trash-btn" class="view-toggle-btn">
+          Trash
+          <span class="view-badge" id="trash-badge">0</span>
+        </button>
+      </div>
       <div class="search-bar">
         <input type="text" id="search-input" placeholder="Search by URL or page title...">
       </div>
