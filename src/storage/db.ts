@@ -91,6 +91,18 @@ class ImageDB {
       request.onerror = () => reject(request.error);
     });
   }
+
+  async clear(): Promise<void> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.clear();
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
 }
 
 export const imageDB = new ImageDB();

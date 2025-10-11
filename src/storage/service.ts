@@ -50,3 +50,7 @@ export async function deleteImage(id: string): Promise<void> {
 export async function getImageCount(): Promise<number> {
   return imageDB.count();
 }
+
+export async function deleteAllImages(): Promise<void> {
+  return imageDB.clear();
+}

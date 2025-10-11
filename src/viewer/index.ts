@@ -1,4 +1,4 @@
-import { getAllImages, deleteImage } from '../storage/service';
+import { getAllImages, deleteImage, deleteAllImages } from '../storage/service';
 import type { SavedImage } from '../types';
 
 let allImages: SavedImage[] = [];
@@ -127,6 +127,17 @@ document.getElementById('search-input')!.addEventListener('input', handleSearch)
 document.getElementById('export-btn')!.addEventListener('click', async () => {
   const { exportImages } = await import('./export');
   await exportImages(allImages);
+});
+
+document.getElementById('delete-all-btn')!.addEventListener('click', async () => {
+  const count = allImages.length;
+  if (count === 0) return;
+
+  const confirmed = confirm(`Are you sure you want to delete all ${count} image${count !== 1 ? 's' : ''}? This cannot be undone.`);
+  if (confirmed) {
+    await deleteAllImages();
+    await loadImages();
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
