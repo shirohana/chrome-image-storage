@@ -168,6 +168,7 @@ function createImageCardHTML(image: SavedImage): string {
       <button class="btn btn-danger permanent-delete-btn" data-id="${image.id}">Delete Forever</button>
     `
     : `
+      <button class="btn btn-secondary download-btn" data-id="${image.id}">Download</button>
       <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
       <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
     `;
@@ -218,6 +219,27 @@ function renderImages(images: SavedImage[]) {
 function renderUngroupedImages(images: SavedImage[]) {
   const grid = document.getElementById('image-grid')!;
   grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
+}
+
+async function handleDownload(e: Event) {
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.download-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
+  const image = state.images.find(img => img.id === id);
+  if (image) {
+    const { getExtensionFromMimeType } = await import('./export');
+    const extension = getExtensionFromMimeType(image.mimeType);
+    const filename = `${image.id}${extension}`;
+
+    const url = URL.createObjectURL(image.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 }
 
 function handleViewOriginal(e: Event) {
@@ -424,6 +446,11 @@ imageGrid.addEventListener('click', (e: Event) => {
   // Handle specific elements first (priority order)
 
   // 1. Action buttons
+  if (target.matches('.download-btn') || target.closest('.download-btn')) {
+    const btn = target.matches('.download-btn') ? target : target.closest('.download-btn');
+    if (btn) handleDownload(e);
+    return;
+  }
   if (target.matches('.view-btn') || target.closest('.view-btn')) {
     const btn = target.matches('.view-btn') ? target : target.closest('.view-btn');
     if (btn) handleViewOriginal(e);

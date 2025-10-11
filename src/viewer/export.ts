@@ -41,7 +41,7 @@ export async function exportImages(images: SavedImage[]): Promise<void> {
   URL.revokeObjectURL(url);
 }
 
-function getExtensionFromMimeType(mimeType: string): string {
+export function getExtensionFromMimeType(mimeType: string): string {
   const map: Record<string, string> = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
