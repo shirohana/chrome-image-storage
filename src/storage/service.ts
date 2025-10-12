@@ -4,10 +4,29 @@ import type { SavedImage } from '../types';
 export async function saveImage(
   imageUrl: string,
   pageUrl: string,
-  pageTitle?: string
+  pageTitle?: string,
+  capturedBlob?: Blob
 ): Promise<string> {
-  const response = await fetch(imageUrl);
-  const blob = await response.blob();
+  let blob: Blob;
+
+  if (capturedBlob) {
+    // Use provided blob (captured from DOM)
+    blob = capturedBlob;
+  } else {
+    // Fetch the image with extension's host permissions
+    const response = await fetch(imageUrl);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+
+    blob = await response.blob();
+
+    // Verify we got image data
+    if (!blob.type.startsWith('image/')) {
+      throw new Error(`Invalid content type: ${blob.type}`);
+    }
+  }
 
   const dimensions = await getImageDimensions(blob);
 

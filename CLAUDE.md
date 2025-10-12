@@ -22,6 +22,7 @@ Chrome extensions run in three separate JavaScript contexts:
 1. **Background Service Worker** (`src/background/`)
    - Handles context menu, saves images, sends notifications
    - **Critical**: No DOM access - use `createImageBitmap()` not `new Image()`
+   - Uses `declarativeNetRequest` API to set Referer headers for anti-hotlinking bypass
 
 2. **Viewer Page** (`src/viewer/`)
    - Full-page UI with multiple features:
@@ -36,7 +37,9 @@ Chrome extensions run in three separate JavaScript contexts:
    - Listens for `IMAGE_SAVED` messages to auto-refresh
 
 3. **Content Script** (`src/content/`)
-   - Currently minimal
+   - Captures images from DOM via canvas (avoids network request)
+   - Finds images by URL matching (exact, normalized, without query params)
+   - Falls back to background worker if canvas capture fails
 
 ### Storage
 
@@ -59,6 +62,10 @@ Chrome extensions run in three separate JavaScript contexts:
 6. **Grouping**: Use `Map<string, SavedImage[]>` for domain grouping, render sections with headers
 7. **Selection State**: Use `Set<string>` to track selected image IDs, persists across re-renders
 8. **Export Filenames**: Use image IDs instead of sequential numbers for easier metadata matching
+9. **Anti-Hotlinking Bypass**: Two-tier approach:
+   - Try canvas capture from DOM first (fast, no network request, works for same-origin)
+   - Fall back to `declarativeNetRequest` API to inject Referer header (bypasses 403 errors from sites like Pixiv)
+   - Canvas `toBlob()` fails on tainted (cross-origin) images, unlike what docs suggest
 
 ## Development Philosophy
 

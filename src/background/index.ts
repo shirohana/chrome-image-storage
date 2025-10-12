@@ -54,7 +54,84 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const pageUrl = info.pageUrl || tab.url || '';
     const pageTitle = tab.title || '';
 
-    const imageId = await saveImage(imageUrl, pageUrl, pageTitle);
+    let imageId: string;
+
+    try {
+      // Try content script first (can access DOM for canvas capture)
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: 'CAPTURE_IMAGE',
+        imageUrl: imageUrl,
+      });
+
+      if (response.error) {
+        throw new Error(response.error);
+      }
+
+      // Use captured blob from content script
+      imageId = await saveImage(imageUrl, pageUrl, pageTitle, response.blob);
+    } catch (contentScriptError) {
+      // Content script failed, try background fetch with modified headers
+      const ruleId = Math.floor(Date.now() / 1000); // Use seconds as integer ID
+      try {
+        const imageHost = new URL(imageUrl).host;
+
+        // Add declarativeNetRequest rule to modify headers
+        await chrome.declarativeNetRequest.updateDynamicRules({
+          addRules: [
+            {
+              id: ruleId,
+              priority: 1,
+              action: {
+                type: 'modifyHeaders',
+                requestHeaders: [
+                  {
+                    header: 'Referer',
+                    operation: 'set',
+                    value: pageUrl,
+                  },
+                ],
+              },
+              condition: {
+                urlFilter: imageHost,
+                resourceTypes: ['xmlhttprequest'],
+              },
+            },
+          ],
+          removeRuleIds: [],
+        });
+
+        // Fetch the image
+        const response = await fetch(imageUrl);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const blob = await response.blob();
+        imageId = await saveImage(imageUrl, pageUrl, pageTitle, blob);
+      } catch (fetchError) {
+        // Both methods failed - show error notification
+        const errorMsg = fetchError instanceof Error
+          ? fetchError.message
+          : 'Unknown error';
+
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: chrome.runtime.getURL('src/icons/icon-48.png'),
+          title: 'Failed to Save Image',
+          message: `Could not save image: ${errorMsg}`,
+        });
+        return; // Exit early
+      } finally {
+        // Clean up the rule
+        await chrome.declarativeNetRequest.updateDynamicRules({
+          addRules: [],
+          removeRuleIds: [ruleId],
+        }).catch(() => {
+          // Ignore cleanup errors
+        });
+      }
+    }
 
     // Update badge counter
     await updateBadge();
