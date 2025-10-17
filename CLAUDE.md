@@ -29,10 +29,12 @@ Chrome extensions run in three separate JavaScript contexts:
      - View modes: grid/compact/list
      - Search by URL or page title
      - Filter by image type (PNG, JPEG, WebP, etc.)
+     - Multi-tag filter with AND/OR modes
      - Sort by date, size, dimensions, or URL
      - Group by domain or show duplicates
      - Multi-select with checkboxes
-     - Bulk operations: delete selected, export selected
+     - Bulk operations: delete selected, export selected, tag selected
+     - Tag management per image or in bulk
      - Lightbox for full-size viewing
      - Duplicate detection by dimensions + file size
    - Listens for `IMAGE_SAVED` messages to auto-refresh
@@ -79,6 +81,37 @@ Chrome extensions run in three separate JavaScript contexts:
 - **Permanent Delete**: `permanentlyDeleteImage()` removes from IndexedDB
 - **View Toggle**: "All Images" vs "Trash" views with separate action buttons
 - **Filters**: `applyFilters()` checks `isDeleted` flag based on current view
+
+### Tag Management System
+
+**Data Model**:
+- Tags stored as `tags: string[]` on SavedImage
+- Empty array or undefined if no tags
+
+**Individual Image Tagging**:
+- Tag editor in preview pane (single selection)
+- Inline tag input with autocomplete from existing tags
+- `updateImageTags(id, tags)`: Updates tags for single image
+- Tags rendered as pills with remove buttons
+
+**Bulk Tag Operations**:
+- "Tag Selected" button opens modal for multi-image operations
+- **Add Tags Section**: Adds tags to all selected images (duplicates prevented)
+- **Remove Tags Section**: Removes tags from all selected images
+- Both sections feature autocomplete from existing tags
+- `addTagsToImages(imageIds, tagsToAdd)`: Bulk add operation
+- `removeTagsFromImages(imageIds, tagsToRemove)`: Bulk remove operation
+
+**Tag Filtering**:
+- Multi-tag dropdown with autocomplete
+- Selected tags shown as removable pills below dropdown
+- **Union Mode (OR)**: Shows images with ANY selected tag
+- **Intersection Mode (AND)**: Shows images with ALL selected tags
+- Toggle button switches between modes
+- `state.tagFilters`: Set<string> of active tag filters
+- `state.tagFilterMode`: 'union' | 'intersection'
+- `populateTagFilter()`: Rebuilds dropdown from all existing tags
+- Filters update dynamically after tag modifications
 
 ### Preview Pane
 

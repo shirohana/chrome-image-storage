@@ -113,3 +113,26 @@ export async function updateImageTags(id: string, tags: string[]): Promise<void>
     await imageDB.update(image);
   }
 }
+
+export async function addTagsToImages(imageIds: string[], tagsToAdd: string[]): Promise<void> {
+  for (const id of imageIds) {
+    const image = await imageDB.get(id);
+    if (image) {
+      const existingTags = image.tags || [];
+      const uniqueTags = Array.from(new Set([...existingTags, ...tagsToAdd]));
+      image.tags = uniqueTags;
+      await imageDB.update(image);
+    }
+  }
+}
+
+export async function removeTagsFromImages(imageIds: string[], tagsToRemove: string[]): Promise<void> {
+  const tagsToRemoveSet = new Set(tagsToRemove);
+  for (const id of imageIds) {
+    const image = await imageDB.get(id);
+    if (image && image.tags) {
+      image.tags = image.tags.filter(tag => !tagsToRemoveSet.has(tag));
+      await imageDB.update(image);
+    }
+  }
+}

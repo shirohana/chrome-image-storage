@@ -1,4 +1,4 @@
-import { getAllImages, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags } from '../storage/service';
+import { getAllImages, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
 import type { SavedImage } from '../types';
 
 // Constants
@@ -818,21 +818,37 @@ function updateLightboxMetadata(image: SavedImage) {
   }
 }
 
-function setupTagAutocomplete(input: HTMLInputElement) {
-  const autocompleteDiv = document.getElementById('tag-autocomplete');
+function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, customTags?: string[]) {
+  const divId = autocompleteId || 'tag-autocomplete';
+  const autocompleteDiv = document.getElementById(divId);
   if (!autocompleteDiv) return;
 
-  // Collect all unique tags
-  const allTags = new Set<string>();
-  state.images.forEach(img => {
-    if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => allTags.add(tag));
-    }
-  });
-  const availableTags = Array.from(allTags).sort();
+  // Remove existing event listeners by aborting previous controller
+  const controllerKey = `autocomplete_controller_${divId}`;
+  if ((input as any)[controllerKey]) {
+    (input as any)[controllerKey].abort();
+  }
+  const controller = new AbortController();
+  (input as any)[controllerKey] = controller;
+  const signal = controller.signal;
+
+  // Use custom tags if provided, otherwise collect all unique tags
+  let availableTags: string[];
+  if (customTags) {
+    availableTags = customTags.sort();
+  } else {
+    const allTags = new Set<string>();
+    state.images.forEach(img => {
+      if (img.tags && img.tags.length > 0) {
+        img.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    availableTags = Array.from(allTags).sort();
+  }
 
   let selectedIndex = -1;
   let currentMatches: string[] = [];
+  let blurTimeout: number | null = null;
 
   function showSuggestions() {
     const value = input.value;
@@ -885,6 +901,12 @@ function setupTagAutocomplete(input: HTMLInputElement) {
   }
 
   function insertTag(tag: string) {
+    // Clear any pending blur timeout
+    if (blurTimeout !== null) {
+      clearTimeout(blurTimeout);
+      blurTimeout = null;
+    }
+
     const value = input.value;
     const cursorPos = input.selectionStart || 0;
     const beforeCursor = value.substring(0, cursorPos);
@@ -895,16 +917,18 @@ function setupTagAutocomplete(input: HTMLInputElement) {
     const afterTag = nextCommaOrEnd >= 0 ? afterCursor.substring(nextCommaOrEnd) : '';
 
     input.value = beforeTag + (beforeTag && !beforeTag.endsWith(' ') ? ' ' : '') + tag + ', ';
-    autocompleteDiv.style.display = 'none';
     input.focus();
 
     // Move cursor after the inserted tag
     const newCursorPos = beforeTag.length + (beforeTag && !beforeTag.endsWith(' ') ? 1 : 0) + tag.length + 2;
     input.setSelectionRange(newCursorPos, newCursorPos);
+
+    // Re-show autocomplete with remaining tags
+    showSuggestions();
   }
 
-  input.addEventListener('input', showSuggestions);
-  input.addEventListener('focus', showSuggestions);
+  input.addEventListener('input', showSuggestions, { signal });
+  input.addEventListener('focus', showSuggestions, { signal });
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
     if (autocompleteDiv.style.display !== 'block') return;
@@ -926,15 +950,24 @@ function setupTagAutocomplete(input: HTMLInputElement) {
       autocompleteDiv.style.display = 'none';
       selectedIndex = -1;
     }
-  });
+  }, { signal });
 
   // Hide autocomplete when clicking outside
   input.addEventListener('blur', () => {
-    setTimeout(() => {
+    blurTimeout = window.setTimeout(() => {
       autocompleteDiv.style.display = 'none';
       selectedIndex = -1;
+      blurTimeout = null;
     }, 200);
-  });
+  }, { signal });
+
+  // Clear timeout and keep open when refocusing
+  input.addEventListener('focus', () => {
+    if (blurTimeout !== null) {
+      clearTimeout(blurTimeout);
+      blurTimeout = null;
+    }
+  }, { signal });
 }
 
 function closeLightbox() {
@@ -1528,6 +1561,112 @@ emptyTrashBtn.addEventListener('click', async () => {
   if (confirmed) {
     await emptyTrash();
     await loadImages();
+  }
+});
+
+// Bulk tagging modal
+const bulkTagModal = document.getElementById('bulk-tag-modal')!;
+const bulkTagSelectedBtn = document.getElementById('tag-selected-btn')!;
+const bulkTagCloseBtn = document.querySelector('.bulk-tag-close')!;
+const bulkTagOverlay = document.querySelector('.bulk-tag-overlay')!;
+const bulkTagCancelBtn = document.getElementById('bulk-tag-cancel-btn')!;
+const bulkTagSaveBtn = document.getElementById('bulk-tag-save-btn')!;
+const bulkAddTagsInput = document.getElementById('bulk-add-tags-input') as HTMLInputElement;
+const bulkRemoveTagsInput = document.getElementById('bulk-remove-tags-input') as HTMLInputElement;
+
+function openBulkTagModal() {
+  if (state.selectedIds.size === 0) return;
+
+  bulkAddTagsInput.value = '';
+  bulkRemoveTagsInput.value = '';
+
+  bulkTagModal.classList.add('active');
+
+  // Setup autocomplete for add input (all tags)
+  setupTagAutocomplete(bulkAddTagsInput, 'bulk-add-autocomplete');
+
+  // Setup autocomplete for remove input (only tags from selected images)
+  const selectedImages = state.images.filter(img => state.selectedIds.has(img.id));
+  const selectedImageTags = new Set<string>();
+  selectedImages.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => selectedImageTags.add(tag));
+    }
+  });
+  const selectedImageTagsArray = Array.from(selectedImageTags);
+  setupTagAutocomplete(bulkRemoveTagsInput, 'bulk-remove-autocomplete', selectedImageTagsArray);
+
+  // Focus the first input
+  bulkAddTagsInput.focus();
+}
+
+function closeBulkTagModal() {
+  bulkTagModal.classList.remove('active');
+}
+
+async function saveBulkTags() {
+  if (state.selectedIds.size === 0) {
+    closeBulkTagModal();
+    return;
+  }
+
+  const selectedImageIds = Array.from(state.selectedIds);
+
+  // Parse add tags
+  const addTagsString = bulkAddTagsInput.value.trim();
+  const tagsToAdd = addTagsString
+    ? addTagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+    : [];
+
+  // Parse remove tags
+  const removeTagsString = bulkRemoveTagsInput.value.trim();
+  const tagsToRemove = removeTagsString
+    ? removeTagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+    : [];
+
+  // Remove duplicates
+  const uniqueTagsToAdd = Array.from(new Set(tagsToAdd));
+  const uniqueTagsToRemove = Array.from(new Set(tagsToRemove));
+
+  // Apply operations
+  if (uniqueTagsToAdd.length > 0) {
+    await addTagsToImages(selectedImageIds, uniqueTagsToAdd);
+  }
+
+  if (uniqueTagsToRemove.length > 0) {
+    await removeTagsFromImages(selectedImageIds, uniqueTagsToRemove);
+  }
+
+  // Reload images and close modal
+  await loadImages();
+  updatePreviewPane();
+  closeBulkTagModal();
+}
+
+bulkTagSelectedBtn.addEventListener('click', openBulkTagModal);
+bulkTagCloseBtn.addEventListener('click', closeBulkTagModal);
+bulkTagOverlay.addEventListener('click', closeBulkTagModal);
+bulkTagCancelBtn.addEventListener('click', closeBulkTagModal);
+bulkTagSaveBtn.addEventListener('click', saveBulkTags);
+
+// Handle Enter key in bulk tag inputs
+bulkAddTagsInput.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const autocompleteDiv = document.getElementById('bulk-add-autocomplete');
+    if (!autocompleteDiv || autocompleteDiv.style.display !== 'block') {
+      e.preventDefault();
+      saveBulkTags();
+    }
+  }
+});
+
+bulkRemoveTagsInput.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const autocompleteDiv = document.getElementById('bulk-remove-autocomplete');
+    if (!autocompleteDiv || autocompleteDiv.style.display !== 'block') {
+      e.preventDefault();
+      saveBulkTags();
+    }
   }
 });
 

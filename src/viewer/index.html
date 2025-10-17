@@ -16,6 +16,7 @@
         <button id="select-all-btn" class="btn btn-secondary">Select All</button>
         <button id="deselect-all-btn" class="btn btn-secondary">Deselect All</button>
         <button id="restore-selected-btn" class="btn btn-primary" style="display: none;">Restore Selected</button>
+        <button id="tag-selected-btn" class="btn btn-primary">Tag Selected</button>
         <button id="delete-selected-btn" class="btn btn-danger">Delete Selected</button>
         <button id="export-selected-btn" class="btn btn-primary">Export Selected</button>
         <button id="delete-all-btn" class="btn btn-danger">Delete All</button>
@@ -111,6 +112,38 @@
       <img id="lightbox-image" src="" alt="Full size image">
       <div class="lightbox-metadata">
         <h3>Image Details</h3>
+      </div>
+    </div>
+  </div>
+
+  <div id="bulk-tag-modal" class="bulk-tag-modal">
+    <div class="bulk-tag-overlay"></div>
+    <div class="bulk-tag-content">
+      <div class="bulk-tag-header">
+        <h3>Tag Multiple Images</h3>
+        <button class="bulk-tag-close">&times;</button>
+      </div>
+      <div class="bulk-tag-body">
+        <div class="bulk-tag-section">
+          <h4>Add Tags</h4>
+          <p class="bulk-tag-hint">These tags will be added to all selected images</p>
+          <div class="tag-input-container">
+            <input type="text" id="bulk-add-tags-input" class="tag-input" placeholder="Add tags (comma-separated)...">
+            <div id="bulk-add-autocomplete" class="tag-autocomplete"></div>
+          </div>
+        </div>
+        <div class="bulk-tag-section">
+          <h4>Remove Tags</h4>
+          <p class="bulk-tag-hint">These tags will be removed from all selected images</p>
+          <div class="tag-input-container">
+            <input type="text" id="bulk-remove-tags-input" class="tag-input" placeholder="Remove tags (comma-separated)...">
+            <div id="bulk-remove-autocomplete" class="tag-autocomplete"></div>
+          </div>
+        </div>
+      </div>
+      <div class="bulk-tag-footer">
+        <button id="bulk-tag-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button id="bulk-tag-save-btn" class="btn btn-primary">Save</button>
       </div>
     </div>
   </div>
