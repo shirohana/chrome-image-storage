@@ -54,9 +54,15 @@
         <select id="type-filter" class="type-filter">
           <option value="all">All Types</option>
         </select>
-        <select id="tag-filter" class="tag-filter">
-          <option value="all">All Tags</option>
-        </select>
+        <div class="tag-filter-container">
+          <div>
+            <select id="tag-filter" class="tag-filter">
+              <option value="">Select tags...</option>
+            </select>
+            <button id="tag-filter-mode" class="btn btn-secondary tag-filter-mode" title="Toggle AND/OR mode">OR</button>
+          </div>
+          <div id="selected-tags" class="selected-tags"></div>
+        </div>
         <select id="group-by" class="group-by">
           <option value="none">No Grouping</option>
           <option value="domain">Group by Domain</option>

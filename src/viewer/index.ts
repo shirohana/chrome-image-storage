@@ -26,7 +26,8 @@ const state = {
   filteredImages: [] as SavedImage[],
   sort: 'savedAt-desc',
   typeFilter: 'all',
-  tagFilter: 'all',
+  tagFilters: new Set<string>(),
+  tagFilterMode: 'union' as 'union' | 'intersection',
   groupBy: 'none',
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
@@ -95,17 +96,78 @@ function populateTagFilter() {
     }
   });
 
-  tagFilter.innerHTML = '<option value="all">All Tags</option>';
+  tagFilter.innerHTML = '<option value="">Select tags...</option>';
 
   const sortedTags = Array.from(allTags).sort();
   sortedTags.forEach(tag => {
-    const option = document.createElement('option');
-    option.value = tag;
-    option.textContent = tag;
-    tagFilter.appendChild(option);
+    // Skip tags that are already selected
+    if (!state.tagFilters.has(tag)) {
+      const option = document.createElement('option');
+      option.value = tag;
+      option.textContent = tag;
+      tagFilter.appendChild(option);
+    }
   });
 
-  tagFilter.value = state.tagFilter;
+  renderSelectedTags();
+}
+
+function updateTagFilterOptions() {
+  const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
+  if (!tagFilter) return;
+
+  const allTags = new Set<string>();
+  state.images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+
+  tagFilter.innerHTML = '<option value="">Select tags...</option>';
+
+  const sortedTags = Array.from(allTags).sort();
+  sortedTags.forEach(tag => {
+    // Skip tags that are already selected
+    if (!state.tagFilters.has(tag)) {
+      const option = document.createElement('option');
+      option.value = tag;
+      option.textContent = tag;
+      tagFilter.appendChild(option);
+    }
+  });
+
+  tagFilter.value = '';
+}
+
+function renderSelectedTags() {
+  const container = document.getElementById('selected-tags');
+  if (!container) return;
+
+  if (state.tagFilters.size === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = Array.from(state.tagFilters)
+    .map(tag => `
+      <span class="selected-tag">
+        ${tag}
+        <button class="remove-tag" data-tag="${tag}">&times;</button>
+      </span>
+    `)
+    .join('');
+
+  // Attach remove handlers
+  container.querySelectorAll('.remove-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-tag')!;
+      state.tagFilters.delete(tag);
+
+      updateTagFilterOptions();
+      renderSelectedTags();
+      applyFilters();
+    });
+  });
 }
 
 function applyFilters() {
@@ -123,9 +185,19 @@ function applyFilters() {
     filtered = filtered.filter(img => img.mimeType === state.typeFilter);
   }
 
-  // Apply tag filter
-  if (state.tagFilter !== 'all') {
-    filtered = filtered.filter(img => img.tags && img.tags.includes(state.tagFilter));
+  // Apply tag filter (multi-tag with union/intersection mode)
+  if (state.tagFilters.size > 0) {
+    if (state.tagFilterMode === 'union') {
+      // Union (OR): Image has ANY of the selected tags
+      filtered = filtered.filter(img =>
+        img.tags && img.tags.some(tag => state.tagFilters.has(tag))
+      );
+    } else {
+      // Intersection (AND): Image has ALL of the selected tags
+      filtered = filtered.filter(img =>
+        img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
+      );
+    }
   }
 
   // Apply search filter
@@ -1236,8 +1308,24 @@ typeFilter.addEventListener('change', () => {
 const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
 
 tagFilter.addEventListener('change', () => {
-  state.tagFilter = tagFilter.value;
-  applyFilters();
+  const selectedTag = tagFilter.value;
+  if (selectedTag && !state.tagFilters.has(selectedTag)) {
+    state.tagFilters.add(selectedTag);
+    updateTagFilterOptions();
+    renderSelectedTags();
+    applyFilters();
+  }
+});
+
+// Tag filter mode toggle
+const tagFilterModeBtn = document.getElementById('tag-filter-mode')!;
+
+tagFilterModeBtn.addEventListener('click', () => {
+  state.tagFilterMode = state.tagFilterMode === 'union' ? 'intersection' : 'union';
+  tagFilterModeBtn.textContent = state.tagFilterMode === 'union' ? 'OR' : 'AND';
+  if (state.tagFilters.size > 0) {
+    applyFilters();
+  }
 });
 
 // Group by
