@@ -17,7 +17,7 @@ Simple list of potential improvements. Build when needed, not all at once.
 - [ ] Custom tags
 - [ ] Statistics page
 - [ ] Import from ZIP
-- [ ] Duplicate detection
+- [x] Duplicate detection
 
 ---
 

@@ -216,6 +216,8 @@ function renderImages(images: SavedImage[]) {
 
   if (state.groupBy === 'domain') {
     renderGroupedImages(images);
+  } else if (state.groupBy === 'duplicates') {
+    renderDuplicateGroups(images);
   } else {
     renderUngroupedImages(images);
   }
@@ -490,6 +492,29 @@ function groupImagesByDomain(images: SavedImage[]): Map<string, SavedImage[]> {
   return groups;
 }
 
+function groupImagesByDuplicates(images: SavedImage[]): Map<string, SavedImage[]> {
+  const groups = new Map<string, SavedImage[]>();
+
+  for (const image of images) {
+    // Group by dimensions AND file size
+    const key = `${image.width}×${image.height}-${image.fileSize}`;
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+    groups.get(key)!.push(image);
+  }
+
+  // Only return groups with 2+ images (actual duplicates)
+  const duplicates = new Map<string, SavedImage[]>();
+  for (const [key, groupImages] of groups) {
+    if (groupImages.length >= 2) {
+      duplicates.set(key, groupImages);
+    }
+  }
+
+  return duplicates;
+}
+
 function renderGroupedImages(images: SavedImage[]) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByDomain(images);
@@ -505,6 +530,44 @@ function renderGroupedImages(images: SavedImage[]) {
         <div class="group-header">
           <h3 class="group-title">${domain}</h3>
           <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="group-content image-grid">
+    `;
+
+    html += groupImages.map(image => createImageCardHTML(image)).join('');
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  grid.innerHTML = html;
+}
+
+function renderDuplicateGroups(images: SavedImage[]) {
+  const grid = document.getElementById('image-grid')!;
+  const groups = groupImagesByDuplicates(images);
+
+  if (groups.size === 0) {
+    grid.innerHTML = '<div class="empty-state" style="display: block;"><p>No duplicates found</p></div>';
+    return;
+  }
+
+  const sortedKeys = Array.from(groups.keys()).sort();
+
+  let html = '';
+  for (const key of sortedKeys) {
+    const groupImages = groups.get(key)!;
+    const count = groupImages.length;
+    const [dimensions, fileSize] = key.split('-');
+    const fileSizeFormatted = formatFileSize(Number(fileSize));
+
+    html += `
+      <div class="group-section">
+        <div class="group-header">
+          <h3 class="group-title">${dimensions}, ${fileSizeFormatted}</h3>
+          <span class="group-count">${count} duplicates</span>
         </div>
         <div class="group-content image-grid">
     `;
