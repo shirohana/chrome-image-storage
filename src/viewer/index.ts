@@ -1,4 +1,4 @@
-import { getAllImages, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash } from '../storage/service';
+import { getAllImages, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags } from '../storage/service';
 import type { SavedImage } from '../types';
 
 // Constants
@@ -26,6 +26,7 @@ const state = {
   filteredImages: [] as SavedImage[],
   sort: 'savedAt-desc',
   typeFilter: 'all',
+  tagFilter: 'all',
   groupBy: 'none',
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
@@ -52,6 +53,7 @@ async function saveSettings(settings: { showNotifications: boolean }) {
 async function loadImages() {
   state.images = await getAllImages();
   populateTypeFilter();
+  populateTagFilter();
   applySorting();
   applyFilters();
 }
@@ -83,6 +85,29 @@ function populateTypeFilter() {
   typeFilter.value = state.typeFilter;
 }
 
+function populateTagFilter() {
+  const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
+  const allTags = new Set<string>();
+
+  state.images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+
+  tagFilter.innerHTML = '<option value="all">All Tags</option>';
+
+  const sortedTags = Array.from(allTags).sort();
+  sortedTags.forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    tagFilter.appendChild(option);
+  });
+
+  tagFilter.value = state.tagFilter;
+}
+
 function applyFilters() {
   let filtered = state.images;
 
@@ -96,6 +121,11 @@ function applyFilters() {
   // Apply type filter
   if (state.typeFilter !== 'all') {
     filtered = filtered.filter(img => img.mimeType === state.typeFilter);
+  }
+
+  // Apply tag filter
+  if (state.tagFilter !== 'all') {
+    filtered = filtered.filter(img => img.tags && img.tags.includes(state.tagFilter));
   }
 
   // Apply search filter
@@ -178,6 +208,12 @@ function createImageCardHTML(image: SavedImage): string {
       <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
     `;
 
+  const tagsHTML = image.tags && image.tags.length > 0
+    ? `<div class="image-tags">
+        ${image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+      </div>`
+    : '';
+
   return `
     <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
       <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
@@ -189,6 +225,7 @@ function createImageCardHTML(image: SavedImage): string {
           <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
           <div><strong>Type:</strong> ${image.mimeType}</div>
         </div>
+        ${tagsHTML}
         <div class="image-url" title="${image.imageUrl}">
           <strong>From:</strong> ${image.pageTitle || image.pageUrl}
         </div>
@@ -299,6 +336,33 @@ async function handlePermanentDelete(e: Event) {
   }
 }
 
+async function handleSaveTags(e: Event) {
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.save-tags-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
+  const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
+  if (!input) return;
+
+  const tagsString = input.value.trim();
+  const tags = tagsString
+    ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+    : [];
+
+  // Remove duplicates using Set
+  const uniqueTags = Array.from(new Set(tags));
+
+  await updateImageTags(id, uniqueTags);
+  await loadImages();
+
+  const currentImage = state.filteredImages[state.currentLightboxIndex];
+  if (currentImage) {
+    updateLightboxMetadata(currentImage);
+  }
+  updatePreviewPane();
+}
+
 function handleCheckboxChange(e: Event) {
   const checkbox = e.target as HTMLInputElement;
   const id = checkbox.dataset.id!;
@@ -386,6 +450,10 @@ function renderSinglePreview(image: SavedImage, container: HTMLElement) {
   const date = new Date(image.savedAt).toLocaleString();
   const fileSize = formatFileSize(image.fileSize);
 
+  const tagsHTML = image.tags && image.tags.length > 0
+    ? image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+    : '<span class="no-tags">No tags</span>';
+
   container.innerHTML = `
     <div class="preview-single">
       <div class="preview-image-container">
@@ -407,6 +475,10 @@ function renderSinglePreview(image: SavedImage, container: HTMLElement) {
         <div class="preview-meta-row">
           <span class="preview-meta-label">Saved</span>
           <span class="preview-meta-value">${date}</span>
+        </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Tags</span>
+          <div class="preview-meta-tags">${tagsHTML}</div>
         </div>
       </div>
       <div class="preview-actions">
@@ -622,6 +694,10 @@ function updateLightboxMetadata(image: SavedImage) {
   const date = new Date(image.savedAt).toLocaleString();
   const fileSize = formatFileSize(image.fileSize);
 
+  const tagsValue = image.tags && image.tags.length > 0
+    ? image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+    : '<span class="no-tags">No tags</span>';
+
   metadata.innerHTML = `
     <h3>Image Details</h3>
     <div class="metadata-row">
@@ -644,7 +720,149 @@ function updateLightboxMetadata(image: SavedImage) {
       <span class="metadata-label">Page:</span>
       <span class="metadata-value" title="${image.pageUrl}">${image.pageTitle || image.pageUrl}</span>
     </div>
+    <div class="metadata-row">
+      <span class="metadata-label">Tags:</span>
+      <div class="metadata-tags">${tagsValue}</div>
+    </div>
+    <div class="metadata-row">
+      <div class="tag-input-container">
+        <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (comma-separated)..." value="${image.tags ? image.tags.join(', ') : ''}">
+        <div id="tag-autocomplete" class="tag-autocomplete"></div>
+      </div>
+      <button class="btn btn-primary save-tags-btn" data-id="${image.id}">Save Tags</button>
+    </div>
   `;
+
+  // Attach event listener for save tags button
+  const saveBtn = metadata.querySelector('.save-tags-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', handleSaveTags);
+  }
+
+  // Setup tag autocomplete
+  const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
+  if (input) {
+    setupTagAutocomplete(input);
+  }
+}
+
+function setupTagAutocomplete(input: HTMLInputElement) {
+  const autocompleteDiv = document.getElementById('tag-autocomplete');
+  if (!autocompleteDiv) return;
+
+  // Collect all unique tags
+  const allTags = new Set<string>();
+  state.images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+  const availableTags = Array.from(allTags).sort();
+
+  let selectedIndex = -1;
+  let currentMatches: string[] = [];
+
+  function showSuggestions() {
+    const value = input.value;
+    const cursorPos = input.selectionStart || 0;
+
+    // Find the current tag being typed
+    const beforeCursor = value.substring(0, cursorPos);
+    const lastCommaIndex = beforeCursor.lastIndexOf(',');
+    const currentTag = beforeCursor.substring(lastCommaIndex + 1).trim();
+
+    // Get already-entered tags to exclude them from suggestions
+    const enteredTags = value
+      .split(',')
+      .map(t => t.trim().toLowerCase())
+      .filter(t => t.length > 0);
+
+    // Filter matching tags (show all if empty, or filter by prefix)
+    // Also exclude tags that are already entered
+    currentMatches = availableTags.filter(tag => {
+      // Exclude already-entered tags
+      if (enteredTags.includes(tag.toLowerCase())) return false;
+
+      if (currentTag.length === 0) return true;
+      return tag.toLowerCase().startsWith(currentTag.toLowerCase()) &&
+             tag.toLowerCase() !== currentTag.toLowerCase();
+    });
+
+    if (currentMatches.length === 0) {
+      autocompleteDiv.style.display = 'none';
+      return;
+    }
+
+    selectedIndex = -1;
+    renderSuggestions();
+    autocompleteDiv.style.display = 'block';
+  }
+
+  function renderSuggestions() {
+    autocompleteDiv.innerHTML = currentMatches.slice(0, 8).map((tag, index) =>
+      `<div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}" data-index="${index}">${tag}</div>`
+    ).join('');
+
+    // Attach click handlers
+    autocompleteDiv.querySelectorAll('.tag-suggestion').forEach(suggestionEl => {
+      suggestionEl.addEventListener('click', () => {
+        const selectedTag = suggestionEl.getAttribute('data-tag')!;
+        insertTag(selectedTag);
+      });
+    });
+  }
+
+  function insertTag(tag: string) {
+    const value = input.value;
+    const cursorPos = input.selectionStart || 0;
+    const beforeCursor = value.substring(0, cursorPos);
+    const lastCommaIndex = beforeCursor.lastIndexOf(',');
+    const beforeTag = value.substring(0, lastCommaIndex + 1);
+    const afterCursor = value.substring(cursorPos);
+    const nextCommaOrEnd = afterCursor.indexOf(',');
+    const afterTag = nextCommaOrEnd >= 0 ? afterCursor.substring(nextCommaOrEnd) : '';
+
+    input.value = beforeTag + (beforeTag && !beforeTag.endsWith(' ') ? ' ' : '') + tag + ', ';
+    autocompleteDiv.style.display = 'none';
+    input.focus();
+
+    // Move cursor after the inserted tag
+    const newCursorPos = beforeTag.length + (beforeTag && !beforeTag.endsWith(' ') ? 1 : 0) + tag.length + 2;
+    input.setSelectionRange(newCursorPos, newCursorPos);
+  }
+
+  input.addEventListener('input', showSuggestions);
+  input.addEventListener('focus', showSuggestions);
+
+  input.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (autocompleteDiv.style.display !== 'block') return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
+      renderSuggestions();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, -1);
+      renderSuggestions();
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (selectedIndex >= 0 && selectedIndex < currentMatches.length) {
+        e.preventDefault();
+        insertTag(currentMatches[selectedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      autocompleteDiv.style.display = 'none';
+      selectedIndex = -1;
+    }
+  });
+
+  // Hide autocomplete when clicking outside
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      autocompleteDiv.style.display = 'none';
+      selectedIndex = -1;
+    }, 200);
+  });
 }
 
 function closeLightbox() {
@@ -1014,6 +1232,14 @@ typeFilter.addEventListener('change', () => {
   applyFilters();
 });
 
+// Tag filter
+const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
+
+tagFilter.addEventListener('change', () => {
+  state.tagFilter = tagFilter.value;
+  applyFilters();
+});
+
 // Group by
 const groupBySelect = document.getElementById('group-by') as HTMLSelectElement;
 
@@ -1061,6 +1287,17 @@ document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLigh
 
 // Keyboard navigation
 document.addEventListener('keydown', (e: KeyboardEvent) => {
+  // Don't intercept keyboard events when typing in input fields
+  const target = e.target as HTMLElement;
+  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+    // Allow Escape to close lightbox even when in input
+    if (e.key === 'Escape' && state.lightboxActive) {
+      e.preventDefault();
+      closeLightbox();
+    }
+    return;
+  }
+
   // Lightbox navigation - same visual behavior as grid
   if (state.lightboxActive) {
     if (e.key === 'ArrowRight') {

@@ -105,3 +105,11 @@ export async function emptyTrash(): Promise<void> {
     }
   }
 }
+
+export async function updateImageTags(id: string, tags: string[]): Promise<void> {
+  const image = await imageDB.get(id);
+  if (image) {
+    image.tags = tags;
+    await imageDB.update(image);
+  }
+}

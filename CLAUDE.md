@@ -143,3 +143,25 @@ User preferences saved across sessions:
 ## Development Philosophy
 
 See ROADMAP.md - build features when needed, not all at once. Working code first, refinement later.
+
+## Code Maintenance Philosophy
+
+**Current state**: AI-maintained vanilla JS codebase (~1200 lines in `viewer/index.ts`)
+
+**Refactor trigger**: When human developer wants to write code themselves, not before.
+
+AI-maintained vs human-maintained code have different ergonomics:
+- ✅ **For Claude Code**: 1200-line files are navigable, modifications are manageable
+- ❌ **For humans**: Large files are hard to mentally parse and contribute to
+
+**When to refactor**:
+- ❌ "The code feels complex" → Not a reason
+- ❌ "I should use a UI library" → Not a reason yet
+- ✅ "I want to write features myself" → Time to refactor for human ergonomics
+- ✅ "Adding features takes 3x longer than it should" → Real pain point
+- ✅ "State bugs keep appearing" → Real architectural issue
+
+**Future refactor targets** (when needed):
+- Split into smaller files (~200-300 lines): `viewer/render.ts`, `viewer/state.ts`, `viewer/events.ts`, `viewer/lightbox.ts`
+- Consider UI library (Preact/lit-html) if state management becomes pain point
+- Clear responsibility boundaries between modules

@@ -718,3 +718,123 @@ body.preview-pane-open .container {
   height: 100%;
   object-fit: cover;
 }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #007bff;
+  color: white;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.image-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.metadata-tags,
+.preview-meta-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.metadata-tags .tag {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.no-tags {
+  color: #999;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.tag-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.tag-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.tag-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tag-filter {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.tag-filter:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.tag-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.tag-autocomplete {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  margin-top: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tag-suggestion {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #333;
+  transition: background 0.2s;
+}
+
+.tag-suggestion:hover {
+  background: rgba(0, 123, 255, 0.2);
+}
+
+.tag-suggestion.selected {
+  background: rgba(0, 123, 255, 0.3);
+  font-weight: 600;
+}
+
+.tag-suggestion:first-child {
+  border-radius: 6px 6px 0 0;
+}
+
+.tag-suggestion:last-child {
+  border-radius: 0 0 6px 6px;
+}

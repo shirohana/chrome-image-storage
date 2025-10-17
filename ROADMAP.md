@@ -14,7 +14,7 @@ Simple list of potential improvements. Build when needed, not all at once.
 - [x] Group by domain
 
 ## Nice to Have (when bored)
-- [ ] Custom tags
+- [x] Custom tags
 - [ ] Statistics page
 - [ ] Import from ZIP
 - [x] Duplicate detection
