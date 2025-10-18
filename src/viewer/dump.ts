@@ -1,7 +1,7 @@
 import JSZip from 'jszip';
 import type { SavedImage, ImageMetadata } from '../types';
 
-export async function exportImages(images: SavedImage[]): Promise<void> {
+export async function dumpImages(images: SavedImage[]): Promise<void> {
   const zip = new JSZip();
 
   const metadata: ImageMetadata[] = [];
@@ -35,7 +35,7 @@ export async function exportImages(images: SavedImage[]): Promise<void> {
 
   const a = document.createElement('a');
   a.href = url;
-  a.download = `image-storage-export-${Date.now()}.zip`;
+  a.download = `image-storage-dump-${Date.now()}.zip`;
   a.click();
 
   URL.revokeObjectURL(url);

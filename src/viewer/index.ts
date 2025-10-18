@@ -345,7 +345,7 @@ async function handleDownload(e: Event) {
   const id = btn.dataset.id!;
   const image = state.images.find(img => img.id === id);
   if (image) {
-    const { getExtensionFromMimeType } = await import('./export');
+    const { getExtensionFromMimeType } = await import('./dump');
     const extension = getExtensionFromMimeType(image.mimeType);
     const filename = `${image.id}${extension}`;
 
@@ -1222,17 +1222,18 @@ imageGrid.addEventListener('change', (e: Event) => {
   }
 });
 
-document.getElementById('export-btn')!.addEventListener('click', async () => {
-  const { exportImages } = await import('./export');
-  await exportImages(state.images);
+// Dump buttons (export selected images as ZIP)
+document.getElementById('dump-all-btn')!.addEventListener('click', async () => {
+  const { dumpImages } = await import('./dump');
+  await dumpImages(state.images);
 });
 
-document.getElementById('export-selected-btn')!.addEventListener('click', async () => {
+document.getElementById('dump-selected-btn')!.addEventListener('click', async () => {
   if (state.selectedIds.size === 0) return;
 
   const selectedImages = state.images.filter(img => state.selectedIds.has(img.id));
-  const { exportImages } = await import('./export');
-  await exportImages(selectedImages);
+  const { dumpImages } = await import('./dump');
+  await dumpImages(selectedImages);
 });
 
 document.getElementById('select-all-btn')!.addEventListener('click', () => {
@@ -1516,10 +1517,10 @@ const allImagesBtn = document.getElementById('all-images-btn')!;
 const trashBtn = document.getElementById('trash-btn')!;
 const emptyTrashBtn = document.getElementById('empty-trash-btn')!;
 const deleteAllBtn = document.getElementById('delete-all-btn')!;
-const exportBtn = document.getElementById('export-btn')!;
+const dumpAllBtn = document.getElementById('dump-all-btn')!;
 const restoreSelectedBtn = document.getElementById('restore-selected-btn')!;
 const deleteSelectedBtn = document.getElementById('delete-selected-btn')!;
-const exportSelectedBtn = document.getElementById('export-selected-btn')!;
+const dumpSelectedBtn = document.getElementById('dump-selected-btn')!;
 
 function switchView(view: 'all' | 'trash') {
   state.currentView = view;
@@ -1534,16 +1535,16 @@ function switchView(view: 'all' | 'trash') {
     emptyTrashBtn.style.display = 'inline-block';
     restoreSelectedBtn.style.display = 'inline-block';
     deleteAllBtn.style.display = 'none';
-    exportBtn.style.display = 'none';
+    dumpAllBtn.style.display = 'none';
     deleteSelectedBtn.style.display = 'none';
-    exportSelectedBtn.style.display = 'none';
+    dumpSelectedBtn.style.display = 'none';
   } else {
     emptyTrashBtn.style.display = 'none';
     restoreSelectedBtn.style.display = 'none';
     deleteAllBtn.style.display = 'inline-block';
-    exportBtn.style.display = 'inline-block';
+    dumpAllBtn.style.display = 'inline-block';
     deleteSelectedBtn.style.display = 'inline-block';
-    exportSelectedBtn.style.display = 'inline-block';
+    dumpSelectedBtn.style.display = 'inline-block';
   }
 
   applyFilters();
@@ -1669,5 +1670,309 @@ bulkRemoveTagsInput.addEventListener('keydown', (e: KeyboardEvent) => {
     }
   }
 });
+
+// Database Import/Export handlers
+document.getElementById('export-database-btn')!.addEventListener('click', async () => {
+  try {
+    const { exportDatabase } = await import('../storage/sqlite-import-export');
+    const blob = await exportDatabase(state.images);
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `image-storage-backup-${Date.now()}.db`;
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    alert(`Database exported successfully!\n${state.images.length} images backed up.`);
+  } catch (error) {
+    console.error('Export failed:', error);
+    alert('Export failed. See console for details.');
+  }
+});
+
+document.getElementById('import-database-btn')!.addEventListener('click', async () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.db,.sqlite,.sqlite3';
+
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const { analyzeImport, closeImportDatabase } = await import('../storage/sqlite-import-export');
+      const analysis = await analyzeImport(file, state.images);
+
+      if (analysis.totalCount === 0) {
+        closeImportDatabase(analysis.db);
+        alert('No images found in the database file.');
+        return;
+      }
+
+      if (analysis.conflictCount === 0) {
+        // No conflicts, direct import
+        const confirmed = window.confirm(
+          `Import ${analysis.newCount} new images?`
+        );
+        if (!confirmed) {
+          closeImportDatabase(analysis.db);
+          return;
+        }
+
+        const { importDatabase } = await import('../storage/sqlite-import-export');
+        const importedImages = await importDatabase(file, 'skip');
+        closeImportDatabase(analysis.db);
+        await importImagesToIndexedDB(importedImages);
+        await loadImages();
+
+        alert(`Import complete!\n${analysis.newCount} images added.`);
+      } else {
+        // Show conflict resolution modal (db will be closed by modal handlers)
+        showImportConflictModal(file, analysis);
+      }
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('Import failed. See console for details.');
+    }
+  };
+
+  input.click();
+});
+
+// Helper to import SavedImages to IndexedDB
+async function importImagesToIndexedDB(images: SavedImage[]) {
+  const { imageDB } = await import('../storage/db');
+  for (const image of images) {
+    await imageDB.update(image);  // Uses put() which inserts or updates
+  }
+}
+
+// Import conflict modal handlers
+function showImportConflictModal(file: File, analysis: any) {
+  const modal = document.getElementById('import-conflict-modal')!;
+  const summary = document.getElementById('import-conflict-summary')!;
+
+  summary.textContent = `Found ${analysis.totalCount} images in backup:\n• ${analysis.newCount} new images\n• ${analysis.conflictCount} conflicts (same image ID exists)`;
+
+  modal.classList.add('active');
+
+  // Store for handlers (including db for blob fetching)
+  (modal as any).__importData = { file, analysis };
+}
+
+async function closeImportConflictModal() {
+  const modal = document.getElementById('import-conflict-modal')!;
+  const importData = (modal as any).__importData;
+
+  // Close the database if it exists
+  if (importData?.analysis?.db) {
+    const { closeImportDatabase } = await import('../storage/sqlite-import-export');
+    closeImportDatabase(importData.analysis.db);
+  }
+
+  modal.classList.remove('active');
+}
+
+document.getElementById('import-skip-all-btn')!.addEventListener('click', async () => {
+  const modal = document.getElementById('import-conflict-modal')!;
+  const { file, analysis } = (modal as any).__importData;
+
+  modal.classList.remove('active');
+
+  try {
+    const { importDatabase, closeImportDatabase } = await import('../storage/sqlite-import-export');
+    const importedImages = await importDatabase(file, 'skip');
+    closeImportDatabase(analysis.db);
+
+    // Filter out conflicts (only import new images)
+    const existingIds = new Set(state.images.map(img => img.id));
+    const newImages = importedImages.filter(img => !existingIds.has(img.id));
+
+    await importImagesToIndexedDB(newImages);
+    await loadImages();
+
+    alert(`Import complete!\n${analysis.newCount} new images added.\n${analysis.conflictCount} conflicts skipped.`);
+  } catch (error) {
+    console.error('Import failed:', error);
+    alert('Import failed. See console for details.');
+  }
+});
+
+document.getElementById('import-override-all-btn')!.addEventListener('click', async () => {
+  const modal = document.getElementById('import-conflict-modal')!;
+  const { file, analysis } = (modal as any).__importData;
+
+  const confirmed = window.confirm(
+    `This will override ${analysis.conflictCount} existing images. Continue?`
+  );
+  if (!confirmed) return;
+
+  modal.classList.remove('active');
+
+  try {
+    const { importDatabase, closeImportDatabase } = await import('../storage/sqlite-import-export');
+    const importedImages = await importDatabase(file, 'override');
+    closeImportDatabase(analysis.db);
+    await importImagesToIndexedDB(importedImages);
+    await loadImages();
+
+    alert(`Import complete!\n${analysis.newCount} new images added.\n${analysis.conflictCount} images overridden.`);
+  } catch (error) {
+    console.error('Import failed:', error);
+    alert('Import failed. See console for details.');
+  }
+});
+
+document.getElementById('import-review-btn')!.addEventListener('click', () => {
+  const modal = document.getElementById('import-conflict-modal')!;
+  const { file, analysis } = (modal as any).__importData;
+
+  modal.classList.remove('active');
+  showImportReviewModal(file, analysis.db, analysis.conflicts, 0);
+});
+
+document.getElementById('import-cancel-btn')!.addEventListener('click', closeImportConflictModal);
+document.querySelector('.import-conflict-close')!.addEventListener('click', closeImportConflictModal);
+
+// Import review modal (granular control)
+async function showImportReviewModal(file: File, db: any, conflicts: any[], index: number) {
+  const modal = document.getElementById('import-review-modal')!;
+  const progress = document.getElementById('import-review-progress')!;
+  const existingPreview = document.getElementById('import-existing-preview')!;
+  const importedPreview = document.getElementById('import-imported-preview')!;
+
+  progress.textContent = `Conflict ${index + 1} of ${conflicts.length}`;
+
+  const conflict = conflicts[index];
+
+  // Render existing image preview
+  const existingUrl = getOrCreateObjectURL(conflict.existingImage);
+  const existingDate = new Date(conflict.existingImage.savedAt).toLocaleString();
+  const existingTags = conflict.existingImage.tags?.join(', ') || 'None';
+  existingPreview.innerHTML = `
+    <img src="${existingUrl}" alt="Existing" style="max-width: 100%; margin-bottom: 10px;">
+    <div><strong>Saved:</strong> ${existingDate}</div>
+    <div><strong>Size:</strong> ${formatFileSize(conflict.existingImage.fileSize)}</div>
+    <div><strong>Dimensions:</strong> ${conflict.existingImage.width} × ${conflict.existingImage.height}</div>
+    <div><strong>Type:</strong> ${conflict.existingImage.mimeType}</div>
+    <div><strong>Tags:</strong> ${existingTags}</div>
+    <div style="margin-top: 8px; font-size: 0.85em; color: #666; word-break: break-all;"><strong>URL:</strong> ${conflict.existingImage.imageUrl}</div>
+  `;
+
+  // Fetch and render imported image preview
+  const { getImageBlobFromDatabase, getImageMetadataFromDatabase } = await import('../storage/sqlite-import-export');
+  const importedBlob = getImageBlobFromDatabase(db, conflict.id);
+  const importedMetadata = getImageMetadataFromDatabase(db, conflict.id);
+
+  const importedDate = new Date(conflict.importedMetadata.savedAt).toLocaleString();
+  const importedTags = conflict.importedMetadata.tags?.join(', ') || 'None';
+
+  if (importedBlob && importedMetadata) {
+    const importedUrl = URL.createObjectURL(importedBlob);
+    importedPreview.innerHTML = `
+      <img src="${importedUrl}" alt="Imported" style="max-width: 100%; margin-bottom: 10px;">
+      <div><strong>Saved:</strong> ${importedDate}</div>
+      <div><strong>Size:</strong> ${formatFileSize(importedMetadata.fileSize)}</div>
+      <div><strong>Dimensions:</strong> ${importedMetadata.width} × ${importedMetadata.height}</div>
+      <div><strong>Type:</strong> ${importedMetadata.mimeType}</div>
+      <div><strong>Tags:</strong> ${importedTags}</div>
+      <div style="margin-top: 8px; font-size: 0.85em; color: #666; word-break: break-all;"><strong>URL:</strong> ${conflict.importedMetadata.imageUrl}</div>
+    `;
+  } else {
+    importedPreview.innerHTML = `
+      <div style="padding: 10px; background: #f0f0f0; margin-bottom: 10px;">Preview not available</div>
+      <div><strong>Saved:</strong> ${importedDate}</div>
+      <div><strong>Tags:</strong> ${importedTags}</div>
+      <div style="margin-top: 8px; font-size: 0.85em; color: #666; word-break: break-all;"><strong>URL:</strong> ${conflict.importedMetadata.imageUrl}</div>
+    `;
+  }
+
+  modal.classList.add('active');
+
+  // Store for handlers
+  (modal as any).__reviewData = { file, db, conflicts, index, decisions: new Map() };
+}
+
+async function closeImportReviewModal() {
+  const modal = document.getElementById('import-review-modal')!;
+  const reviewData = (modal as any).__reviewData;
+
+  // Close the database if it exists
+  if (reviewData?.db) {
+    const { closeImportDatabase } = await import('../storage/sqlite-import-export');
+    closeImportDatabase(reviewData.db);
+  }
+
+  modal.classList.remove('active');
+}
+
+document.getElementById('import-keep-btn')!.addEventListener('click', () => {
+  const modal = document.getElementById('import-review-modal')!;
+  const { file, db, conflicts, index, decisions } = (modal as any).__reviewData;
+
+  // Mark this conflict as "keep existing"
+  decisions.set(conflicts[index].id, 'keep');
+
+  // Move to next conflict or finish
+  if (index + 1 < conflicts.length) {
+    showImportReviewModal(file, db, conflicts, index + 1);
+  } else {
+    finishGranularImport(file, db, conflicts, decisions);
+  }
+});
+
+document.getElementById('import-override-btn')!.addEventListener('click', () => {
+  const modal = document.getElementById('import-review-modal')!;
+  const { file, db, conflicts, index, decisions } = (modal as any).__reviewData;
+
+  // Mark this conflict as "override"
+  decisions.set(conflicts[index].id, 'override');
+
+  // Move to next conflict or finish
+  if (index + 1 < conflicts.length) {
+    showImportReviewModal(file, db, conflicts, index + 1);
+  } else {
+    finishGranularImport(file, db, conflicts, decisions);
+  }
+});
+
+async function finishGranularImport(file: File, db: any, conflicts: any[], decisions: Map<string, 'keep' | 'override'>) {
+  const modal = document.getElementById('import-review-modal')!;
+  modal.classList.remove('active');
+
+  try {
+    const { importDatabase, closeImportDatabase } = await import('../storage/sqlite-import-export');
+    const allImportedImages = await importDatabase(file, 'override');
+    closeImportDatabase(db);
+
+    // Filter based on decisions
+    const existingIds = new Set(state.images.map(img => img.id));
+    const imagesToImport = allImportedImages.filter(img => {
+      if (!existingIds.has(img.id)) {
+        // New image, always import
+        return true;
+      }
+      // Conflict: check decision
+      return decisions.get(img.id) === 'override';
+    });
+
+    await importImagesToIndexedDB(imagesToImport);
+    await loadImages();
+
+    const overrideCount = Array.from(decisions.values()).filter(d => d === 'override').length;
+    const keepCount = conflicts.length - overrideCount;
+    const newCount = allImportedImages.length - conflicts.length;
+
+    alert(`Import complete!\n${newCount} new images added.\n${overrideCount} images overridden.\n${keepCount} conflicts skipped.`);
+  } catch (error) {
+    console.error('Import failed:', error);
+    alert('Import failed. See console for details.');
+  }
+}
+
+document.getElementById('import-review-cancel-btn')!.addEventListener('click', closeImportReviewModal);
+document.querySelector('.import-review-close')!.addEventListener('click', closeImportReviewModal);
 
 loadImages();

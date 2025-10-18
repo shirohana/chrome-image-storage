@@ -18,9 +18,9 @@
         <button id="restore-selected-btn" class="btn btn-primary" style="display: none;">Restore Selected</button>
         <button id="tag-selected-btn" class="btn btn-primary">Tag Selected</button>
         <button id="delete-selected-btn" class="btn btn-danger">Delete Selected</button>
-        <button id="export-selected-btn" class="btn btn-primary">Export Selected</button>
+        <button id="dump-selected-btn" class="btn btn-primary">Dump Selected</button>
         <button id="delete-all-btn" class="btn btn-danger">Delete All</button>
-        <button id="export-btn" class="btn btn-primary">Export All</button>
+        <button id="dump-all-btn" class="btn btn-primary">Dump All</button>
         <button id="empty-trash-btn" class="btn btn-danger" style="display: none;">Empty Trash</button>
         <button id="settings-btn" class="btn btn-secondary">⚙</button>
       </div>
@@ -32,6 +32,21 @@
         <input type="checkbox" id="show-notifications-toggle">
         <span>Show system notifications when saving images</span>
       </label>
+
+      <div class="settings-section">
+        <h4>Database Backup & Restore</h4>
+        <p class="settings-hint">
+          Export database as single SQLite file for backup. Import to restore or merge databases.
+        </p>
+        <div class="settings-buttons">
+          <button id="export-database-btn" class="btn btn-primary">
+            Export Database (.db)
+          </button>
+          <button id="import-database-btn" class="btn btn-primary">
+            Import Database (.db)
+          </button>
+        </div>
+      </div>
     </div>
 
     <div class="toolbar">
@@ -144,6 +159,63 @@
       <div class="bulk-tag-footer">
         <button id="bulk-tag-cancel-btn" class="btn btn-secondary">Cancel</button>
         <button id="bulk-tag-save-btn" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Conflict Resolution Modal -->
+  <div id="import-conflict-modal" class="import-conflict-modal">
+    <div class="import-conflict-overlay"></div>
+    <div class="import-conflict-content">
+      <div class="import-conflict-header">
+        <h3>Import Database - Conflicts Detected</h3>
+        <button class="import-conflict-close">&times;</button>
+      </div>
+      <div class="import-conflict-body">
+        <p id="import-conflict-summary"></p>
+        <div class="import-conflict-options">
+          <button id="import-skip-all-btn" class="btn btn-secondary">
+            Skip Conflicts (Keep Existing)
+          </button>
+          <button id="import-override-all-btn" class="btn btn-danger">
+            Override All Conflicts
+          </button>
+          <button id="import-review-btn" class="btn btn-primary">
+            Review Each Conflict
+          </button>
+        </div>
+      </div>
+      <div class="import-conflict-footer">
+        <button id="import-cancel-btn" class="btn btn-secondary">Cancel Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Review Modal (granular control) -->
+  <div id="import-review-modal" class="import-review-modal">
+    <div class="import-review-overlay"></div>
+    <div class="import-review-content">
+      <div class="import-review-header">
+        <h3>Review Conflicts</h3>
+        <span id="import-review-progress"></span>
+        <button class="import-review-close">&times;</button>
+      </div>
+      <div class="import-review-body">
+        <div class="import-review-comparison">
+          <div class="import-review-column">
+            <h4>Existing Image</h4>
+            <div id="import-existing-preview"></div>
+          </div>
+          <div class="import-review-column">
+            <h4>Imported Image</h4>
+            <div id="import-imported-preview"></div>
+          </div>
+        </div>
+      </div>
+      <div class="import-review-footer">
+        <button id="import-keep-btn" class="btn btn-secondary">Keep Existing</button>
+        <button id="import-override-btn" class="btn btn-danger">Override with Imported</button>
+        <button id="import-review-cancel-btn" class="btn btn-secondary">Cancel Import</button>
       </div>
     </div>
   </div>
