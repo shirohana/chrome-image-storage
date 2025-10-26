@@ -28,6 +28,7 @@ const state = {
   typeFilter: 'all',
   tagFilters: new Set<string>(),
   tagFilterMode: 'union' as 'union' | 'intersection',
+  showUntaggedOnly: false,
   groupBy: 'none',
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
@@ -198,6 +199,11 @@ function applyFilters() {
         img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
       );
     }
+  }
+
+  // Apply untagged-only filter
+  if (state.showUntaggedOnly) {
+    filtered = filtered.filter(img => !img.tags || img.tags.length === 0);
   }
 
   // Apply search filter
@@ -1344,6 +1350,10 @@ const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
 tagFilter.addEventListener('change', () => {
   const selectedTag = tagFilter.value;
   if (selectedTag && !state.tagFilters.has(selectedTag)) {
+    // Uncheck "Untagged only" when selecting a tag (mutually exclusive)
+    state.showUntaggedOnly = false;
+    untaggedOnlyCheckbox.checked = false;
+
     state.tagFilters.add(selectedTag);
     updateTagFilterOptions();
     renderSelectedTags();
@@ -1360,6 +1370,22 @@ tagFilterModeBtn.addEventListener('click', () => {
   if (state.tagFilters.size > 0) {
     applyFilters();
   }
+});
+
+// Untagged-only filter
+const untaggedOnlyCheckbox = document.getElementById('untagged-only-checkbox') as HTMLInputElement;
+
+untaggedOnlyCheckbox.addEventListener('change', () => {
+  state.showUntaggedOnly = untaggedOnlyCheckbox.checked;
+
+  // Clear tag filters when "Untagged only" is checked (mutually exclusive)
+  if (state.showUntaggedOnly) {
+    state.tagFilters.clear();
+    updateTagFilterOptions();
+    renderSelectedTags();
+  }
+
+  applyFilters();
 });
 
 // Group by

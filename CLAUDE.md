@@ -108,10 +108,13 @@ Chrome extensions run in three separate JavaScript contexts:
 - **Union Mode (OR)**: Shows images with ANY selected tag
 - **Intersection Mode (AND)**: Shows images with ALL selected tags
 - Toggle button switches between modes
+- **Untagged Only**: Checkbox to show only images without tags
 - `state.tagFilters`: Set<string> of active tag filters
 - `state.tagFilterMode`: 'union' | 'intersection'
+- `state.showUntaggedOnly`: boolean for untagged filter
 - `populateTagFilter()`: Rebuilds dropdown from all existing tags
 - Filters update dynamically after tag modifications
+- **Mutual Exclusivity**: Untagged filter and tag selection auto-clear each other to prevent conflicts
 
 ### Preview Pane
 
