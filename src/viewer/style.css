@@ -901,6 +901,45 @@ body.preview-pane-open .container {
   background: rgba(255, 255, 255, 0.2);
 }
 
+.excluded-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.excluded-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #dc3545;
+  color: white;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.remove-excluded-tag {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.remove-excluded-tag:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
 .untagged-filter {
   display: flex;
   align-items: center;

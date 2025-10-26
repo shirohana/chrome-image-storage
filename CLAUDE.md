@@ -108,11 +108,18 @@ Chrome extensions run in three separate JavaScript contexts:
 - **Union Mode (OR)**: Shows images with ANY selected tag
 - **Intersection Mode (AND)**: Shows images with ALL selected tags
 - Toggle button switches between modes
+- **Exclude Tags**: Separate dropdown to filter out specific tags
+  - Shows only tags from currently visible images (updates dynamically)
+  - Hides already-selected include tags (prevents impossible combinations)
+  - Always uses AND logic: filters out images with ANY excluded tag
+  - Example: Include "Animal", Exclude "Dog" → shows all animals except dogs
 - **Untagged Only**: Checkbox to show only images without tags
-- `state.tagFilters`: Set<string> of active tag filters
+- `state.tagFilters`: Set<string> of active include tag filters
+- `state.excludedTagFilters`: Set<string> of active exclude tag filters
 - `state.tagFilterMode`: 'union' | 'intersection'
 - `state.showUntaggedOnly`: boolean for untagged filter
 - `populateTagFilter()`: Rebuilds dropdown from all existing tags
+- `updateExcludeTagFilterOptions(images)`: Updates exclude dropdown from filtered results
 - Filters update dynamically after tag modifications
 - **Mutual Exclusivity**: Untagged filter and tag selection auto-clear each other to prevent conflicts
 

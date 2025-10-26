@@ -27,6 +27,7 @@ const state = {
   sort: 'savedAt-desc',
   typeFilter: 'all',
   tagFilters: new Set<string>(),
+  excludedTagFilters: new Set<string>(),
   tagFilterMode: 'union' as 'union' | 'intersection',
   showUntaggedOnly: false,
   groupBy: 'none',
@@ -171,6 +172,64 @@ function renderSelectedTags() {
   });
 }
 
+function updateExcludeTagFilterOptions(images: SavedImage[] = state.filteredImages) {
+  const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
+  if (!excludeTagFilter) return;
+
+  const allTags = new Set<string>();
+  images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => allTags.add(tag));
+    }
+  });
+
+  excludeTagFilter.innerHTML = '<option value="">Exclude tags...</option>';
+
+  const sortedTags = Array.from(allTags).sort();
+  sortedTags.forEach(tag => {
+    // Skip tags that are already selected for inclusion or exclusion
+    if (!state.excludedTagFilters.has(tag) && !state.tagFilters.has(tag)) {
+      const option = document.createElement('option');
+      option.value = tag;
+      option.textContent = tag;
+      excludeTagFilter.appendChild(option);
+    }
+  });
+
+  excludeTagFilter.value = '';
+}
+
+function renderExcludedTags() {
+  const container = document.getElementById('excluded-tags');
+  if (!container) return;
+
+  if (state.excludedTagFilters.size === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = Array.from(state.excludedTagFilters)
+    .map(tag => `
+      <span class="excluded-tag">
+        ${tag}
+        <button class="remove-excluded-tag" data-tag="${tag}">&times;</button>
+      </span>
+    `)
+    .join('');
+
+  // Attach remove handlers
+  container.querySelectorAll('.remove-excluded-tag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-tag')!;
+      state.excludedTagFilters.delete(tag);
+
+      updateExcludeTagFilterOptions();
+      renderExcludedTags();
+      applyFilters();
+    });
+  });
+}
+
 function applyFilters() {
   let filtered = state.images;
 
@@ -199,6 +258,17 @@ function applyFilters() {
         img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
       );
     }
+  }
+
+  // Update exclude tag options based on current filtered results
+  // (before applying exclude filter so dropdown shows only effective options)
+  updateExcludeTagFilterOptions(filtered);
+
+  // Apply exclude tag filter (filter out images with ANY excluded tag)
+  if (state.excludedTagFilters.size > 0) {
+    filtered = filtered.filter(img =>
+      !img.tags || !img.tags.some(tag => state.excludedTagFilters.has(tag))
+    );
   }
 
   // Apply untagged-only filter
@@ -1368,6 +1438,19 @@ tagFilterModeBtn.addEventListener('click', () => {
   state.tagFilterMode = state.tagFilterMode === 'union' ? 'intersection' : 'union';
   tagFilterModeBtn.textContent = state.tagFilterMode === 'union' ? 'OR' : 'AND';
   if (state.tagFilters.size > 0) {
+    applyFilters();
+  }
+});
+
+// Exclude tag filter
+const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
+
+excludeTagFilter.addEventListener('change', () => {
+  const selectedTag = excludeTagFilter.value;
+  if (selectedTag && !state.excludedTagFilters.has(selectedTag)) {
+    state.excludedTagFilters.add(selectedTag);
+    updateExcludeTagFilterOptions();
+    renderExcludedTags();
     applyFilters();
   }
 });
