@@ -47,6 +47,30 @@
           </button>
         </div>
       </div>
+
+      <div class="settings-section">
+        <h4>Danbooru Upload</h4>
+        <p class="settings-hint">
+          Configure your self-hosted Danbooru instance for uploading images with metadata.
+        </p>
+        <div class="settings-form">
+          <label>
+            <span>Danbooru URL</span>
+            <input type="text" id="danbooru-url-input" placeholder="https://your-danbooru.com">
+          </label>
+          <label>
+            <span>Username</span>
+            <input type="text" id="danbooru-username-input" placeholder="Your username">
+          </label>
+          <label>
+            <span>API Key</span>
+            <div class="password-input-group">
+              <input type="password" id="danbooru-apikey-input" placeholder="Your API key">
+              <button type="button" id="danbooru-apikey-toggle" class="btn-icon" title="Show/Hide API Key">👁</button>
+            </div>
+          </label>
+        </div>
+      </div>
     </div>
 
     <div class="toolbar">
@@ -226,6 +250,76 @@
         <button id="import-keep-btn" class="btn btn-secondary">Keep Existing</button>
         <button id="import-override-btn" class="btn btn-danger">Override with Imported</button>
         <button id="import-review-cancel-btn" class="btn btn-secondary">Cancel Import</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Danbooru Upload Modal -->
+  <div id="danbooru-upload-modal" class="danbooru-upload-modal">
+    <div class="danbooru-upload-overlay"></div>
+    <div class="danbooru-upload-content">
+      <div class="danbooru-upload-header">
+        <h3>Upload to Danbooru</h3>
+        <button class="danbooru-upload-close">&times;</button>
+      </div>
+      <div class="danbooru-upload-body">
+        <div class="danbooru-upload-preview">
+          <img id="danbooru-preview-image" src="" alt="Preview">
+        </div>
+        <div class="danbooru-upload-form">
+          <div class="form-group">
+            <label for="danbooru-tags-input">Tags (General)</label>
+            <input type="text" id="danbooru-tags-input" class="form-input" placeholder="tag1, tag2, tag3...">
+            <div class="form-hint">Comma-separated tags</div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="danbooru-artist-input">Artist</label>
+              <input type="text" id="danbooru-artist-input" class="form-input" placeholder="artist_name">
+            </div>
+            <div class="form-group">
+              <label for="danbooru-copyright-input">Copyright</label>
+              <input type="text" id="danbooru-copyright-input" class="form-input" placeholder="series_name">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="danbooru-character-input">Character</label>
+            <input type="text" id="danbooru-character-input" class="form-input" placeholder="character_name">
+          </div>
+          <div class="form-group">
+            <label>Rating</label>
+            <div class="rating-options">
+              <label class="rating-option">
+                <input type="radio" name="danbooru-rating" value="g" checked>
+                <span>General</span>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="danbooru-rating" value="s">
+                <span>Sensitive</span>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="danbooru-rating" value="q">
+                <span>Questionable</span>
+              </label>
+              <label class="rating-option">
+                <input type="radio" name="danbooru-rating" value="e">
+                <span>Explicit</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="danbooru-source-input">Source URL</label>
+            <input type="text" id="danbooru-source-input" class="form-input" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label for="danbooru-description-input">Description / Notes</label>
+            <textarea id="danbooru-description-input" class="form-textarea" rows="3" placeholder="Optional description..."></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="danbooru-upload-footer">
+        <button id="danbooru-upload-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button id="danbooru-upload-submit-btn" class="btn btn-primary">Upload to Danbooru</button>
       </div>
     </div>
   </div>

@@ -183,6 +183,38 @@ User preferences saved across sessions:
 - `previewPaneVisible`: 'true' | 'false'
 - **Pattern**: Save immediately on change, load on init
 
+### Danbooru Upload Integration
+
+**Settings** (stored in chrome.storage.local):
+- `danbooruUrl`: Self-hosted Danbooru instance URL
+- `danbooruUsername`: Username for authentication
+- `danbooruApiKey`: API key for authentication
+
+**Upload Flow** (8 steps):
+1. User clicks "Upload to Danbooru" button in preview pane (single selection only)
+2. Modal opens with auto-filled metadata from image data
+3. User reviews/edits tags, artist, copyright, character, rating, source
+4. POST `/uploads.json` with image URL (Danbooru downloads the image)
+5. Poll `/uploads/{id}.json` every 2s (max 40s) until status = "completed"
+6. POST `/posts.json` with `upload_media_asset_id` + tags/rating/source (JSON format)
+7. PUT `/posts/{id}/artist_commentary/create_or_update.json` for title/description
+8. Show success toast
+
+**Key Implementation Details**:
+- **URL-based uploads**: Send image.imageUrl, not blob (Danbooru downloads from source)
+- **Two-step post creation**: Upload creates media asset, then create post from asset ID
+- **JSON format**: POST requests use `Content-Type: application/json`, not FormData
+- **Artist extraction**: Auto-detect from URL patterns (Pixiv, Twitter, Fanbox, DeviantArt)
+- **Radio buttons**: Rating uses styled radio buttons instead of dropdown for better UX
+- **Separate commentary**: Artist commentary is created via separate API call (optional)
+- **Error handling**: Empty/non-JSON responses handled gracefully, won't break upload
+
+**API Endpoints**:
+- `POST /uploads.json` - Create upload from URL (`upload[source]`, `upload[referer_url]`)
+- `GET /uploads/{id}.json` - Poll upload status (`upload_media_assets[0].id`)
+- `POST /posts.json` - Create post (`upload_media_asset_id`, `tag_string`, `rating`, `source`)
+- `PUT /posts/{id}/artist_commentary/create_or_update.json` - Add commentary (`original_title`, `original_description`)
+
 ## Development Philosophy
 
 See ROADMAP.md - build features when needed, not all at once. Working code first, refinement later.
