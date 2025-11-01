@@ -352,6 +352,7 @@ function createImageCardHTML(image: SavedImage): string {
     `
     : `
       <button class="btn btn-secondary download-btn" data-id="${image.id}">Download</button>
+      <button class="btn btn-primary view-page-btn" data-id="${image.id}">View Page</button>
       <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
       <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
     `;
@@ -443,6 +444,18 @@ function handleViewOriginal(e: Event) {
   const image = state.images.find(img => img.id === id);
   if (image) {
     window.open(image.imageUrl, '_blank');
+  }
+}
+
+function handleViewPage(e: Event) {
+  const target = e.target as HTMLElement;
+  const btn = target.closest('.view-page-btn') as HTMLElement;
+  if (!btn) return;
+
+  const id = btn.dataset.id!;
+  const image = state.images.find(img => img.id === id);
+  if (image) {
+    window.open(image.pageUrl, '_blank');
   }
 }
 
@@ -598,6 +611,11 @@ function renderSinglePreview(image: SavedImage, container: HTMLElement) {
   const date = new Date(image.savedAt).toLocaleString();
   const fileSize = formatFileSize(image.fileSize);
 
+  const truncateUrl = (url: string, maxLength: number = 50) => {
+    if (url.length <= maxLength) return url;
+    return url.substring(0, maxLength - 3) + '...';
+  };
+
   const tagsHTML = image.tags && image.tags.length > 0
     ? image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
     : '<span class="no-tags">No tags</span>';
@@ -625,12 +643,19 @@ function renderSinglePreview(image: SavedImage, container: HTMLElement) {
           <span class="preview-meta-value">${date}</span>
         </div>
         <div class="preview-meta-row">
+          <span class="preview-meta-label">Source Page</span>
+          <a href="${image.pageUrl}" target="_blank" class="preview-meta-value preview-meta-link" title="${image.pageUrl}">
+            ${truncateUrl(image.pageUrl)}
+          </a>
+        </div>
+        <div class="preview-meta-row">
           <span class="preview-meta-label">Tags</span>
           <div class="preview-meta-tags">${tagsHTML}</div>
         </div>
       </div>
       <div class="preview-actions">
-        <button class="btn btn-secondary preview-download-btn" data-id="${image.id}">Download</button>
+        <button class="btn btn-secondary download-btn preview-download-btn" data-id="${image.id}">Download</button>
+        <button class="btn btn-primary view-page-btn preview-view-page-btn" data-id="${image.id}">View Page</button>
         <button class="btn btn-primary preview-view-btn" data-id="${image.id}">View</button>
         <button class="btn btn-primary preview-danbooru-btn" data-id="${image.id}">Upload to Danbooru</button>
       </div>
@@ -641,6 +666,10 @@ function renderSinglePreview(image: SavedImage, container: HTMLElement) {
   const downloadBtn = container.querySelector('.preview-download-btn');
   if (downloadBtn) {
     downloadBtn.addEventListener('click', () => handleDownload({ target: downloadBtn } as any));
+  }
+  const viewPageBtn = container.querySelector('.preview-view-page-btn');
+  if (viewPageBtn) {
+    viewPageBtn.addEventListener('click', () => handleViewPage({ target: viewPageBtn } as any));
   }
   const viewBtn = container.querySelector('.preview-view-btn');
   if (viewBtn) {
@@ -874,6 +903,13 @@ function updateLightboxMetadata(image: SavedImage) {
       <span class="metadata-value" title="${image.pageUrl}">${image.pageTitle || image.pageUrl}</span>
     </div>
     <div class="metadata-row">
+      <div class="lightbox-actions">
+        <button class="btn btn-secondary download-btn lightbox-download-btn" data-id="${image.id}">Download</button>
+        <button class="btn btn-primary view-page-btn lightbox-view-page-btn" data-id="${image.id}">View Page</button>
+        <button class="btn btn-primary view-btn lightbox-view-original-btn" data-id="${image.id}">View Original</button>
+      </div>
+    </div>
+    <div class="metadata-row">
       <span class="metadata-label">Tags:</span>
       <div class="metadata-tags">${tagsValue}</div>
     </div>
@@ -890,6 +926,20 @@ function updateLightboxMetadata(image: SavedImage) {
   const saveBtn = metadata.querySelector('.save-tags-btn');
   if (saveBtn) {
     saveBtn.addEventListener('click', handleSaveTags);
+  }
+
+  // Attach event listeners for action buttons
+  const downloadBtn = metadata.querySelector('.lightbox-download-btn');
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => handleDownload({ target: downloadBtn } as any));
+  }
+  const viewPageBtn = metadata.querySelector('.lightbox-view-page-btn');
+  if (viewPageBtn) {
+    viewPageBtn.addEventListener('click', () => handleViewPage({ target: viewPageBtn } as any));
+  }
+  const viewOriginalBtn = metadata.querySelector('.lightbox-view-original-btn');
+  if (viewOriginalBtn) {
+    viewOriginalBtn.addEventListener('click', () => handleViewOriginal({ target: viewOriginalBtn } as any));
   }
 
   // Setup tag autocomplete
@@ -1228,6 +1278,11 @@ imageGrid.addEventListener('click', (e: Event) => {
   if (target.matches('.view-btn') || target.closest('.view-btn')) {
     const btn = target.matches('.view-btn') ? target : target.closest('.view-btn');
     if (btn) handleViewOriginal(e);
+    return;
+  }
+  if (target.matches('.view-page-btn') || target.closest('.view-page-btn')) {
+    const btn = target.matches('.view-page-btn') ? target : target.closest('.view-page-btn');
+    if (btn) handleViewPage(e);
     return;
   }
   if (target.matches('.delete-btn') || target.closest('.delete-btn')) {

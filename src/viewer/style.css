@@ -366,11 +366,13 @@ h1 {
 
 .image-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .image-actions button {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
   padding: 8px;
   font-size: 12px;
 }
@@ -666,11 +668,13 @@ body.preview-pane-open .container {
 
 .preview-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
 .preview-actions button {
-  flex: 1;
+  flex: 1 1 calc(50% - 4px);
+  min-width: 0;
 }
 
 /* Multi Preview */
