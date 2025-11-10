@@ -290,9 +290,19 @@ function applyFilters() {
   // Store filtered images for select all
   state.filteredImages = filtered;
 
+  // Clean up selection: remove IDs that are not in filtered results
+  const filteredIds = new Set(filtered.map(img => img.id));
+  for (const id of state.selectedIds) {
+    if (!filteredIds.has(id)) {
+      state.selectedIds.delete(id);
+    }
+  }
+
   renderImages(filtered);
   updateImageCount();
   updateViewBadges();
+  updateSelectionCount();
+  updatePreviewPane();
 }
 
 function applySorting() {
