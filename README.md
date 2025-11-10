@@ -4,20 +4,58 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 
 ## Features
 
+### Core Features
 - **Right-click to save**: Right-click any image and select "Save to Image Storage"
 - **Local storage**: Images are saved as blobs in IndexedDB (not just URLs)
 - **Metadata tracking**: Saves image URL, source page, dimensions, file size, and type
 - **Image viewer**: Click the extension icon to view all saved images
 - **View modes**: Grid, compact, and list views for browsing images
-- **Search**: Filter images by URL or page title
+- **Native context menu**: Extension adds menu item alongside browser's default menu
+
+### Organization & Filtering
+- **Search**: Filter images by image URL, page URL, or page title
 - **Type filter**: Filter by image type (PNG, JPEG, WebP, GIF, SVG)
 - **Sorting**: Sort by date, file size, dimensions, or URL
-- **Grouping**: Organize images by source domain
+- **Grouping**: Organize images by source domain or show duplicates
+- **Duplicate detection**: Groups images by dimensions + file size to find duplicates
+
+### Tag Management
+- **Individual tagging**: Add tags to images with autocomplete
+- **Bulk tag operations**: Add or remove tags from multiple images at once
+- **Tag filtering**: Filter by multiple tags with Union (OR) or Intersection (AND) modes
+- **Exclude tags**: Filter out images with specific tags
+- **Untagged filter**: Show only images without tags
+
+### Selection & Bulk Operations
 - **Multi-select**: Select multiple images with checkboxes
-- **Bulk operations**: Delete or export multiple selected images
-- **Lightbox**: Click images to view full-size
-- **Export**: Export all or selected images as a ZIP with metadata.json
-- **Native context menu**: Extension adds menu item alongside browser's default menu
+- **Keyboard navigation**: Arrow keys to navigate, Shift+Arrow for range selection
+- **Bulk delete**: Delete multiple images at once
+- **Bulk export**: Export selected images as a ZIP
+- **Bulk tagging**: Add or remove tags from multiple images
+
+### Trash & Restore
+- **Soft delete**: Deleted images move to trash instead of permanent deletion
+- **Trash view**: View and manage deleted images separately
+- **Restore**: Recover images from trash
+- **Permanent delete**: Delete images forever from trash
+- **Empty trash**: Clear all trashed images at once
+
+### Viewing & Preview
+- **Lightbox**: Click images to view full-size with keyboard navigation
+- **Preview pane**: Collapsible side panel showing selected image details and metadata
+- **View page button**: Open the original source page in a new tab
+
+### Import & Export
+- **ZIP export**: Export all or selected images as a ZIP with metadata.json
+- **SQLite export**: Export database as SQLite format for backups
+- **SQLite import**: Import from SQLite backups with conflict resolution
+- **Conflict resolution**: Choose to skip, override, or review conflicts individually
+
+### Danbooru Integration
+- **Upload to Danbooru**: Upload images to self-hosted Danbooru instances
+- **Auto-fill metadata**: Automatically extracts tags, artist, and source from images
+- **Artist detection**: Recognizes artists from Pixiv, Twitter, Fanbox, DeviantArt, ArtStation URLs
+- **Settings**: Configure Danbooru instance URL, username, and API key
 
 ## Installation
 
@@ -70,32 +108,116 @@ This will watch for changes and rebuild automatically.
 
 **Sorting**: Sort images by newest/oldest, largest/smallest file size, dimensions, or URL using the sort dropdown.
 
-**Grouping**: Group images by source domain to organize by website.
+**Grouping**:
+- Group images by source domain to organize by website
+- Use "Duplicates" mode to find images with matching dimensions and file size
 
-**Lightbox**: Click any image to view it in full size. Close with the × button or by clicking outside.
+**Lightbox**: Click any image to view it in full size. Use arrow keys to navigate between images. Close with Space, Escape, × button, or by clicking outside.
+
+**Preview Pane**: Toggle the preview pane to see details about selected images. Shows full preview + metadata for single selection, or a thumbnail grid for multiple selections.
+
+### Tagging Images
+
+**Add tags to single image**:
+1. Select an image and open the preview pane or lightbox
+2. Enter tags in the tag input field (comma-separated)
+3. Use autocomplete suggestions by pressing Tab or Enter
+4. Click "Save Tags" to apply
+
+**Bulk tag operations**:
+1. Select multiple images using checkboxes
+2. Click "Tag Selected" button
+3. In the modal:
+   - **Add Tags**: Enter tags to add to all selected images
+   - **Remove Tags**: Enter tags to remove from all selected images
+4. Click "Apply" to save changes
+
+**Filter by tags**:
+- Click the tag filter dropdown and select tags
+- Toggle between Union (OR) and Intersection (AND) modes
+- Use "Exclude" dropdown to filter out specific tags
+- Check "Untagged Only" to show only images without tags
 
 ### Multi-Select and Bulk Operations
 
 1. Click checkboxes on image cards to select multiple images
 2. Use "Select All" or "Deselect All" for quick selection
-3. Click "Delete Selected" to remove multiple images at once
-4. Click "Export Selected" to export only selected images
+3. Use keyboard shortcuts:
+   - **Arrow keys**: Navigate and select items
+   - **Shift + Arrow keys**: Extend selection range
+   - **Cmd/Ctrl + Click**: Toggle individual item selection
+   - **Shift + Click**: Select range from last selected item
+4. Bulk actions: Delete Selected, Export Selected, Tag Selected
 
-### Deleting Images
+### Trash & Restore
 
-- **Single delete**: Click the "Delete" button on any image card
-- **Delete selected**: Select multiple images and click "Delete Selected"
-- **Delete all**: Click "Delete All" to remove all images
+Images are soft-deleted (moved to trash) instead of permanent deletion:
 
-### Exporting Images
+1. **Delete images**: Click "Delete" button - images move to trash
+2. **View trash**: Click the "Trash" tab to see deleted images
+3. **Restore images**: Click "Restore" button on trashed images
+4. **Permanent delete**: In trash view, click "Delete Forever" to permanently remove
+5. **Empty trash**: Click "Empty Trash" to permanently delete all trashed images
 
+### Keyboard Navigation
+
+**Grid navigation**:
+- **Arrow keys**: Navigate grid (respects columns for up/down)
+- **Shift + Arrow keys**: Extend selection range
+- **Space**: Open/close lightbox for selected item
+- **Escape**: Close lightbox
+
+**Lightbox navigation**:
+- **Left/Right arrows**: Previous/next image
+- **Up/Down arrows**: Navigate by grid columns
+- **Space or Escape**: Close lightbox
+
+### Exporting & Importing
+
+**Export options**:
 1. Open the image viewer
-2. Choose one of the export options:
-   - **Export All**: Export all images
-   - **Export Selected**: Export only selected images
-3. Download a ZIP file containing:
-   - Images in `images/` folder (named by image ID)
-   - `metadata.json` with complete image information
+2. Choose export format:
+   - **Export as ZIP**: All or selected images with metadata.json
+   - **Export Database**: SQLite database backup for all images
+3. Download the exported file
+
+**Import from backup**:
+1. Click "Import" button
+2. Select a SQLite database file
+3. Choose conflict resolution strategy:
+   - **Skip conflicts**: Keep existing images, import only new ones
+   - **Override conflicts**: Replace existing images with imported versions
+   - **Review conflicts**: Review each conflict individually with side-by-side comparison
+4. Click "Import" to complete
+
+### Danbooru Integration
+
+**Setup** (one-time):
+1. Click "Settings" in the toolbar
+2. Enter your self-hosted Danbooru instance details:
+   - Danbooru URL (e.g., `https://your-danbooru.com`)
+   - Username
+   - API key
+3. Save settings
+
+**Upload images**:
+1. Select a single image (preview pane must show the image)
+2. Click "Upload to Danbooru" button
+3. Review auto-filled metadata:
+   - Tags (from image tags)
+   - Artist (auto-detected from source URL)
+   - Source (from page URL)
+   - Rating (General/Sensitive/Questionable/Explicit)
+   - Copyright, Character, Description (optional)
+4. Click "Upload to Danbooru"
+5. Wait for upload to complete (status shows in modal)
+
+**Supported artist detection**:
+- Pixiv (pixiv.net/users/*, pixiv.net/artworks/*)
+- Twitter/X (twitter.com/*, x.com/*)
+- Fanbox (*.fanbox.cc)
+- DeviantArt (deviantart.com/*)
+- ArtStation (artstation.com/*)
 
 ## Architecture
 
@@ -137,6 +259,7 @@ interface SavedImage {
   height: number;          // Pixels
   savedAt: number;         // Timestamp
   tags?: string[];         // Optional tags
+  isDeleted?: boolean;     // Soft delete flag for trash
 }
 ```
 

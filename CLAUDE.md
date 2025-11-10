@@ -215,6 +215,88 @@ User preferences saved across sessions:
 - `POST /posts.json` - Create post (`upload_media_asset_id`, `tag_string`, `rating`, `source`)
 - `PUT /posts/{id}/artist_commentary/create_or_update.json` - Add commentary (`original_title`, `original_description`)
 
+### SQLite Database Import/Export
+
+**Location**: `src/storage/sqlite-import-export.ts`
+
+**Purpose**: Provides SQLite-based database backup/restore functionality with conflict resolution.
+
+**Schema** (matches IndexedDB structure):
+```sql
+CREATE TABLE IF NOT EXISTS images (
+  id TEXT PRIMARY KEY,
+  imageUrl TEXT NOT NULL,
+  pageUrl TEXT NOT NULL,
+  pageTitle TEXT,
+  mimeType TEXT NOT NULL,
+  fileSize INTEGER NOT NULL,
+  width INTEGER NOT NULL,
+  height INTEGER NOT NULL,
+  savedAt INTEGER NOT NULL,
+  tags TEXT,
+  isDeleted INTEGER DEFAULT 0,
+  blob BLOB NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_savedAt ON images(savedAt);
+CREATE INDEX IF NOT EXISTS idx_pageUrl ON images(pageUrl);
+```
+
+**Export Flow**:
+- `exportDatabase(images: SavedImage[]): Promise<Blob>`
+- Creates SQLite database with schema
+- Inserts all images with blobs as Uint8Array
+- Tags serialized as JSON string
+- Returns SQLite file as blob
+
+**Import Flow** (3 strategies):
+
+1. **Analyze Phase**:
+   - `analyzeImport(file: File, existingImages: SavedImage[]): Promise<ImportAnalysis>`
+   - Reads SQLite file without loading blobs (metadata only)
+   - Compares IDs with existing images
+   - Returns analysis: `{ totalCount, newCount, conflictCount, conflicts[], db }`
+   - **Important**: Keeps database open for blob fetching during review
+
+2. **Conflict Resolution**:
+   - **Skip mode**: Import only new images (skip conflicts)
+   - **Override mode**: Replace all existing images with imported versions
+   - **Review mode**: User reviews each conflict individually
+     - Shows side-by-side comparison (existing vs imported)
+     - User selects which images to keep/override
+     - Uses `specificIds` Set to filter imports
+
+3. **Import Phase**:
+   - `importDatabase(file: File, mode: 'skip' | 'override', specificIds?: Set<string>): Promise<SavedImage[]>`
+   - Loads full images (including blobs) from SQLite
+   - Applies conflict resolution strategy
+   - Returns SavedImage[] ready for IndexedDB insertion
+
+**Helper Functions**:
+- `getImageBlobFromDatabase(db: Database, imageId: string): Blob | null`
+  - Fetches single blob from open database for preview
+  - Used in conflict review modal
+- `getImageMetadataFromDatabase(db: Database, imageId: string): {...} | null`
+  - Fetches metadata without blob for conflict comparison
+- `closeImportDatabase(db: Database)`
+  - Closes database after review/import complete
+  - **Critical**: Must be called to free resources
+
+**Implementation Notes**:
+- Uses sql.js library (`initSqlJs`) with WASM backend
+- WASM file path: `/sql-wasm.wasm` (must be in public assets)
+- Tags stored as JSON string in SQLite, parsed on import
+- `isDeleted` stored as INTEGER (0 or 1), converted to boolean
+- Database kept open during conflict review to avoid re-reading file
+- Caller responsible for closing database with `closeImportDatabase()`
+
+**UI Integration**:
+- "Export Database" button creates SQLite backup
+- "Import" button opens file picker for SQLite files
+- Import modal shows three resolution options
+- Review modal displays conflicts in scrollable grid
+- Side-by-side previews with metadata comparison
+- Selection state tracked with Set<string> of chosen import IDs
+
 ## Development Philosophy
 
 See ROADMAP.md - build features when needed, not all at once. Working code first, refinement later.
