@@ -120,7 +120,7 @@ This will watch for changes and rebuild automatically.
 
 **Add tags to single image**:
 1. Select an image and open the preview pane or lightbox
-2. Enter tags in the tag input field (comma-separated)
+2. Enter tags in the tag input field (space-separated)
 3. Use autocomplete suggestions by pressing Tab or Enter
 4. Click "Save Tags" to apply
 

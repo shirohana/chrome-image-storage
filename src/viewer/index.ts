@@ -518,7 +518,7 @@ async function handleSaveTags(e: Event) {
 
   const tagsString = input.value.trim();
   const tags = tagsString
-    ? tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+    ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
     : [];
 
   // Remove duplicates using Set
@@ -925,7 +925,7 @@ function updateLightboxMetadata(image: SavedImage) {
     </div>
     <div class="metadata-row">
       <div class="tag-input-container">
-        <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (comma-separated)..." value="${image.tags ? image.tags.join(', ') : ''}">
+        <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? image.tags.join(' ') : ''}">
         <div id="tag-autocomplete" class="tag-autocomplete"></div>
       </div>
       <button class="btn btn-primary save-tags-btn" data-id="${image.id}">Save Tags</button>
@@ -997,12 +997,12 @@ function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, 
 
     // Find the current tag being typed
     const beforeCursor = value.substring(0, cursorPos);
-    const lastCommaIndex = beforeCursor.lastIndexOf(',');
-    const currentTag = beforeCursor.substring(lastCommaIndex + 1).trim();
+    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const currentTag = beforeCursor.substring(lastSpaceIndex + 1).trim();
 
     // Get already-entered tags to exclude them from suggestions
     const enteredTags = value
-      .split(',')
+      .split(/\s+/)
       .map(t => t.trim().toLowerCase())
       .filter(t => t.length > 0);
 
@@ -1051,17 +1051,17 @@ function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, 
     const value = input.value;
     const cursorPos = input.selectionStart || 0;
     const beforeCursor = value.substring(0, cursorPos);
-    const lastCommaIndex = beforeCursor.lastIndexOf(',');
-    const beforeTag = value.substring(0, lastCommaIndex + 1);
+    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const beforeTag = value.substring(0, lastSpaceIndex + 1);
     const afterCursor = value.substring(cursorPos);
-    const nextCommaOrEnd = afterCursor.indexOf(',');
-    const afterTag = nextCommaOrEnd >= 0 ? afterCursor.substring(nextCommaOrEnd) : '';
+    const nextSpaceOrEnd = afterCursor.indexOf(' ');
+    const afterTag = nextSpaceOrEnd >= 0 ? afterCursor.substring(nextSpaceOrEnd) : '';
 
-    input.value = beforeTag + (beforeTag && !beforeTag.endsWith(' ') ? ' ' : '') + tag + ', ';
+    input.value = beforeTag + tag + ' ';
     input.focus();
 
     // Move cursor after the inserted tag
-    const newCursorPos = beforeTag.length + (beforeTag && !beforeTag.endsWith(' ') ? 1 : 0) + tag.length + 2;
+    const newCursorPos = beforeTag.length + tag.length + 1;
     input.setSelectionRange(newCursorPos, newCursorPos);
 
     // Re-show autocomplete with remaining tags
@@ -1795,13 +1795,13 @@ async function saveBulkTags() {
   // Parse add tags
   const addTagsString = bulkAddTagsInput.value.trim();
   const tagsToAdd = addTagsString
-    ? addTagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+    ? addTagsString.split(/\s+/).filter(tag => tag.length > 0)
     : [];
 
   // Parse remove tags
   const removeTagsString = bulkRemoveTagsInput.value.trim();
   const tagsToRemove = removeTagsString
-    ? removeTagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+    ? removeTagsString.split(/\s+/).filter(tag => tag.length > 0)
     : [];
 
   // Remove duplicates
@@ -2408,7 +2408,7 @@ danbooruSubmitBtn.addEventListener('click', async () => {
   const rating = selectedRating ? selectedRating.value : 'g';
 
   // Combine all tags
-  const generalTags = tagsInput.value.split(',').map(t => t.trim()).filter(Boolean);
+  const generalTags = tagsInput.value.split(/\s+/).filter(Boolean);
   const artistTags = artistInput.value.trim() ? [artistInput.value.trim()] : [];
   const copyrightTags = copyrightInput.value.trim() ? [copyrightInput.value.trim()] : [];
   const characterTags = characterInput.value.trim() ? [characterInput.value.trim()] : [];
