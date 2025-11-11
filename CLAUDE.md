@@ -47,8 +47,12 @@ Chrome extensions run in three separate JavaScript contexts:
 ### Storage
 
 - **`storage/db.ts`**: IndexedDB wrapper (store: `images`, keyPath: `id`)
+  - `getAllMetadata()`: Loads metadata without blobs (for lazy loading)
+  - `getBlob(id)`: Loads single blob on-demand
 - **`storage/service.ts`**: High-level operations like `saveImage()`, `deleteImage()`
-- Images stored as Blobs, displayed via `URL.createObjectURL(blob)`
+  - `getAllImagesMetadata()`: Returns metadata-only for initial load
+  - `getImageBlob(id)`: Fetches individual blob when needed
+- Images stored as Blobs, lazy-loaded on scroll using Intersection Observer
 
 ### Communication
 
@@ -197,13 +201,38 @@ Lightbox navigation:
 - **Arrow Up/Down**: Navigate by grid columns (maintains visual position)
 - **Space/Escape**: Close lightbox
 
-### ObjectURL Lifecycle Management
+### Lazy Loading & Memory Management
 
-**Critical for memory management**:
-- `getOrCreateObjectURL(image)`: Creates blob URL once, caches in `state.objectUrls` Map
+**Critical for performance with large datasets**:
+
+**Data Model**:
+- `state.images`: Array of `ImageMetadata` (without blobs) - loaded on startup
+- `state.loadedBlobs`: Map<string, Blob> - blobs loaded on-demand
+- `state.objectUrls`: Map<string, string> - cached blob URLs
+
+**Lazy Loading Flow**:
+1. **Initial Load**: `loadImages()` calls `getAllImagesMetadata()` - loads only metadata (no blobs)
+2. **Rendering**: Images rendered with placeholder SVG initially
+3. **Intersection Observer**: Monitors when images scroll into viewport (200px margin)
+4. **Blob Loading**: `loadImageBlob(id)` fetches blob from IndexedDB when visible
+5. **URL Creation**: `getOrCreateObjectURL(id)` creates blob URL from loaded blob
+
+**On-Demand Loading**:
+- Preview pane: Loads blob when image selected
+- Lightbox: Loads blob when opening full view
+- Download: Loads blob when download button clicked
+- Export: Loads all blobs only when exporting
+
+**Memory Management**:
+- `getOrCreateObjectURL(imageId)`: Creates blob URL once, caches in `state.objectUrls`
 - `revokeObjectURLs()`: Revokes all URLs and clears cache
+- `revokeObjectURL(imageId)`: Revokes single URL
 - **Pattern**: Always call `revokeObjectURLs()` before re-rendering to prevent memory leaks
-- Used in `renderImages()` when switching between empty/populated states
+
+**Performance Benefits**:
+- Initial load: ~20-50MB (metadata only) vs ~6GB (all blobs)
+- Scrolling: Only loads visible images (~20-30 at a time)
+- Peak memory: ~500MB vs ~6GB for 2000 images (>90% reduction)
 
 ### Selection State Management
 

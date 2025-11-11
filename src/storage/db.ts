@@ -80,6 +80,43 @@ class ImageDB {
     });
   }
 
+  async getAllMetadata(): Promise<Omit<SavedImage, 'blob'>[]> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.openCursor();
+      const results: Omit<SavedImage, 'blob'>[] = [];
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+        if (cursor) {
+          const { blob, ...metadata } = cursor.value;
+          results.push(metadata);
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async getBlob(id: string): Promise<Blob | undefined> {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.get(id);
+
+      request.onsuccess = () => {
+        const result = request.result;
+        resolve(result ? result.blob : undefined);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
   async delete(id: string): Promise<void> {
     const db = await this.open();
     return new Promise((resolve, reject) => {

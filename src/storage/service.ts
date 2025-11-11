@@ -63,6 +63,14 @@ export async function getAllImages(): Promise<SavedImage[]> {
   return imageDB.getAll();
 }
 
+export async function getAllImagesMetadata(): Promise<Omit<SavedImage, 'blob'>[]> {
+  return imageDB.getAllMetadata();
+}
+
+export async function getImageBlob(id: string): Promise<Blob | undefined> {
+  return imageDB.getBlob(id);
+}
+
 export async function getImage(id: string): Promise<SavedImage | undefined> {
   return imageDB.get(id);
 }

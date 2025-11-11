@@ -1,5 +1,5 @@
-import { getAllImages, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
-import type { SavedImage } from '../types';
+import { getAllImages, getAllImagesMetadata, getImageBlob, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
+import type { SavedImage, ImageMetadata } from '../types';
 
 // Constants
 const ViewMode = {
@@ -22,8 +22,9 @@ const SortDirection = {
 
 // State
 const state = {
-  images: [] as SavedImage[],
-  filteredImages: [] as SavedImage[],
+  images: [] as ImageMetadata[],
+  filteredImages: [] as ImageMetadata[],
+  loadedBlobs: new Map<string, Blob>(),
   sort: 'savedAt-desc',
   typeFilter: 'all',
   tagFilters: new Set<string>(),
@@ -54,7 +55,7 @@ async function saveSettings(settings: { showNotifications: boolean }) {
 }
 
 async function loadImages() {
-  state.images = await getAllImages();
+  state.images = await getAllImagesMetadata();
   populateTypeFilter();
   populateTagFilter();
   applySorting();
@@ -172,7 +173,7 @@ function renderSelectedTags() {
   });
 }
 
-function updateExcludeTagFilterOptions(images: SavedImage[] = state.filteredImages) {
+function updateExcludeTagFilterOptions(images: ImageMetadata[] = state.filteredImages) {
   const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
   if (!excludeTagFilter) return;
 
@@ -331,14 +332,34 @@ function applySorting() {
   });
 }
 
+// Placeholder for unloaded images
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect width="200" height="200" fill="%23f0f0f0"/%3E%3C/svg%3E';
+
 // URL lifecycle management
-function getOrCreateObjectURL(image: SavedImage): string {
-  if (state.objectUrls.has(image.id)) {
-    return state.objectUrls.get(image.id)!;
+function getOrCreateObjectURL(imageId: string): string {
+  if (state.objectUrls.has(imageId)) {
+    return state.objectUrls.get(imageId)!;
   }
-  const url = URL.createObjectURL(image.blob);
-  state.objectUrls.set(image.id, url);
+
+  const blob = state.loadedBlobs.get(imageId);
+  if (!blob) {
+    return PLACEHOLDER_IMAGE;
+  }
+
+  const url = URL.createObjectURL(blob);
+  state.objectUrls.set(imageId, url);
   return url;
+}
+
+async function loadImageBlob(imageId: string): Promise<void> {
+  if (state.loadedBlobs.has(imageId)) {
+    return;
+  }
+
+  const blob = await getImageBlob(imageId);
+  if (blob) {
+    state.loadedBlobs.set(imageId, blob);
+  }
 }
 
 function revokeObjectURLs() {
@@ -348,9 +369,17 @@ function revokeObjectURLs() {
   state.objectUrls.clear();
 }
 
+function revokeObjectURL(imageId: string) {
+  const url = state.objectUrls.get(imageId);
+  if (url && url !== PLACEHOLDER_IMAGE) {
+    URL.revokeObjectURL(url);
+    state.objectUrls.delete(imageId);
+  }
+}
+
 // Create image card HTML (shared by grouped and ungrouped rendering)
-function createImageCardHTML(image: SavedImage): string {
-  const url = getOrCreateObjectURL(image);
+function createImageCardHTML(image: ImageMetadata): string {
+  const url = getOrCreateObjectURL(image.id);
   const date = new Date(image.savedAt).toLocaleString();
   const fileSize = formatFileSize(image.fileSize);
   const isSelected = state.selectedIds.has(image.id);
@@ -376,7 +405,7 @@ function createImageCardHTML(image: SavedImage): string {
   return `
     <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
       <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
-      <img src="${url}" alt="Saved image" class="image-preview">
+      <img src="${url}" alt="Saved image" class="image-preview" data-image-id="${image.id}">
       <div class="image-info">
         <div class="image-meta">
           <div><strong>Saved:</strong> ${date}</div>
@@ -396,7 +425,48 @@ function createImageCardHTML(image: SavedImage): string {
   `;
 }
 
-function renderImages(images: SavedImage[]) {
+// Intersection Observer for lazy loading images
+let imageObserver: IntersectionObserver | null = null;
+
+function setupImageObserver() {
+  if (imageObserver) {
+    imageObserver.disconnect();
+  }
+
+  imageObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(async (entry) => {
+        if (entry.isIntersecting) {
+          const img = entry.target as HTMLImageElement;
+          const imageId = img.dataset.imageId;
+          if (!imageId) return;
+
+          await loadImageBlob(imageId);
+          const url = getOrCreateObjectURL(imageId);
+          if (url !== PLACEHOLDER_IMAGE) {
+            img.src = url;
+          }
+        }
+      });
+    },
+    {
+      rootMargin: '200px',
+    }
+  );
+}
+
+function observeImages() {
+  if (!imageObserver) {
+    setupImageObserver();
+  }
+
+  const images = document.querySelectorAll('.image-preview[data-image-id]');
+  images.forEach(img => {
+    imageObserver!.observe(img);
+  });
+}
+
+function renderImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const emptyState = document.getElementById('empty-state')!;
 
@@ -417,9 +487,11 @@ function renderImages(images: SavedImage[]) {
   } else {
     renderUngroupedImages(images);
   }
+
+  observeImages();
 }
 
-function renderUngroupedImages(images: SavedImage[]) {
+function renderUngroupedImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
 }
@@ -432,11 +504,15 @@ async function handleDownload(e: Event) {
   const id = btn.dataset.id!;
   const image = state.images.find(img => img.id === id);
   if (image) {
+    await loadImageBlob(id);
+    const blob = state.loadedBlobs.get(id);
+    if (!blob) return;
+
     const { getExtensionFromMimeType } = await import('./dump');
     const extension = getExtensionFromMimeType(image.mimeType);
     const filename = `${image.id}${extension}`;
 
-    const url = URL.createObjectURL(image.blob);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = filename;
@@ -603,21 +679,22 @@ function togglePreviewPane() {
   localStorage.setItem('previewPaneVisible', state.previewPaneVisible.toString());
 }
 
-function updatePreviewPane() {
+async function updatePreviewPane() {
   const content = document.getElementById('preview-pane-content')!;
   const selectedImages = state.filteredImages.filter(img => state.selectedIds.has(img.id));
 
   if (selectedImages.length === 0) {
     content.innerHTML = '<div class="preview-empty">No items selected</div>';
   } else if (selectedImages.length === 1) {
-    renderSinglePreview(selectedImages[0], content);
+    await renderSinglePreview(selectedImages[0], content);
   } else {
-    renderMultiPreview(selectedImages, content);
+    await renderMultiPreview(selectedImages, content);
   }
 }
 
-function renderSinglePreview(image: SavedImage, container: HTMLElement) {
-  const url = getOrCreateObjectURL(image);
+async function renderSinglePreview(image: ImageMetadata, container: HTMLElement) {
+  await loadImageBlob(image.id);
+  const url = getOrCreateObjectURL(image.id);
   const date = new Date(image.savedAt).toLocaleString();
   const fileSize = formatFileSize(image.fileSize);
 
@@ -694,10 +771,13 @@ function renderSinglePreview(image: SavedImage, container: HTMLElement) {
   }
 }
 
-function renderMultiPreview(images: SavedImage[], container: HTMLElement) {
+async function renderMultiPreview(images: ImageMetadata[], container: HTMLElement) {
   const count = images.length;
+
+  await Promise.all(images.map(img => loadImageBlob(img.id)));
+
   const thumbnails = images.map(image => {
-    const url = getOrCreateObjectURL(image);
+    const url = getOrCreateObjectURL(image.id);
     return `
       <div class="preview-thumbnail" data-id="${image.id}">
         <img src="${url}" alt="Thumbnail">
@@ -742,8 +822,8 @@ function getDomainFromUrl(url: string): string {
   }
 }
 
-function groupImagesByDomain(images: SavedImage[]): Map<string, SavedImage[]> {
-  const groups = new Map<string, SavedImage[]>();
+function groupImagesByDomain(images: ImageMetadata[]): Map<string, ImageMetadata[]> {
+  const groups = new Map<string, ImageMetadata[]>();
 
   for (const image of images) {
     const domain = getDomainFromUrl(image.pageUrl);
@@ -756,8 +836,8 @@ function groupImagesByDomain(images: SavedImage[]): Map<string, SavedImage[]> {
   return groups;
 }
 
-function groupImagesByDuplicates(images: SavedImage[]): Map<string, SavedImage[]> {
-  const groups = new Map<string, SavedImage[]>();
+function groupImagesByDuplicates(images: ImageMetadata[]): Map<string, ImageMetadata[]> {
+  const groups = new Map<string, ImageMetadata[]>();
 
   for (const image of images) {
     // Group by dimensions AND file size
@@ -769,7 +849,7 @@ function groupImagesByDuplicates(images: SavedImage[]): Map<string, SavedImage[]
   }
 
   // Only return groups with 2+ images (actual duplicates)
-  const duplicates = new Map<string, SavedImage[]>();
+  const duplicates = new Map<string, ImageMetadata[]>();
   for (const [key, groupImages] of groups) {
     if (groupImages.length >= 2) {
       duplicates.set(key, groupImages);
@@ -779,7 +859,7 @@ function groupImagesByDuplicates(images: SavedImage[]): Map<string, SavedImage[]
   return duplicates;
 }
 
-function renderGroupedImages(images: SavedImage[]) {
+function renderGroupedImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByDomain(images);
   const sortedDomains = Array.from(groups.keys()).sort();
@@ -809,7 +889,7 @@ function renderGroupedImages(images: SavedImage[]) {
   grid.innerHTML = html;
 }
 
-function renderDuplicateGroups(images: SavedImage[]) {
+function renderDuplicateGroups(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByDuplicates(images);
 
@@ -871,15 +951,16 @@ function openLightbox(index: number) {
   lightbox.classList.add('active');
 }
 
-function updateLightboxContent(image: SavedImage) {
+async function updateLightboxContent(image: ImageMetadata) {
+  await loadImageBlob(image.id);
   const lightboxImage = document.getElementById('lightbox-image') as HTMLImageElement;
-  const url = getOrCreateObjectURL(image);
+  const url = getOrCreateObjectURL(image.id);
   lightboxImage.src = url;
 
   updateLightboxMetadata(image);
 }
 
-function updateLightboxMetadata(image: SavedImage) {
+function updateLightboxMetadata(image: ImageMetadata) {
   const metadata = document.querySelector('.lightbox-metadata');
   if (!metadata) return;
 
@@ -1371,13 +1452,15 @@ imageGrid.addEventListener('change', (e: Event) => {
 // Dump buttons (export selected images as ZIP)
 document.getElementById('dump-all-btn')!.addEventListener('click', async () => {
   const { dumpImages } = await import('./dump');
-  await dumpImages(state.images);
+  const allImages = await getAllImages();
+  await dumpImages(allImages);
 });
 
 document.getElementById('dump-selected-btn')!.addEventListener('click', async () => {
   if (state.selectedIds.size === 0) return;
 
-  const selectedImages = state.images.filter(img => state.selectedIds.has(img.id));
+  const allImages = await getAllImages();
+  const selectedImages = allImages.filter(img => state.selectedIds.has(img.id));
   const { dumpImages } = await import('./dump');
   await dumpImages(selectedImages);
 });
@@ -1854,7 +1937,8 @@ bulkRemoveTagsInput.addEventListener('keydown', (e: KeyboardEvent) => {
 document.getElementById('export-database-btn')!.addEventListener('click', async () => {
   try {
     const { exportDatabase } = await import('../storage/sqlite-import-export');
-    const blob = await exportDatabase(state.images);
+    const allImages = await getAllImages();
+    const blob = await exportDatabase(allImages);
     const url = URL.createObjectURL(blob);
 
     const a = document.createElement('a');
@@ -2027,7 +2111,8 @@ async function showImportReviewModal(file: File, db: any, conflicts: any[], inde
   const conflict = conflicts[index];
 
   // Render existing image preview
-  const existingUrl = getOrCreateObjectURL(conflict.existingImage);
+  await loadImageBlob(conflict.existingImage.id);
+  const existingUrl = getOrCreateObjectURL(conflict.existingImage.id);
   const existingDate = new Date(conflict.existingImage.savedAt).toLocaleString();
   const existingTags = conflict.existingImage.tags?.join(', ') || 'None';
   existingPreview.innerHTML = `
@@ -2353,9 +2438,10 @@ async function openDanbooruUploadModal(imageId: string) {
 
   currentUploadImageId = imageId;
 
-  // Set preview image
+  // Load blob and set preview image
+  await loadImageBlob(imageId);
   const previewImg = document.getElementById('danbooru-preview-image') as HTMLImageElement;
-  const url = getOrCreateObjectURL(image);
+  const url = getOrCreateObjectURL(imageId);
   previewImg.src = url;
 
   // Auto-fill metadata
