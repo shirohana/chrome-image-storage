@@ -123,6 +123,59 @@ Chrome extensions run in three separate JavaScript contexts:
 - Filters update dynamically after tag modifications
 - **Mutual Exclusivity**: Untagged filter and tag selection auto-clear each other to prevent conflicts
 
+### Auto-Tagging Rules System
+
+**Location**: `src/storage/tag-rules.ts`
+
+**Data Model**:
+```typescript
+interface TagRule {
+  id: string;
+  name: string;
+  pattern: string;
+  isRegex: boolean;
+  tags: string[];
+  enabled: boolean;
+}
+```
+
+**Storage**: Rules stored in `chrome.storage.local` under `tagRules` key
+
+**Matching Logic**:
+- Empty pattern (`''`) matches all images (always-apply rule)
+- Plain text: Case-insensitive substring match on page title
+- Regex: Standard regex test with error handling (invalid regex = no match)
+- Multiple rules can match: All matching tags are merged together (no duplicates)
+
+**Integration Flow**:
+1. `saveImage()` in `storage/service.ts` loads rules before saving image
+2. Calls `getAutoTags(pageTitle, rules)` to get matching tags
+3. Applies merged tags to new image before IndexedDB insertion
+4. Only enabled rules are evaluated
+
+**UI Location**: Settings panel → "Auto-Tagging Rules" section
+
+**UI Features**:
+- Rule cards display: name, pattern, tags, enabled toggle
+- Add/Edit form: name, pattern, regex toggle, tags input
+- Enable/disable toggle: Styled toggle switch (green when enabled)
+- Edit: Populates form, changes "Add Rule" → "Update Rule"
+- Delete: Confirmation dialog before removal
+- Empty state: "No auto-tagging rules configured yet"
+
+**Key Functions**:
+- `loadTagRules()`: Fetch all rules from chrome.storage.local
+- `saveTagRules(rules)`: Persist rules to chrome.storage.local
+- `addTagRule(rule)`: Create new rule with UUID
+- `updateTagRule(id, updates)`: Partial update of existing rule
+- `deleteTagRule(id)`: Remove rule by ID
+- `getAutoTags(pageTitle, rules)`: Returns merged tags from all matching enabled rules
+
+**Pattern Examples**:
+- `''` (empty) → Always matches
+- `pixiv` → Matches "Pixiv Art - Illustration" (case-insensitive substring)
+- `^(Twitter|X\.com)` (regex) → Matches page titles starting with "Twitter" or "X.com"
+
 ### Preview Pane
 
 - Right-side collapsible pane showing selected image details

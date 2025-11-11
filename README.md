@@ -22,6 +22,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 ### Tag Management
 - **Individual tagging**: Add tags to images with autocomplete
 - **Bulk tag operations**: Add or remove tags from multiple images at once
+- **Auto-tagging rules**: Automatically apply tags to new images based on page title patterns
 - **Tag filtering**: Filter by multiple tags with Union (OR) or Intersection (AND) modes
 - **Exclude tags**: Filter out images with specific tags
 - **Untagged filter**: Show only images without tags
@@ -137,6 +138,22 @@ This will watch for changes and rebuild automatically.
 - Toggle between Union (OR) and Intersection (AND) modes
 - Use "Exclude" dropdown to filter out specific tags
 - Check "Untagged Only" to show only images without tags
+
+**Auto-tagging rules**:
+1. Open Settings (⚙ button in header)
+2. Scroll to "Auto-Tagging Rules" section
+3. Create a rule:
+   - **Rule Name**: Descriptive name (e.g., "Pixiv Images")
+   - **Pattern**: Text or regex to match page title (leave empty to match all images)
+   - **Use Regex**: Check to enable regex pattern matching
+   - **Tags**: Space-separated tags to apply (e.g., "pixiv illustration")
+4. Click "Add Rule" to save
+5. Manage existing rules:
+   - **Toggle**: Enable/disable rules without deleting
+   - **Edit**: Click ✎ to modify a rule
+   - **Delete**: Click × to remove a rule
+
+When you save a new image, all enabled rules that match the page title will automatically apply their tags to the image.
 
 ### Multi-Select and Bulk Operations
 

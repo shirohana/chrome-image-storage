@@ -1,5 +1,6 @@
 import { imageDB } from './db';
 import type { SavedImage } from '../types';
+import { loadTagRules, getAutoTags } from './tag-rules';
 
 export async function saveImage(
   imageUrl: string,
@@ -30,6 +31,9 @@ export async function saveImage(
 
   const dimensions = await getImageDimensions(blob);
 
+  const rules = await loadTagRules();
+  const autoTags = getAutoTags(pageTitle || '', rules);
+
   const image: SavedImage = {
     id: crypto.randomUUID(),
     blob,
@@ -41,6 +45,7 @@ export async function saveImage(
     width: dimensions.width,
     height: dimensions.height,
     savedAt: Date.now(),
+    tags: autoTags.length > 0 ? autoTags : undefined,
   };
 
   await imageDB.add(image);
