@@ -90,6 +90,7 @@ h1 {
   display: flex;
   gap: 20px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .view-toggle {
@@ -146,6 +147,7 @@ h1 {
 
 .search-bar {
   flex: 1;
+  min-width: 300px;
 }
 
 #search-input {
@@ -165,6 +167,7 @@ h1 {
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .type-filter,

@@ -88,9 +88,7 @@
         <input type="text" id="search-input" placeholder="Search by URL or page title...">
       </div>
       <div class="view-controls">
-        <button id="preview-pane-toggle" class="btn btn-secondary" title="Toggle preview pane">
-          Preview
-        </button>
+        <!-- Filtering controls -->
         <select id="type-filter" class="type-filter">
           <option value="all">All Types</option>
         </select>
@@ -113,6 +111,7 @@
             <span>Untagged only</span>
           </label>
         </div>
+        <!-- Organization controls -->
         <select id="group-by" class="group-by">
           <option value="none">No Grouping</option>
           <option value="domain">Group by Domain</option>
@@ -128,11 +127,15 @@
           <option value="url-asc">URL (A-Z)</option>
           <option value="url-desc">URL (Z-A)</option>
         </select>
+        <!-- Display controls -->
         <div class="view-mode-toggle">
           <button class="view-mode-btn active" data-view="grid" title="Grid view">⊞</button>
           <button class="view-mode-btn" data-view="compact" title="Compact view">⊟</button>
           <button class="view-mode-btn" data-view="list" title="List view">☰</button>
         </div>
+        <button id="preview-pane-toggle" class="btn btn-secondary" title="Toggle preview pane">
+          Preview
+        </button>
       </div>
     </div>
 
