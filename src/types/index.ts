@@ -11,6 +11,7 @@ export interface SavedImage {
   savedAt: number;
   tags?: string[];
   isDeleted?: boolean;
+  rating?: 'g' | 's' | 'q' | 'e';
 }
 
 export interface ImageMetadata {
@@ -25,6 +26,7 @@ export interface ImageMetadata {
   savedAt: number;
   tags?: string[];
   isDeleted?: boolean;
+  rating?: 'g' | 's' | 'q' | 'e';
 }
 
 export interface CaptureImageMessage {

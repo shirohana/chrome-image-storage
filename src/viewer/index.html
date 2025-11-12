@@ -130,6 +130,17 @@
         <select id="type-filter" class="type-filter">
           <option value="all">All Types</option>
         </select>
+        <div class="rating-filter-container">
+          <select id="rating-filter" class="rating-filter">
+            <option value="">Filter by rating...</option>
+            <option value="g">General</option>
+            <option value="s">Sensitive</option>
+            <option value="q">Questionable</option>
+            <option value="e">Explicit</option>
+            <option value="unrated">Unrated</option>
+          </select>
+          <div id="selected-ratings" class="selected-ratings"></div>
+        </div>
         <div class="tag-filter-container">
           <div>
             <select id="tag-filter" class="tag-filter">
@@ -228,6 +239,36 @@
           <div class="tag-input-container">
             <input type="text" id="bulk-remove-tags-input" class="tag-input" placeholder="Remove tags (space-separated)...">
             <div id="bulk-remove-autocomplete" class="tag-autocomplete"></div>
+          </div>
+        </div>
+        <div class="bulk-tag-section">
+          <h4>Set Rating</h4>
+          <p class="bulk-tag-hint">Set the rating for all selected images (leave unselected to keep current ratings)</p>
+          <div class="bulk-rating-selector">
+            <label class="bulk-rating-radio">
+              <input type="radio" name="bulk-rating" value="g">
+              <span>General</span>
+            </label>
+            <label class="bulk-rating-radio">
+              <input type="radio" name="bulk-rating" value="s">
+              <span>Sensitive</span>
+            </label>
+            <label class="bulk-rating-radio">
+              <input type="radio" name="bulk-rating" value="q">
+              <span>Questionable</span>
+            </label>
+            <label class="bulk-rating-radio">
+              <input type="radio" name="bulk-rating" value="e">
+              <span>Explicit</span>
+            </label>
+            <label class="bulk-rating-radio">
+              <input type="radio" name="bulk-rating" value="unrated">
+              <span>Unrated</span>
+            </label>
+            <label class="bulk-rating-radio">
+              <input type="radio" name="bulk-rating" value="" checked>
+              <span>No Change</span>
+            </label>
           </div>
         </div>
       </div>

@@ -27,6 +27,7 @@ const state = {
   loadedBlobs: new Map<string, Blob>(),
   sort: 'savedAt-desc',
   typeFilter: 'all',
+  ratingFilters: new Set<string>(),
   tagFilters: new Set<string>(),
   excludedTagFilters: new Set<string>(),
   tagFilterMode: 'union' as 'union' | 'intersection',
@@ -173,6 +174,44 @@ function renderSelectedTags() {
   });
 }
 
+function renderSelectedRatings() {
+  const container = document.getElementById('selected-ratings');
+  if (!container) return;
+
+  if (state.ratingFilters.size === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const ratingLabels: { [key: string]: string } = {
+    'g': 'General',
+    's': 'Sensitive',
+    'q': 'Questionable',
+    'e': 'Explicit',
+    'unrated': 'Unrated'
+  };
+
+  container.innerHTML = Array.from(state.ratingFilters)
+    .map(rating => `
+      <span class="selected-rating">
+        ${ratingLabels[rating] || rating}
+        <button class="remove-rating" data-rating="${rating}">&times;</button>
+      </span>
+    `)
+    .join('');
+
+  // Attach remove handlers
+  container.querySelectorAll('.remove-rating').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rating = btn.getAttribute('data-rating')!;
+      state.ratingFilters.delete(rating);
+
+      renderSelectedRatings();
+      applyFilters();
+    });
+  });
+}
+
 function updateExcludeTagFilterOptions(images: ImageMetadata[] = state.filteredImages) {
   const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
   if (!excludeTagFilter) return;
@@ -244,6 +283,21 @@ function applyFilters() {
   // Apply type filter
   if (state.typeFilter !== 'all') {
     filtered = filtered.filter(img => img.mimeType === state.typeFilter);
+  }
+
+  // Apply rating filter (multi-select with OR logic)
+  if (state.ratingFilters.size > 0) {
+    filtered = filtered.filter(img => {
+      // Check if image matches any selected rating
+      for (const ratingFilter of state.ratingFilters) {
+        if (ratingFilter === 'unrated') {
+          if (!img.rating) return true;
+        } else {
+          if (img.rating === ratingFilter) return true;
+        }
+      }
+      return false;
+    });
   }
 
   // Apply tag filter (multi-tag with union/intersection mode)
@@ -402,9 +456,22 @@ function createImageCardHTML(image: ImageMetadata): string {
       </div>`
     : '';
 
+  // Rating badge with color coding
+  const ratingConfig: { [key: string]: { label: string; color: string } } = {
+    'g': { label: 'G', color: '#28a745' },  // green
+    's': { label: 'S', color: '#ffc107' },  // yellow
+    'q': { label: 'Q', color: '#fd7e14' },  // orange
+    'e': { label: 'E', color: '#dc3545' }   // red
+  };
+
+  const ratingHTML = image.rating
+    ? `<div class="rating-badge" style="background-color: ${ratingConfig[image.rating].color}">${ratingConfig[image.rating].label}</div>`
+    : '<div class="rating-badge rating-badge-unrated">—</div>';
+
   return `
     <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
       <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
+      ${ratingHTML}
       <img src="${url}" alt="Saved image" class="image-preview" data-image-id="${image.id}">
       <div class="image-info">
         <div class="image-meta">
@@ -739,6 +806,31 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
           <span class="preview-meta-label">Tags</span>
           <div class="preview-meta-tags">${tagsHTML}</div>
         </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Rating</span>
+          <div class="preview-rating-selector">
+            <label class="rating-radio">
+              <input type="radio" name="preview-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
+              <span>General</span>
+            </label>
+            <label class="rating-radio">
+              <input type="radio" name="preview-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
+              <span>Sensitive</span>
+            </label>
+            <label class="rating-radio">
+              <input type="radio" name="preview-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
+              <span>Questionable</span>
+            </label>
+            <label class="rating-radio">
+              <input type="radio" name="preview-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
+              <span>Explicit</span>
+            </label>
+            <label class="rating-radio">
+              <input type="radio" name="preview-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
+              <span>Unrated</span>
+            </label>
+          </div>
+        </div>
       </div>
       <div class="preview-actions">
         <button class="btn btn-secondary download-btn preview-download-btn" data-id="${image.id}">Download</button>
@@ -769,6 +861,24 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   if (danbooruBtn) {
     danbooruBtn.addEventListener('click', () => openDanbooruUploadModal(image.id));
   }
+
+  // Attach rating change listeners
+  const ratingRadios = container.querySelectorAll(`input[name="preview-rating-${image.id}"]`);
+  ratingRadios.forEach(radio => {
+    radio.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      const ratingValue = target.value || undefined;
+      const { updateImageRating } = await import('../storage/service');
+      await updateImageRating(image.id, ratingValue as any);
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.rating = ratingValue as any;
+      }
+      // Re-render the grid to update badge
+      applyFilters();
+    });
+  });
 }
 
 async function renderMultiPreview(images: ImageMetadata[], container: HTMLElement) {
@@ -1567,6 +1677,19 @@ typeFilter.addEventListener('change', () => {
   applyFilters();
 });
 
+// Rating filter
+const ratingFilter = document.getElementById('rating-filter') as HTMLSelectElement;
+
+ratingFilter.addEventListener('change', () => {
+  const selectedRating = ratingFilter.value;
+  if (selectedRating && !state.ratingFilters.has(selectedRating)) {
+    state.ratingFilters.add(selectedRating);
+    renderSelectedRatings();
+    applyFilters();
+  }
+  ratingFilter.value = ''; // Reset dropdown
+});
+
 // Tag filter
 const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
 
@@ -1843,6 +1966,10 @@ function openBulkTagModal() {
   bulkAddTagsInput.value = '';
   bulkRemoveTagsInput.value = '';
 
+  // Reset rating to "No Change"
+  const noChangeRating = document.querySelector('input[name="bulk-rating"][value=""]') as HTMLInputElement;
+  if (noChangeRating) noChangeRating.checked = true;
+
   bulkTagModal.classList.add('active');
 
   // Setup autocomplete for add input (all tags)
@@ -1898,6 +2025,14 @@ async function saveBulkTags() {
 
   if (uniqueTagsToRemove.length > 0) {
     await removeTagsFromImages(selectedImageIds, uniqueTagsToRemove);
+  }
+
+  // Apply rating if selected
+  const selectedRating = document.querySelector('input[name="bulk-rating"]:checked') as HTMLInputElement;
+  if (selectedRating && selectedRating.value !== '') {
+    const { updateImagesRating } = await import('../storage/service');
+    const ratingValue = selectedRating.value === 'unrated' ? undefined : selectedRating.value as ('g' | 's' | 'q' | 'e');
+    await updateImagesRating(selectedImageIds, ratingValue);
   }
 
   // Reload images and close modal
@@ -2467,9 +2602,10 @@ async function openDanbooruUploadModal(imageId: string) {
   copyrightInput.value = '';
   characterInput.value = '';
 
-  // Reset rating to General
-  const ratingGeneral = document.querySelector('input[name="danbooru-rating"][value="g"]') as HTMLInputElement;
-  if (ratingGeneral) ratingGeneral.checked = true;
+  // Pre-fill rating from image, or default to Questionable
+  const ratingValue = image.rating || 'q';
+  const ratingInput = document.querySelector(`input[name="danbooru-rating"][value="${ratingValue}"]`) as HTMLInputElement;
+  if (ratingInput) ratingInput.checked = true;
 
   // Show modal
   danbooruModal.classList.add('active');

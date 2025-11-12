@@ -2,6 +2,31 @@ import { imageDB } from './db';
 import type { SavedImage } from '../types';
 import { loadTagRules, getAutoTags } from './tag-rules';
 
+/**
+ * Extracts rating from tags array and returns cleaned tags without rating tags.
+ * Rating tags format: rating:g, rating:s, rating:q, rating:e
+ * Returns the first found rating tag and removes all rating tags from array.
+ */
+function extractRatingFromTags(tags: string[]): { rating?: 'g' | 's' | 'q' | 'e'; cleanedTags: string[] } {
+  let rating: 'g' | 's' | 'q' | 'e' | undefined;
+  const cleanedTags: string[] = [];
+
+  for (const tag of tags) {
+    const match = tag.match(/^rating:([gsqe])$/i);
+    if (match) {
+      // Extract rating value from first matching tag
+      if (!rating) {
+        rating = match[1].toLowerCase() as 'g' | 's' | 'q' | 'e';
+      }
+      // Don't include rating tags in cleaned array
+    } else {
+      cleanedTags.push(tag);
+    }
+  }
+
+  return { rating, cleanedTags };
+}
+
 export async function saveImage(
   imageUrl: string,
   pageUrl: string,
@@ -34,6 +59,9 @@ export async function saveImage(
   const rules = await loadTagRules();
   const autoTags = getAutoTags(pageTitle || '', rules);
 
+  // Extract rating from tags and get cleaned tags
+  const { rating, cleanedTags } = extractRatingFromTags(autoTags);
+
   const image: SavedImage = {
     id: crypto.randomUUID(),
     blob,
@@ -45,7 +73,8 @@ export async function saveImage(
     width: dimensions.width,
     height: dimensions.height,
     savedAt: Date.now(),
-    tags: autoTags.length > 0 ? autoTags : undefined,
+    tags: cleanedTags.length > 0 ? cleanedTags : undefined,
+    rating,
   };
 
   await imageDB.add(image);
@@ -122,7 +151,10 @@ export async function emptyTrash(): Promise<void> {
 export async function updateImageTags(id: string, tags: string[]): Promise<void> {
   const image = await imageDB.get(id);
   if (image) {
-    image.tags = tags;
+    // Extract rating from tags and get cleaned tags
+    const { rating, cleanedTags } = extractRatingFromTags(tags);
+    image.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
+    image.rating = rating;
     await imageDB.update(image);
   }
 }
@@ -133,7 +165,10 @@ export async function addTagsToImages(imageIds: string[], tagsToAdd: string[]): 
     if (image) {
       const existingTags = image.tags || [];
       const uniqueTags = Array.from(new Set([...existingTags, ...tagsToAdd]));
-      image.tags = uniqueTags;
+      // Extract rating from combined tags and get cleaned tags
+      const { rating, cleanedTags } = extractRatingFromTags(uniqueTags);
+      image.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
+      image.rating = rating;
       await imageDB.update(image);
     }
   }
@@ -141,10 +176,35 @@ export async function addTagsToImages(imageIds: string[], tagsToAdd: string[]): 
 
 export async function removeTagsFromImages(imageIds: string[], tagsToRemove: string[]): Promise<void> {
   const tagsToRemoveSet = new Set(tagsToRemove);
+  // Check if any rating tags are being removed
+  const removingRating = tagsToRemove.some(tag => /^rating:[gsqe]$/i.test(tag));
+
   for (const id of imageIds) {
     const image = await imageDB.get(id);
     if (image && image.tags) {
       image.tags = image.tags.filter(tag => !tagsToRemoveSet.has(tag));
+      // Clear rating if rating tag was removed
+      if (removingRating) {
+        image.rating = undefined;
+      }
+      await imageDB.update(image);
+    }
+  }
+}
+
+export async function updateImageRating(id: string, rating?: 'g' | 's' | 'q' | 'e'): Promise<void> {
+  const image = await imageDB.get(id);
+  if (image) {
+    image.rating = rating;
+    await imageDB.update(image);
+  }
+}
+
+export async function updateImagesRating(imageIds: string[], rating?: 'g' | 's' | 'q' | 'e'): Promise<void> {
+  for (const id of imageIds) {
+    const image = await imageDB.get(id);
+    if (image) {
+      image.rating = rating;
       await imageDB.update(image);
     }
   }

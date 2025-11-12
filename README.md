@@ -15,6 +15,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 ### Organization & Filtering
 - **Search**: Filter images by image URL, page URL, or page title
 - **Type filter**: Filter by image type (PNG, JPEG, WebP, GIF, SVG)
+- **Rating filter**: Filter by content rating (General, Sensitive, Questionable, Explicit, Unrated)
 - **Sorting**: Sort by date, file size, dimensions, or URL
 - **Grouping**: Organize images by source domain or show duplicates
 - **Duplicate detection**: Groups images by dimensions + file size to find duplicates
@@ -27,12 +28,21 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Exclude tags**: Filter out images with specific tags
 - **Untagged filter**: Show only images without tags
 
+### Rating Management
+- **Individual rating**: Set content rating for images (General/Sensitive/Questionable/Explicit)
+- **Bulk rating operations**: Set rating for multiple images at once
+- **Rating tags**: Apply `rating:g`, `rating:s`, `rating:q`, or `rating:e` tags to automatically set rating
+- **Rating filter**: Filter images by one or more ratings
+- **Color-coded badges**: Visual indicators on image cards (Green/Yellow/Orange/Red)
+- **Danbooru integration**: Ratings automatically pre-fill when uploading to Danbooru
+
 ### Selection & Bulk Operations
 - **Multi-select**: Select multiple images with checkboxes
 - **Keyboard navigation**: Arrow keys to navigate, Shift+Arrow for range selection
 - **Bulk delete**: Delete multiple images at once
 - **Bulk export**: Export selected images as a ZIP
 - **Bulk tagging**: Add or remove tags from multiple images
+- **Bulk rating**: Set content rating for multiple images
 
 ### Trash & Restore
 - **Soft delete**: Deleted images move to trash instead of permanent deletion
@@ -131,7 +141,8 @@ This will watch for changes and rebuild automatically.
 3. In the modal:
    - **Add Tags**: Enter tags to add to all selected images
    - **Remove Tags**: Enter tags to remove from all selected images
-4. Click "Apply" to save changes
+   - **Set Rating**: Choose a rating to apply to all selected images (or "No Change")
+4. Click "Save" to apply changes
 
 **Filter by tags**:
 - Click the tag filter dropdown and select tags
@@ -154,6 +165,47 @@ This will watch for changes and rebuild automatically.
    - **Delete**: Click × to remove a rule
 
 When you save a new image, all enabled rules that match the page title will automatically apply their tags to the image.
+
+### Rating Images
+
+Images can have content ratings to help organize and filter them:
+
+**Set rating for single image**:
+1. Select an image and open the preview pane
+2. Choose a rating using the radio buttons:
+   - **General (G)**: Safe for work content
+   - **Sensitive (S)**: Slightly suggestive content
+   - **Questionable (Q)**: Questionable/suggestive content
+   - **Explicit (E)**: Explicit/adult content
+   - **Unrated**: No rating applied
+3. Rating updates immediately
+
+**Set rating for multiple images**:
+1. Select multiple images using checkboxes
+2. Click "Tag Selected" button
+3. In the "Set Rating" section, choose a rating (or "No Change" to keep existing)
+4. Click "Save" to apply
+
+**Using rating tags**:
+- Add `rating:g` tag to set General rating
+- Add `rating:s` tag to set Sensitive rating
+- Add `rating:q` tag to set Questionable rating
+- Add `rating:e` tag to set Explicit rating
+- Rating tags are automatically converted to the rating field and removed from tags
+
+**Filter by rating**:
+- Use the rating dropdown in the toolbar
+- Select one or more ratings to filter
+- Selected ratings appear as removable pills
+- Shows images matching any of the selected ratings
+
+**Visual indicators**:
+- Each image card displays a color-coded badge:
+  - Green badge (G) = General
+  - Yellow badge (S) = Sensitive
+  - Orange badge (Q) = Questionable
+  - Red badge (E) = Explicit
+  - Gray badge (—) = Unrated
 
 ### Multi-Select and Bulk Operations
 
@@ -224,7 +276,7 @@ Images are soft-deleted (moved to trash) instead of permanent deletion:
    - Tags (from image tags)
    - Artist (auto-detected from source URL)
    - Source (from page URL)
-   - Rating (General/Sensitive/Questionable/Explicit)
+   - Rating (pre-filled from image rating, or defaults to Questionable)
    - Copyright, Character, Description (optional)
 4. Click "Upload to Danbooru"
 5. Wait for upload to complete (status shows in modal)
@@ -277,6 +329,7 @@ interface SavedImage {
   savedAt: number;         // Timestamp
   tags?: string[];         // Optional tags
   isDeleted?: boolean;     // Soft delete flag for trash
+  rating?: 'g' | 's' | 'q' | 'e';  // Content rating (General/Sensitive/Questionable/Explicit)
 }
 ```
 

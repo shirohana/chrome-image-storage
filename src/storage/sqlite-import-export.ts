@@ -15,10 +15,12 @@ const SCHEMA = `
     savedAt INTEGER NOT NULL,
     tags TEXT,
     isDeleted INTEGER DEFAULT 0,
+    rating TEXT,
     blob BLOB NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_savedAt ON images(savedAt);
   CREATE INDEX IF NOT EXISTS idx_pageUrl ON images(pageUrl);
+  CREATE INDEX IF NOT EXISTS idx_rating ON images(rating);
 `;
 
 export interface ImportConflict {
@@ -30,6 +32,7 @@ export interface ImportConflict {
     pageTitle?: string;
     savedAt: number;
     tags?: string[];
+    rating?: 'g' | 's' | 'q' | 'e';
   };
 }
 
@@ -50,7 +53,7 @@ export async function exportDatabase(images: SavedImage[]): Promise<Blob> {
   db.run(SCHEMA);
 
   const stmt = db.prepare(`
-    INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   for (const image of images) {
@@ -67,6 +70,7 @@ export async function exportDatabase(images: SavedImage[]): Promise<Blob> {
       image.savedAt,
       image.tags ? JSON.stringify(image.tags) : null,
       image.isDeleted ? 1 : 0,
+      image.rating || null,
       new Uint8Array(blobArrayBuffer)
     ]);
   }
@@ -87,7 +91,7 @@ export async function analyzeImport(file: File, existingImages: SavedImage[]): P
   const arrayBuffer = await file.arrayBuffer();
   const db = new SQL.Database(new Uint8Array(arrayBuffer));
 
-  const result = db.exec('SELECT id, imageUrl, pageUrl, pageTitle, savedAt, tags FROM images');
+  const result = db.exec('SELECT id, imageUrl, pageUrl, pageTitle, savedAt, tags, rating FROM images');
 
   if (result.length === 0) {
     db.close();
@@ -113,6 +117,7 @@ export async function analyzeImport(file: File, existingImages: SavedImage[]): P
           pageTitle: row[3] as string | undefined,
           savedAt: row[4] as number,
           tags: row[5] ? JSON.parse(row[5] as string) : undefined,
+          rating: (row[6] as string) || undefined,
         }
       });
     } else {
@@ -180,6 +185,7 @@ export async function importDatabase(
       savedAt: rowData.savedAt,
       tags: rowData.tags ? JSON.parse(rowData.tags) : undefined,
       isDeleted: rowData.isDeleted === 1,
+      rating: rowData.rating || undefined,
     });
   }
 

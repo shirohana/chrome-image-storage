@@ -1,7 +1,7 @@
 import type { SavedImage } from '../types';
 
 const DB_NAME = 'ImageStorageDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'images';
 
 class ImageDB {
@@ -23,10 +23,21 @@ class ImageDB {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
+        const transaction = (event.target as IDBOpenDBRequest).transaction!;
+        let objectStore: IDBObjectStore;
+
         if (!db.objectStoreNames.contains(STORE_NAME)) {
-          const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          // Initial creation (version 1)
+          objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
           objectStore.createIndex('savedAt', 'savedAt', { unique: false });
           objectStore.createIndex('pageUrl', 'pageUrl', { unique: false });
+          objectStore.createIndex('rating', 'rating', { unique: false });
+        } else {
+          // Upgrade from version 1 to 2
+          objectStore = transaction.objectStore(STORE_NAME);
+          if (!objectStore.indexNames.contains('rating')) {
+            objectStore.createIndex('rating', 'rating', { unique: false });
+          }
         }
       };
     });

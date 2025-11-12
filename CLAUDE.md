@@ -29,12 +29,14 @@ Chrome extensions run in three separate JavaScript contexts:
      - View modes: grid/compact/list
      - Search by URL or page title
      - Filter by image type (PNG, JPEG, WebP, etc.)
+     - Filter by rating (General, Sensitive, Questionable, Explicit, Unrated)
      - Multi-tag filter with AND/OR modes
      - Sort by date, size, dimensions, or URL
      - Group by domain or show duplicates
      - Multi-select with checkboxes
-     - Bulk operations: delete selected, export selected, tag selected
+     - Bulk operations: delete selected, export selected, tag selected, set rating
      - Tag management per image or in bulk
+     - Rating management per image or in bulk
      - Lightbox for full-size viewing
      - Duplicate detection by dimensions + file size
    - Listens for `IMAGE_SAVED` messages to auto-refresh
@@ -180,6 +182,68 @@ interface TagRule {
 - `pixiv` → Matches "Pixiv Art - Illustration" (case-insensitive substring)
 - `^(Twitter|X\.com)` (regex) → Matches page titles starting with "Twitter" or "X.com"
 
+### Rating System
+
+**Data Model**:
+- Ratings stored as `rating?: 'g' | 's' | 'q' | 'e'` on SavedImage
+- Optional field: undefined if no rating applied
+- Values: `g` (General), `s` (Sensitive), `q` (Questionable), `e` (Explicit)
+
+**Tag-to-Rating Conversion**:
+- Special tags `rating:g`, `rating:s`, `rating:q`, `rating:e` automatically convert to rating field
+- Helper function `extractRatingFromTags()`: Finds first rating tag, removes all rating tags from array
+- Conversion happens during:
+  - `saveImage()`: Extracts from auto-tags
+  - `updateImageTags()`: Extracts when tags updated
+  - `addTagsToImages()`: Extracts in bulk tag operations
+  - `removeTagsFromImages()`: Clears rating if rating tag removed
+
+**Storage**:
+- IndexedDB v2: Added `rating` index for filtering performance
+- SQLite schema: Added `rating TEXT` column for export/import compatibility
+- `updateImageRating(id, rating)`: Updates single image rating
+- `updateImagesRating(ids, rating)`: Bulk updates rating
+
+**UI Components**:
+
+1. **Rating Filter** (Toolbar):
+   - Multi-select dropdown (G/S/Q/E/Unrated)
+   - Selected ratings shown as removable pills
+   - OR logic: Shows images with ANY selected rating
+   - Integrates with existing type/tag/search filters
+
+2. **Color-Coded Badges** (Image Cards):
+   - Top-right corner badge on each card
+   - Color scheme: Green (G), Yellow (S), Orange (Q), Red (E), Gray (—) for unrated
+   - Always visible, semi-transparent background
+
+3. **Rating Editor** (Preview Pane):
+   - Radio buttons for single image selection
+   - Five options: General, Sensitive, Questionable, Explicit, Unrated
+   - Updates rating immediately on change, re-renders grid with new badge
+
+4. **Bulk Rating** (Bulk Tag Modal):
+   - "Set Rating" section with radio buttons
+   - Six options: G/S/Q/E/Unrated/No Change
+   - "No Change" default: keeps existing ratings on selected images
+   - Applied alongside bulk tag operations
+
+5. **Danbooru Integration**:
+   - Pre-fills rating from `image.rating` field
+   - Falls back to 'q' (Questionable) if unrated (Danbooru default)
+   - User can change before upload
+
+**Filter State**:
+- `state.ratingFilters`: Set<string> of active rating filters ('g'|'s'|'q'|'e'|'unrated')
+- Filter logic applied after type filter, before tag filter
+- Compatible with all existing filters (cumulative filtering)
+
+**Migration Strategy**:
+- No automatic migration on load (avoids performance cost)
+- Users filter by existing `rating:*` tags manually
+- Use bulk tag operations to convert old tags to new rating field
+- Rating tags automatically cleaned from tags array on conversion
+
 ### Preview Pane
 
 - Right-side collapsible pane showing selected image details
@@ -317,10 +381,12 @@ CREATE TABLE IF NOT EXISTS images (
   savedAt INTEGER NOT NULL,
   tags TEXT,
   isDeleted INTEGER DEFAULT 0,
+  rating TEXT,
   blob BLOB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_savedAt ON images(savedAt);
 CREATE INDEX IF NOT EXISTS idx_pageUrl ON images(pageUrl);
+CREATE INDEX IF NOT EXISTS idx_rating ON images(rating);
 ```
 
 **Export Flow**:
