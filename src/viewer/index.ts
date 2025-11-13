@@ -2609,6 +2609,14 @@ async function openDanbooruUploadModal(imageId: string) {
 
   // Show modal
   danbooruModal.classList.add('active');
+
+  // Reset scroll position after modal is visible
+  requestAnimationFrame(() => {
+    const danbooruBody = document.querySelector('.danbooru-upload-body') as HTMLElement;
+    if (danbooruBody) {
+      danbooruBody.scrollTop = 0;
+    }
+  });
 }
 
 // Upload to Danbooru
