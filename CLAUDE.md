@@ -127,6 +127,12 @@ Chrome extensions run in three separate JavaScript contexts:
 - `updateExcludeTagFilterOptions(images)`: Updates exclude dropdown from filtered results
 - Filters update dynamically after tag modifications
 - **Mutual Exclusivity**: Untagged filter and tag selection auto-clear each other to prevent conflicts
+- **Dynamic Count Scoping** (bi-directional):
+  - Tag counts reflect rating filters: "girl (50)" shows only images matching selected ratings
+  - Rating counts reflect tag filters: "General (5)" shows only images matching selected tags
+  - AND mode shows only compatible tags: After selecting "girl", only shows tags from images that have "girl"
+  - OR mode shows all tags from rating-filtered images
+  - Prevents impossible filter combinations in AND mode
 
 ### Auto-Tagging Rules System
 

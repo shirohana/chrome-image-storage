@@ -85,7 +85,7 @@ function populateTypeFilter() {
   typeFilter.value = state.typeFilter;
 }
 
-function populateRatingFilter() {
+function populateRatingFilter(images: ImageMetadata[] = state.images) {
   const ratingFilter = document.getElementById('rating-filter') as HTMLSelectElement;
 
   const ratingCounts = {
@@ -96,7 +96,7 @@ function populateRatingFilter() {
     unrated: 0
   };
 
-  state.images.forEach(img => {
+  images.forEach(img => {
     if (img.rating) {
       ratingCounts[img.rating as keyof typeof ratingCounts]++;
     } else {
@@ -124,11 +124,11 @@ function populateRatingFilter() {
   });
 }
 
-function populateTagFilter() {
+function populateTagFilter(images: ImageMetadata[] = state.images) {
   const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
   const tagCounts = new Map<string, number>();
 
-  state.images.forEach(img => {
+  images.forEach(img => {
     if (img.tags && img.tags.length > 0) {
       img.tags.forEach(tag => {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
@@ -153,12 +153,12 @@ function populateTagFilter() {
   renderSelectedTags();
 }
 
-function updateTagFilterOptions() {
+function updateTagFilterOptions(images: ImageMetadata[] = state.images) {
   const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
   if (!tagFilter) return;
 
   const tagCounts = new Map<string, number>();
-  state.images.forEach(img => {
+  images.forEach(img => {
     if (img.tags && img.tags.length > 0) {
       img.tags.forEach(tag => {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
@@ -207,7 +207,6 @@ function renderSelectedTags() {
       const tag = btn.getAttribute('data-tag')!;
       state.tagFilters.delete(tag);
 
-      updateTagFilterOptions();
       renderSelectedTags();
       applyFilters();
     });
@@ -328,6 +327,38 @@ function applyFilters() {
     filtered = filtered.filter(img => img.mimeType === state.typeFilter);
   }
 
+  // At this point: filtered by view + type
+  // Compute what rating counts should be (based on tag filters)
+  let ratingCountImages = filtered;
+
+  // Apply tag filter for rating counts
+  if (state.tagFilters.size > 0) {
+    if (state.tagFilterMode === 'union') {
+      ratingCountImages = ratingCountImages.filter(img =>
+        img.tags && img.tags.some(tag => state.tagFilters.has(tag))
+      );
+    } else {
+      ratingCountImages = ratingCountImages.filter(img =>
+        img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
+      );
+    }
+  }
+
+  // Apply exclude tag filter for rating counts
+  if (state.excludedTagFilters.size > 0) {
+    ratingCountImages = ratingCountImages.filter(img =>
+      !img.tags || !img.tags.some(tag => state.excludedTagFilters.has(tag))
+    );
+  }
+
+  // Apply untagged-only filter for rating counts
+  if (state.showUntaggedOnly) {
+    ratingCountImages = ratingCountImages.filter(img => !img.tags || img.tags.length === 0);
+  }
+
+  // Update rating filter counts based on tag-filtered images
+  populateRatingFilter(ratingCountImages);
+
   // Apply rating filter (multi-select with OR logic)
   if (state.ratingFilters.size > 0) {
     filtered = filtered.filter(img => {
@@ -342,6 +373,18 @@ function applyFilters() {
       return false;
     });
   }
+
+  // At this point: filtered by view + type + rating
+  // Update tag filter counts based on rating-filtered images
+  // In AND mode: only show tags from images that have ALL currently selected tags
+  // In OR mode: show tags from all rating-filtered images
+  let tagCountImages = filtered;
+  if (state.tagFilterMode === 'intersection' && state.tagFilters.size > 0) {
+    tagCountImages = tagCountImages.filter(img =>
+      img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
+    );
+  }
+  updateTagFilterOptions(tagCountImages);
 
   // Apply tag filter (multi-tag with union/intersection mode)
   if (state.tagFilters.size > 0) {
@@ -1787,7 +1830,6 @@ tagFilter.addEventListener('change', () => {
     untaggedOnlyCheckbox.checked = false;
 
     state.tagFilters.add(selectedTag);
-    updateTagFilterOptions();
     renderSelectedTags();
     applyFilters();
   }
@@ -1826,7 +1868,6 @@ untaggedOnlyCheckbox.addEventListener('change', () => {
   // Clear tag filters when "Untagged only" is checked (mutually exclusive)
   if (state.showUntaggedOnly) {
     state.tagFilters.clear();
-    updateTagFilterOptions();
     renderSelectedTags();
   }
 
