@@ -1421,8 +1421,18 @@ function updateAllCheckboxes() {
   const allCheckboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
   allCheckboxes.forEach(cb => {
     const cbId = cb.dataset.id!;
-    cb.checked = state.selectedIds.has(cbId);
-    updateImageCard(cbId);
+    const isSelected = state.selectedIds.has(cbId);
+    cb.checked = isSelected;
+
+    // Update card class directly without extra DOM query
+    const card = cb.closest('.image-card');
+    if (card) {
+      if (isSelected) {
+        card.classList.add('selected');
+      } else {
+        card.classList.remove('selected');
+      }
+    }
   });
 }
 
