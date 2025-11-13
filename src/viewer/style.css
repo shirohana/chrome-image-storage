@@ -722,6 +722,42 @@ body.preview-pane-open .container {
   user-select: none;
 }
 
+.lightbox-rating-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.lightbox-rating-selector .rating-radio {
+  color: white;
+}
+
+.lightbox-rating-selector .rating-radio span {
+  color: white;
+}
+
+.metadata-rating-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.metadata-rating-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.rating-text {
+  font-size: 14px;
+  color: white;
+}
+
 .tag-input {
   width: 100%;
   padding: 8px 12px;

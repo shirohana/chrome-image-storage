@@ -1075,6 +1075,19 @@ function updateLightboxMetadata(image: ImageMetadata) {
     ? image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
     : '<span class="no-tags">No tags</span>';
 
+  // Get rating display info
+  const getRatingInfo = (rating?: string) => {
+    switch (rating) {
+      case 'g': return { text: 'General', badge: 'G', color: '#4caf50' };
+      case 's': return { text: 'Sensitive', badge: 'S', color: '#ff9800' };
+      case 'q': return { text: 'Questionable', badge: 'Q', color: '#ff5722' };
+      case 'e': return { text: 'Explicit', badge: 'E', color: '#f44336' };
+      default: return { text: 'Unrated', badge: '—', color: '#9e9e9e' };
+    }
+  };
+
+  const ratingInfo = getRatingInfo(image.rating);
+
   metadata.innerHTML = `
     <h3>Image Details</h3>
     <div class="metadata-row">
@@ -1102,6 +1115,38 @@ function updateLightboxMetadata(image: ImageMetadata) {
         <button class="btn btn-secondary download-btn lightbox-download-btn" data-id="${image.id}">Download</button>
         <button class="btn btn-primary view-page-btn lightbox-view-page-btn" data-id="${image.id}">View Page</button>
         <button class="btn btn-primary view-btn lightbox-view-original-btn" data-id="${image.id}">View Original</button>
+      </div>
+    </div>
+    <div class="metadata-row">
+      <span class="metadata-label">Rating:</span>
+      <div class="metadata-rating-display">
+        <span class="metadata-rating-badge" style="background-color: ${ratingInfo.color}">${ratingInfo.badge}</span>
+        <span class="rating-text">${ratingInfo.text}</span>
+      </div>
+    </div>
+    <div class="metadata-row">
+      <span class="metadata-label">Change Rating:</span>
+      <div class="lightbox-rating-selector">
+        <label class="rating-radio">
+          <input type="radio" name="lightbox-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
+          <span>General</span>
+        </label>
+        <label class="rating-radio">
+          <input type="radio" name="lightbox-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
+          <span>Sensitive</span>
+        </label>
+        <label class="rating-radio">
+          <input type="radio" name="lightbox-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
+          <span>Questionable</span>
+        </label>
+        <label class="rating-radio">
+          <input type="radio" name="lightbox-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
+          <span>Explicit</span>
+        </label>
+        <label class="rating-radio">
+          <input type="radio" name="lightbox-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
+          <span>Unrated</span>
+        </label>
       </div>
     </div>
     <div class="metadata-row">
@@ -1136,6 +1181,29 @@ function updateLightboxMetadata(image: ImageMetadata) {
   if (viewOriginalBtn) {
     viewOriginalBtn.addEventListener('click', () => handleViewOriginal({ target: viewOriginalBtn } as any));
   }
+
+  // Attach rating change listeners
+  const ratingRadios = metadata.querySelectorAll(`input[name="lightbox-rating-${image.id}"]`);
+  ratingRadios.forEach(radio => {
+    radio.addEventListener('change', async (e) => {
+      const target = e.target as HTMLInputElement;
+      const ratingValue = target.value || undefined;
+      const { updateImageRating } = await import('../storage/service');
+      await updateImageRating(image.id, ratingValue as any);
+
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.rating = ratingValue as any;
+      }
+
+      // Update lightbox metadata display
+      updateLightboxMetadata(imageInState || image);
+
+      // Re-render the grid to update badge
+      applyFilters();
+    });
+  });
 
   // Setup tag autocomplete
   const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
