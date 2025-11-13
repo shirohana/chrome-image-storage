@@ -52,6 +52,7 @@ async function saveSettings(settings: { showNotifications: boolean }) {
 async function loadImages() {
   state.images = await getAllImagesMetadata();
   populateTypeFilter();
+  populateRatingFilter();
   populateTagFilter();
   applySorting();
   applyFilters();
@@ -84,25 +85,67 @@ function populateTypeFilter() {
   typeFilter.value = state.typeFilter;
 }
 
+function populateRatingFilter() {
+  const ratingFilter = document.getElementById('rating-filter') as HTMLSelectElement;
+
+  const ratingCounts = {
+    g: 0,
+    s: 0,
+    q: 0,
+    e: 0,
+    unrated: 0
+  };
+
+  state.images.forEach(img => {
+    if (img.rating) {
+      ratingCounts[img.rating as keyof typeof ratingCounts]++;
+    } else {
+      ratingCounts.unrated++;
+    }
+  });
+
+  const ratingLabels: { [key: string]: string } = {
+    'g': 'General',
+    's': 'Sensitive',
+    'q': 'Questionable',
+    'e': 'Explicit',
+    'unrated': 'Unrated'
+  };
+
+  ratingFilter.innerHTML = '<option value="">Filter by rating...</option>';
+
+  const ratings: Array<keyof typeof ratingCounts> = ['g', 's', 'q', 'e', 'unrated'];
+  ratings.forEach(rating => {
+    const option = document.createElement('option');
+    option.value = rating;
+    const count = ratingCounts[rating];
+    option.textContent = `${ratingLabels[rating]} (${count})`;
+    ratingFilter.appendChild(option);
+  });
+}
+
 function populateTagFilter() {
   const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
-  const allTags = new Set<string>();
+  const tagCounts = new Map<string, number>();
 
   state.images.forEach(img => {
     if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => allTags.add(tag));
+      img.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
     }
   });
 
   tagFilter.innerHTML = '<option value="">Select tags...</option>';
 
-  const sortedTags = Array.from(allTags).sort();
+  const sortedTags = Array.from(tagCounts.keys()).sort();
   sortedTags.forEach(tag => {
     // Skip tags that are already selected
     if (!state.tagFilters.has(tag)) {
       const option = document.createElement('option');
       option.value = tag;
-      option.textContent = tag;
+      const count = tagCounts.get(tag) || 0;
+      option.textContent = `${tag} (${count})`;
       tagFilter.appendChild(option);
     }
   });
@@ -114,22 +157,25 @@ function updateTagFilterOptions() {
   const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
   if (!tagFilter) return;
 
-  const allTags = new Set<string>();
+  const tagCounts = new Map<string, number>();
   state.images.forEach(img => {
     if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => allTags.add(tag));
+      img.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
     }
   });
 
   tagFilter.innerHTML = '<option value="">Select tags...</option>';
 
-  const sortedTags = Array.from(allTags).sort();
+  const sortedTags = Array.from(tagCounts.keys()).sort();
   sortedTags.forEach(tag => {
     // Skip tags that are already selected
     if (!state.tagFilters.has(tag)) {
       const option = document.createElement('option');
       option.value = tag;
-      option.textContent = tag;
+      const count = tagCounts.get(tag) || 0;
+      option.textContent = `${tag} (${count})`;
       tagFilter.appendChild(option);
     }
   });
@@ -210,22 +256,25 @@ function updateExcludeTagFilterOptions(images: ImageMetadata[] = state.filteredI
   const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
   if (!excludeTagFilter) return;
 
-  const allTags = new Set<string>();
+  const tagCounts = new Map<string, number>();
   images.forEach(img => {
     if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => allTags.add(tag));
+      img.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
     }
   });
 
   excludeTagFilter.innerHTML = '<option value="">Exclude tags...</option>';
 
-  const sortedTags = Array.from(allTags).sort();
+  const sortedTags = Array.from(tagCounts.keys()).sort();
   sortedTags.forEach(tag => {
     // Skip tags that are already selected for inclusion or exclusion
     if (!state.excludedTagFilters.has(tag) && !state.tagFilters.has(tag)) {
       const option = document.createElement('option');
       option.value = tag;
-      option.textContent = tag;
+      const count = tagCounts.get(tag) || 0;
+      option.textContent = `${tag} (${count})`;
       excludeTagFilter.appendChild(option);
     }
   });
@@ -699,8 +748,14 @@ function updateImageCard(id: string) {
 
 function updateImageCount() {
   const countEl = document.querySelector('.image-count')!;
-  const count = state.images.filter(img => !img.isDeleted).length;
-  countEl.textContent = `${count} image${count !== 1 ? 's' : ''}`;
+  const totalCount = state.images.filter(img => !img.isDeleted).length;
+  const filteredCount = state.filteredImages.length;
+
+  if (filteredCount === totalCount) {
+    countEl.textContent = `${totalCount} image${totalCount !== 1 ? 's' : ''}`;
+  } else {
+    countEl.textContent = `Showing ${filteredCount} of ${totalCount} images`;
+  }
 }
 
 function updateViewBadges() {
