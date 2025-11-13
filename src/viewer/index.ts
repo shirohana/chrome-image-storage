@@ -1322,6 +1322,7 @@ function navigateLightboxByOffset(offset: number) {
     updateAllCheckboxes();
     updateSelectionCount();
     updatePreviewPane();
+    scrollToImage(currentImage.id);
   }
 }
 
@@ -1437,10 +1438,10 @@ function updateAllCheckboxes() {
 }
 
 function scrollToImage(id: string) {
-  const card = document.querySelector(`.image-card[data-id="${id}"]`);
-  if (card) {
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
+  const card = document.querySelector(`.image-card[data-id="${id}"]`) as HTMLElement;
+  if (!card) return;
+
+  card.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
 }
 
 function handleSearch(e: Event) {

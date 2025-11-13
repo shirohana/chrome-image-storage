@@ -225,6 +225,8 @@ h1 {
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+  scroll-margin-top: 120px;
+  scroll-margin-bottom: 40px;
 }
 
 .image-card:hover {
