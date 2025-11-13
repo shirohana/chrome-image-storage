@@ -1823,6 +1823,14 @@ if (savedPreviewPaneVisible === 'true') {
 document.querySelector('.lightbox-close')!.addEventListener('click', closeLightbox);
 document.querySelector('.lightbox-overlay')!.addEventListener('click', closeLightbox);
 
+// Allow clicking on empty space in lightbox content to close
+const lightboxContent = document.querySelector('.lightbox-content')!;
+lightboxContent.addEventListener('click', (e) => {
+  if (e.target === lightboxContent) {
+    closeLightbox();
+  }
+});
+
 // Keyboard navigation
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   // Don't intercept keyboard events when typing in input fields
