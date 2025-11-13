@@ -26,7 +26,7 @@ Chrome extensions run in three separate JavaScript contexts:
 
 2. **Viewer Page** (`src/viewer/`)
    - Full-page UI with multiple features:
-     - View modes: grid/compact/list
+     - Grid view for browsing images
      - Search by URL or page title
      - Filter by image type (PNG, JPEG, WebP, etc.)
      - Filter by rating (General, Sensitive, Questionable, Explicit, Unrated)
@@ -66,14 +66,13 @@ Chrome extensions run in three separate JavaScript contexts:
 1. **CSS Specificity**: Use `grid.style.display = ''` to clear inline styles, let CSS classes control display. Avoid `!important`.
 2. **Service Worker APIs**: Use `createImageBitmap()` for dimensions, not `new Image()`
 3. **Icon Paths**: Full paths like `src/icons/icon-48.png` in notifications
-4. **View Modes**: CSS classes `.image-grid`, `.image-grid.compact`, `.image-grid.list`
-5. **Event Listeners**: Extract `attachEventListeners()` function for code reuse between grouped and ungrouped rendering
-6. **Grouping**: Use `Map<string, SavedImage[]>` for domain grouping, render sections with headers
+4. **Event Listeners**: Extract `attachEventListeners()` function for code reuse between grouped and ungrouped rendering
+5. **Grouping**: Use `Map<string, SavedImage[]>` for domain grouping, render sections with headers
    - Duplicate detection: Groups images by `${width}×${height}-${fileSize}`, shows only groups with 2+ images
    - Simple matching (no hash computation) for performance
-7. **Selection State**: Use `Set<string>` to track selected image IDs, persists across re-renders
-8. **Export Filenames**: Use image IDs instead of sequential numbers for easier metadata matching
-9. **Anti-Hotlinking Bypass**: Two-tier approach:
+6. **Selection State**: Use `Set<string>` to track selected image IDs, persists across re-renders
+7. **Export Filenames**: Use image IDs instead of sequential numbers for easier metadata matching
+8. **Anti-Hotlinking Bypass**: Two-tier approach:
    - Try canvas capture from DOM first (fast, no network request, works for same-origin)
    - Fall back to `declarativeNetRequest` API to inject Referer header (bypasses 403 errors from sites like Pixiv)
    - Canvas `toBlob()` fails on tainted (cross-origin) images, unlike what docs suggest
@@ -324,7 +323,6 @@ Single event listener on `#image-grid` for all image cards:
 ### LocalStorage Persistence
 
 User preferences saved across sessions:
-- `viewMode`: 'grid' | 'compact' | 'list'
 - `sortBy`: e.g., 'savedAt-desc', 'fileSize-asc'
 - `previewPaneVisible`: 'true' | 'false'
 - **Pattern**: Save immediately on change, load on init

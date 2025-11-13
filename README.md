@@ -9,7 +9,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Local storage**: Images are saved as blobs in IndexedDB (not just URLs)
 - **Metadata tracking**: Saves image URL, source page, dimensions, file size, and type
 - **Image viewer**: Click the extension icon to view all saved images
-- **View modes**: Grid, compact, and list views for browsing images
+- **Grid view**: Browse images in a responsive grid layout
 - **Native context menu**: Extension adds menu item alongside browser's default menu
 
 ### Organization & Filtering
@@ -110,8 +110,6 @@ This will watch for changes and rebuild automatically.
 3. View all your saved images with their metadata
 
 ### Managing Images
-
-**View Modes**: Switch between grid, compact, and list views using the buttons in the toolbar.
 
 **Search**: Use the search bar to filter images by image URL, source page URL, or page title.
 

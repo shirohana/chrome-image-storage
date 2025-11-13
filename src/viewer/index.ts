@@ -2,12 +2,6 @@ import { getAllImages, getAllImagesMetadata, getImageBlob, deleteImage, deleteAl
 import type { SavedImage, ImageMetadata } from '../types';
 
 // Constants
-const ViewMode = {
-  GRID: 'grid',
-  COMPACT: 'compact',
-  LIST: 'list',
-} as const;
-
 const SortField = {
   SAVED_AT: 'savedAt',
   FILE_SIZE: 'fileSize',
@@ -1341,14 +1335,6 @@ function navigatePrevious() {
 
 function getGridColumns(): number {
   const grid = document.getElementById('image-grid')!;
-  const viewMode = grid.className;
-
-  // In list view, treat as 1 column (vertical navigation)
-  if (viewMode.includes('list')) {
-    return 1;
-  }
-
-  // Get computed style to find grid column count
   const gridStyle = window.getComputedStyle(grid);
   const gridTemplateColumns = gridStyle.gridTemplateColumns;
 
@@ -1358,11 +1344,8 @@ function getGridColumns(): number {
     return columns;
   }
 
-  // Fallback: estimate based on view mode
-  if (viewMode.includes('compact')) {
-    return 6; // Approximate for compact view
-  }
-  return 4; // Approximate for normal grid view
+  // Fallback estimate for grid view
+  return 4;
 }
 
 function navigateGridByOffset(offset: number) {
@@ -1637,37 +1620,6 @@ chrome.runtime.onMessage.addListener((message) => {
     loadImages();
   }
 });
-
-// View mode switching
-const grid = document.getElementById('image-grid')!;
-const viewModeBtns = document.querySelectorAll('.view-mode-btn');
-
-function setViewMode(mode: 'grid' | 'compact' | 'list') {
-  if (mode === 'grid') {
-    grid.className = 'image-grid';
-  } else {
-    grid.className = `image-grid ${mode}`;
-  }
-
-  viewModeBtns.forEach(btn => {
-    btn.classList.toggle('active', btn.getAttribute('data-view') === mode);
-  });
-
-  localStorage.setItem('viewMode', mode);
-}
-
-viewModeBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const mode = btn.getAttribute('data-view') as 'grid' | 'compact' | 'list';
-    setViewMode(mode);
-  });
-});
-
-// Load saved view mode
-const savedViewMode = localStorage.getItem('viewMode') as 'grid' | 'compact' | 'list' | null;
-if (savedViewMode) {
-  setViewMode(savedViewMode);
-}
 
 // Type filter
 const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;

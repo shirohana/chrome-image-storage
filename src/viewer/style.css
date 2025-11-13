@@ -194,34 +194,6 @@ h1 {
   border-color: #007bff;
 }
 
-.view-mode-toggle {
-  display: flex;
-  gap: 4px;
-  background: white;
-  border-radius: 6px;
-  padding: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.view-mode-btn {
-  padding: 8px 12px;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 4px;
-  font-size: 16px;
-  transition: background 0.2s;
-}
-
-.view-mode-btn:hover {
-  background: #f0f0f0;
-}
-
-.view-mode-btn.active {
-  background: #007bff;
-  color: white;
-}
-
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -241,75 +213,6 @@ h1 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
-}
-
-.image-grid.compact {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 12px;
-}
-
-.image-grid.compact .image-preview {
-  height: 120px;
-}
-
-.image-grid.compact .image-info {
-  padding: 10px;
-}
-
-.image-grid.compact .image-meta {
-  font-size: 11px;
-}
-
-.image-grid.compact .image-actions button {
-  padding: 6px;
-  font-size: 11px;
-}
-
-.image-grid.list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.image-grid.list .image-card {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-}
-
-.image-grid.list .image-preview {
-  width: 120px;
-  height: 80px;
-  flex-shrink: 0;
-}
-
-.image-grid.list .image-info {
-  display: flex;
-  flex: 1;
-  gap: 20px;
-  align-items: center;
-  padding: 15px 20px;
-}
-
-.image-grid.list .image-meta {
-  flex: 1;
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.image-grid.list .image-meta div {
-  margin-bottom: 0;
-}
-
-.image-grid.list .image-url {
-  flex: 1;
-  min-width: 200px;
-  margin-bottom: 0;
-}
-
-.image-grid.list .image-actions {
-  flex-shrink: 0;
 }
 
 .image-card {
