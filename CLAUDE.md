@@ -31,6 +31,7 @@ Chrome extensions run in three separate JavaScript contexts:
      - Filter by image type (PNG, JPEG, WebP, etc.)
      - Filter by rating (General, Sensitive, Questionable, Explicit, Unrated)
      - Multi-tag filter with AND/OR modes
+     - Clickable tags on image cards for instant filtering
      - Sort by date, size, dimensions, or URL
      - Group by domain or show duplicates
      - Multi-select with checkboxes
@@ -110,6 +111,12 @@ Chrome extensions run in three separate JavaScript contexts:
 **Tag Filtering**:
 - Multi-tag dropdown with autocomplete
 - Selected tags shown as removable pills below dropdown
+- **Clickable Tags on Image Cards**: Click tags on image cards to toggle them in/out of filter
+  - Active tags highlighted in green with glow effect
+  - Click to add, click again to remove
+  - Auto-switches to AND mode when clicking second tag while in OR mode
+  - Only applies to tags in image cards (not lightbox/preview)
+  - Event handler in `imageGrid.addEventListener('click')` checks for `.image-tags .tag`
 - **Union Mode (OR)**: Shows images with ANY selected tag
 - **Intersection Mode (AND)**: Shows images with ALL selected tags
 - Toggle button switches between modes

@@ -669,6 +669,33 @@ body.preview-pane-open .container {
   font-weight: 500;
   margin-right: 6px;
   margin-bottom: 4px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+/* Clickable tags in image cards */
+.image-tags .tag {
+  cursor: pointer;
+}
+
+.image-tags .tag:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.image-tags .tag:active {
+  transform: translateY(0);
+}
+
+.image-tags .tag-active {
+  background: #28a745;
+  font-weight: 600;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.3);
+}
+
+.image-tags .tag-active:hover {
+  background: #218838;
 }
 
 .image-tags {

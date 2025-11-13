@@ -538,7 +538,10 @@ function createImageCardHTML(image: ImageMetadata): string {
 
   const tagsHTML = image.tags && image.tags.length > 0
     ? `<div class="image-tags">
-        ${image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+        ${image.tags.map(tag => {
+          const isActive = state.tagFilters.has(tag);
+          return `<span class="tag${isActive ? ' tag-active' : ''}" data-tag="${tag}">${tag}</span>`;
+        }).join('')}
       </div>`
     : '';
 
@@ -1662,18 +1665,51 @@ imageGrid.addEventListener('click', (e: Event) => {
     return;
   }
 
-  // 2. Image preview (opens lightbox)
+  // 2. Tag clicks (toggle tag filter) - only for tags in image cards
+  if (target.matches('.image-tags .tag')) {
+    const tag = target.getAttribute('data-tag');
+    if (tag) {
+      e.stopPropagation(); // Prevent card selection
+
+      // Toggle tag in filter
+      if (state.tagFilters.has(tag)) {
+        state.tagFilters.delete(tag);
+      } else {
+        // Switch to AND mode if in OR mode and at least one tag is already selected
+        if (state.tagFilterMode === 'union' && state.tagFilters.size > 0) {
+          state.tagFilterMode = 'intersection';
+          const tagFilterModeBtn = document.getElementById('tag-filter-mode')!;
+          tagFilterModeBtn.textContent = 'AND';
+        }
+
+        state.tagFilters.add(tag);
+
+        // Clear "Untagged only" when selecting a tag (mutually exclusive)
+        if (state.showUntaggedOnly) {
+          state.showUntaggedOnly = false;
+          const untaggedOnlyCheckbox = document.getElementById('untagged-only-checkbox') as HTMLInputElement;
+          untaggedOnlyCheckbox.checked = false;
+        }
+      }
+
+      renderSelectedTags();
+      applyFilters();
+    }
+    return;
+  }
+
+  // 3. Image preview (opens lightbox)
   if (target.matches('.image-preview')) {
     handleImageClick(e);
     return;
   }
 
-  // 3. Checkbox (let the change event handle it)
+  // 4. Checkbox (let the change event handle it)
   if (target.matches('.image-checkbox')) {
     return;
   }
 
-  // 4. Anywhere else on the card → handle selection based on modifier keys
+  // 5. Anywhere else on the card → handle selection based on modifier keys
   const card = target.closest('.image-card');
   if (card) {
     const id = card.getAttribute('data-id')!;

@@ -24,6 +24,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Individual tagging**: Add tags to images with autocomplete
 - **Bulk tag operations**: Add or remove tags from multiple images at once
 - **Auto-tagging rules**: Automatically apply tags to new images based on page title patterns
+- **Clickable tags**: Click tags on image cards to instantly add/remove from filters
 - **Tag filtering**: Filter by multiple tags with Union (OR) or Intersection (AND) modes
 - **Exclude tags**: Filter out images with specific tags
 - **Untagged filter**: Show only images without tags
@@ -144,10 +145,12 @@ This will watch for changes and rebuild automatically.
 4. Click "Save" to apply changes
 
 **Filter by tags**:
-- Click the tag filter dropdown and select tags
+- **Click tags on image cards** to quickly add them to filters (click again to remove)
+- Click the tag filter dropdown and select tags manually
 - Toggle between Union (OR) and Intersection (AND) modes
 - Use "Exclude" dropdown to filter out specific tags
 - Check "Untagged Only" to show only images without tags
+- Active filtered tags are highlighted in green on image cards
 
 **Auto-tagging rules**:
 1. Open Settings (⚙ button in header)
