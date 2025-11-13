@@ -38,11 +38,12 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 
 ### Selection & Bulk Operations
 - **Multi-select**: Select multiple images with checkboxes
+- **Select all**: Quickly select or deselect all visible images
 - **Keyboard navigation**: Arrow keys to navigate, Shift+Arrow for range selection
-- **Bulk delete**: Delete multiple images at once
+- **Bulk delete**: Delete selected images
 - **Bulk export**: Export selected images as a ZIP
-- **Bulk tagging**: Add or remove tags from multiple images
-- **Bulk rating**: Set content rating for multiple images
+- **Bulk tagging**: Add or remove tags from selected images
+- **Bulk rating**: Set content rating for selected images
 
 ### Trash & Restore
 - **Soft delete**: Deleted images move to trash instead of permanent deletion
@@ -214,7 +215,10 @@ Images can have content ratings to help organize and filter them:
    - **Shift + Arrow keys**: Extend selection range
    - **Cmd/Ctrl + Click**: Toggle individual item selection
    - **Shift + Click**: Select range from last selected item
-4. Bulk actions: Delete Selected, Export Selected, Tag Selected
+4. Bulk actions available:
+   - **Tag Selected**: Add/remove tags or set rating for selected images
+   - **Delete Selected**: Move selected images to trash
+   - **Dump Selected**: Export selected images as a ZIP file
 
 ### Trash & Restore
 
@@ -244,8 +248,8 @@ Images are soft-deleted (moved to trash) instead of permanent deletion:
 **Export options**:
 1. Open the image viewer
 2. Choose export format:
-   - **Export as ZIP**: All or selected images with metadata.json
-   - **Export Database**: SQLite database backup for all images
+   - **Dump Selected**: Export selected images as ZIP with metadata.json (or use Select All first)
+   - **Export Database**: SQLite database backup for all images (Settings panel)
 3. Download the exported file
 
 **Import from backup**:

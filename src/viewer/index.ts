@@ -1719,13 +1719,7 @@ imageGrid.addEventListener('change', (e: Event) => {
   }
 });
 
-// Dump buttons (export selected images as ZIP)
-document.getElementById('dump-all-btn')!.addEventListener('click', async () => {
-  const { dumpImages } = await import('./dump');
-  const allImages = await getAllImages();
-  await dumpImages(allImages);
-});
-
+// Dump button (export selected images as ZIP)
 document.getElementById('dump-selected-btn')!.addEventListener('click', async () => {
   if (state.selectedIds.size === 0) return;
 
@@ -1778,16 +1772,6 @@ document.getElementById('delete-selected-btn')!.addEventListener('click', async 
   }
   state.selectedIds.clear();
   updateSelectionCount();
-  await loadImages();
-  chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
-});
-
-document.getElementById('delete-all-btn')!.addEventListener('click', async () => {
-  const count = state.filteredImages.length;
-  if (count === 0) return;
-
-  await deleteAllImages();
-  state.selectedIds.clear();
   await loadImages();
   chrome.runtime.sendMessage({ type: 'UPDATE_BADGE' }).catch(() => {});
 });
@@ -2036,8 +2020,6 @@ showNotificationsToggle.addEventListener('change', async () => {
 const allImagesBtn = document.getElementById('all-images-btn')!;
 const trashBtn = document.getElementById('trash-btn')!;
 const emptyTrashBtn = document.getElementById('empty-trash-btn')!;
-const deleteAllBtn = document.getElementById('delete-all-btn')!;
-const dumpAllBtn = document.getElementById('dump-all-btn')!;
 const restoreSelectedBtn = document.getElementById('restore-selected-btn')!;
 const deleteSelectedBtn = document.getElementById('delete-selected-btn')!;
 const dumpSelectedBtn = document.getElementById('dump-selected-btn')!;
@@ -2054,15 +2036,11 @@ function switchView(view: 'all' | 'trash') {
   if (view === 'trash') {
     emptyTrashBtn.style.display = 'inline-block';
     restoreSelectedBtn.style.display = 'inline-block';
-    deleteAllBtn.style.display = 'none';
-    dumpAllBtn.style.display = 'none';
     deleteSelectedBtn.style.display = 'none';
     dumpSelectedBtn.style.display = 'none';
   } else {
     emptyTrashBtn.style.display = 'none';
     restoreSelectedBtn.style.display = 'none';
-    deleteAllBtn.style.display = 'inline-block';
-    dumpAllBtn.style.display = 'inline-block';
     deleteSelectedBtn.style.display = 'inline-block';
     dumpSelectedBtn.style.display = 'inline-block';
   }
