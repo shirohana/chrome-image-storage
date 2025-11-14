@@ -1,5 +1,6 @@
 import initSqlJs, { Database } from 'sql.js';
 import type { SavedImage } from '../types';
+import { getImageBlob } from './service';
 
 // Schema matches IndexedDB structure
 const SCHEMA = `
@@ -44,43 +45,77 @@ export interface ImportAnalysis {
   db: Database; // Keep database open for blob fetching during review
 }
 
-export async function exportDatabase(images: SavedImage[]): Promise<Blob> {
+export async function exportDatabase(
+  imagesMetadata: Omit<SavedImage, 'blob'>[],
+  onProgress?: (current: number, total: number) => void
+): Promise<Blob[]> {
   const SQL = await initSqlJs({
     locateFile: file => `/sql-wasm.wasm`
   });
 
-  const db = new SQL.Database();
-  db.run(SCHEMA);
+  // Split into multiple database files to avoid memory allocation errors
+  // Each chunk contains max 200 images (~500MB-1GB per file)
+  const IMAGES_PER_FILE = 200;
+  const chunks: Blob[] = [];
+  const totalImages = imagesMetadata.length;
 
-  const stmt = db.prepare(`
-    INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
+  for (let fileIndex = 0; fileIndex < Math.ceil(totalImages / IMAGES_PER_FILE); fileIndex++) {
+    const db = new SQL.Database();
+    db.run(SCHEMA);
 
-  for (const image of images) {
-    const blobArrayBuffer = await image.blob.arrayBuffer();
-    stmt.run([
-      image.id,
-      image.imageUrl,
-      image.pageUrl,
-      image.pageTitle || null,
-      image.mimeType,
-      image.fileSize,
-      image.width,
-      image.height,
-      image.savedAt,
-      image.tags ? JSON.stringify(image.tags) : null,
-      image.isDeleted ? 1 : 0,
-      image.rating || null,
-      new Uint8Array(blobArrayBuffer)
-    ]);
+    const stmt = db.prepare(`
+      INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const startIdx = fileIndex * IMAGES_PER_FILE;
+    const endIdx = Math.min(startIdx + IMAGES_PER_FILE, totalImages);
+    const chunkMetadata = imagesMetadata.slice(startIdx, endIdx);
+
+    // Process images in smaller batches for blob loading
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < chunkMetadata.length; i += BATCH_SIZE) {
+      const batch = chunkMetadata.slice(i, i + BATCH_SIZE);
+
+      for (const metadata of batch) {
+        // Load blob on-demand for each image
+        const blob = await getImageBlob(metadata.id);
+        if (!blob) {
+          console.warn(`Skipping image ${metadata.id}: blob not found`);
+          continue;
+        }
+
+        const blobArrayBuffer = await blob.arrayBuffer();
+        stmt.run([
+          metadata.id,
+          metadata.imageUrl,
+          metadata.pageUrl,
+          metadata.pageTitle || null,
+          metadata.mimeType,
+          metadata.fileSize,
+          metadata.width,
+          metadata.height,
+          metadata.savedAt,
+          metadata.tags ? JSON.stringify(metadata.tags) : null,
+          metadata.isDeleted ? 1 : 0,
+          metadata.rating || null,
+          new Uint8Array(blobArrayBuffer)
+        ]);
+      }
+    }
+
+    stmt.free();
+
+    const data = db.export();
+    db.close();
+
+    chunks.push(new Blob([data], { type: 'application/x-sqlite3' }));
+
+    if (onProgress) {
+      onProgress(endIdx, totalImages);
+    }
   }
 
-  stmt.free();
-
-  const data = db.export();
-  db.close();
-
-  return new Blob([data], { type: 'application/x-sqlite3' });
+  return chunks;
 }
 
 export async function analyzeImport(file: File, existingImages: SavedImage[]): Promise<ImportAnalysis> {

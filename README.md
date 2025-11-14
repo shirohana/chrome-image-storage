@@ -60,8 +60,11 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 
 ### Import & Export
 - **ZIP export**: Export all or selected images as a ZIP with metadata.json
-- **SQLite export**: Export database as SQLite format for backups
-- **SQLite import**: Import from SQLite backups with conflict resolution
+- **SQLite export**: Export database as SQLite format for backups with folder picker
+- **Progress indicator**: Visual progress modal shows export status in real-time
+- **Multi-file export**: Automatically splits large datasets into multiple files (200 images per file)
+- **Memory efficient**: Batched processing prevents memory allocation errors with thousands of images
+- **SQLite import**: Import from SQLite backups with multi-file selection support
 - **Conflict resolution**: Choose to skip, override, or review conflicts individually
 
 ### Danbooru Integration
@@ -253,16 +256,30 @@ Images are soft-deleted (moved to trash) instead of permanent deletion:
 2. Choose export format:
    - **Dump Selected**: Export selected images as ZIP with metadata.json (or use Select All first)
    - **Export Database**: SQLite database backup for all images (Settings panel)
-3. Download the exported file
+
+**Export Database (SQLite backup)**:
+1. Click "Export Database" in Settings
+2. Browser shows folder picker - choose where to save backup
+3. Progress modal shows export status with visual progress bar
+4. Extension creates organized backup folder with timestamp:
+   ```
+   image-storage-backup-2025-11-15-1731567890123/
+   ├── manifest.json
+   ├── database.db (if <200 images)
+   └── database-part1of11.db, part2of11.db, ... (if >200 images)
+   ```
+5. **Large datasets**: Automatically splits into multiple files (200 images per file) to avoid memory issues
+6. **Memory efficient**: Uses batched processing to handle thousands of large images
 
 **Import from backup**:
 1. Click "Import" button
-2. Select a SQLite database file
-3. Choose conflict resolution strategy:
+2. **Multi-file support**: Select one or multiple SQLite database files (Ctrl/Cmd + Click or Shift + Click)
+3. If importing multiple files from a backup, select all parts at once
+4. Choose conflict resolution strategy:
    - **Skip conflicts**: Keep existing images, import only new ones
    - **Override conflicts**: Replace existing images with imported versions
    - **Review conflicts**: Review each conflict individually with side-by-side comparison
-4. Click "Import" to complete
+5. Click "Import" to complete - all selected files are imported sequentially
 
 ### Danbooru Integration
 

@@ -401,19 +401,60 @@ CREATE INDEX IF NOT EXISTS idx_rating ON images(rating);
 ```
 
 **Export Flow**:
-- `exportDatabase(images: SavedImage[]): Promise<Blob>`
-- Creates SQLite database with schema
-- Inserts all images with blobs as Uint8Array
+- `exportDatabase(imagesMetadata: Omit<SavedImage, 'blob'>[], onProgress?): Promise<Blob[]>`
+- **Folder-based export**: Uses File System Access API to write directly to user-selected folder
+- **Multi-file export**: Splits into multiple SQLite files (200 images per file) to avoid memory allocation errors
+- **Batched blob loading**: Loads 50 blobs at a time from IndexedDB
+- Creates SQLite database with schema for each file
+- Inserts images with blobs as Uint8Array
 - Tags serialized as JSON string
-- Returns SQLite file as blob
+- Returns array of SQLite file blobs
+- **Memory efficient**: Never holds all blobs or full database in memory (critical for large datasets)
 
-**Import Flow** (3 strategies):
+**Backup Structure**:
+```
+image-storage-backup-2025-11-15-123456789/
+├── manifest.json                      (metadata: date, count, version)
+├── database.db                        (single file if <200 images)
+└── database-part1of11.db, part2of11.db, ... (multiple files if >200 images)
+```
+
+**User Flow**:
+1. Click "Export Database" button
+2. Browser shows folder picker dialog
+3. User selects destination folder
+4. **Progress modal appears**: Shows visual progress bar with status updates
+   - "Preparing export..." (initial)
+   - "Exporting images... X / Y images" (with percentage bar)
+   - "Writing database-partN.db..." (file writing)
+   - "Writing manifest..." (final step)
+5. Extension creates timestamped backup folder automatically
+6. Writes all database files + manifest to backup folder
+7. Progress modal closes, success alert shows
+8. Each file is independently importable
+
+**UI Components**:
+- Export progress modal (`#export-progress-modal`): Real-time progress indicator
+  - Progress bar with green gradient animation
+  - Status text showing current operation
+  - Detail text showing file/image counts
+  - Auto-closes on completion or error
+
+**Import Flow** (3 strategies with multi-file support):
+
+**Multi-File Selection**:
+- Import dialog supports `multiple` file selection
+- Select all backup parts at once (Ctrl/Cmd + Click or Shift + Click in file picker)
+- All files analyzed together: aggregates totals and conflicts
+- Import processed sequentially across all files
+- Single confirmation/resolution applies to entire set
 
 1. **Analyze Phase**:
    - `analyzeImport(file: File, existingImages: SavedImage[]): Promise<ImportAnalysis>`
    - Reads SQLite file without loading blobs (metadata only)
    - Compares IDs with existing images
    - Returns analysis: `{ totalCount, newCount, conflictCount, conflicts[], db }`
+   - **Multi-file**: Analyzes each file separately, aggregates results
    - **Important**: Keeps database open for blob fetching during review
 
 2. **Conflict Resolution**:
