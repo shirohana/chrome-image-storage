@@ -154,7 +154,10 @@ export async function updateImageTags(id: string, tags: string[]): Promise<void>
     // Extract rating from tags and get cleaned tags
     const { rating, cleanedTags } = extractRatingFromTags(tags);
     image.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
-    image.rating = rating;
+    // Only update rating if a rating tag was found
+    if (rating !== undefined) {
+      image.rating = rating;
+    }
     await imageDB.update(image);
   }
 }
@@ -168,7 +171,10 @@ export async function addTagsToImages(imageIds: string[], tagsToAdd: string[]): 
       // Extract rating from combined tags and get cleaned tags
       const { rating, cleanedTags } = extractRatingFromTags(uniqueTags);
       image.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
-      image.rating = rating;
+      // Only update rating if a rating tag was found
+      if (rating !== undefined) {
+        image.rating = rating;
+      }
       await imageDB.update(image);
     }
   }
