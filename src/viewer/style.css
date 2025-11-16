@@ -325,10 +325,6 @@ h1 {
   color: #333;
 }
 
-.rating-filter-pill:hover {
-  transform: scale(1.05);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-}
 
 .rating-filter-pill[data-rating="g"] {
   border-color: #28a745;
@@ -337,7 +333,6 @@ h1 {
 .rating-filter-pill[data-rating="g"].active {
   background-color: #28a745;
   color: white;
-  box-shadow: 0 0 12px rgba(40, 167, 69, 0.4);
 }
 
 .rating-filter-pill[data-rating="s"] {
@@ -347,7 +342,6 @@ h1 {
 .rating-filter-pill[data-rating="s"].active {
   background-color: #ffc107;
   color: #333;
-  box-shadow: 0 0 12px rgba(255, 193, 7, 0.4);
 }
 
 .rating-filter-pill[data-rating="q"] {
@@ -357,7 +351,6 @@ h1 {
 .rating-filter-pill[data-rating="q"].active {
   background-color: #fd7e14;
   color: white;
-  box-shadow: 0 0 12px rgba(253, 126, 20, 0.4);
 }
 
 .rating-filter-pill[data-rating="e"] {
@@ -367,7 +360,6 @@ h1 {
 .rating-filter-pill[data-rating="e"].active {
   background-color: #dc3545;
   color: white;
-  box-shadow: 0 0 12px rgba(220, 53, 69, 0.4);
 }
 
 .rating-filter-pill[data-rating="unrated"] {
@@ -377,7 +369,6 @@ h1 {
 .rating-filter-pill[data-rating="unrated"].active {
   background-color: #6c757d;
   color: white;
-  box-shadow: 0 0 12px rgba(108, 117, 125, 0.4);
 }
 
 .tag-filter-section {
@@ -865,12 +856,11 @@ body.preview-pane-open .container {
   border-radius: 6px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: box-shadow 0.2s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .preview-thumbnail:hover {
-  transform: scale(1.05);
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
@@ -902,13 +892,8 @@ body.preview-pane-open .container {
 
 .image-tags .tag:hover {
   background: #0056b3;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.image-tags .tag:active {
-  transform: translateY(0);
-}
 
 .image-tags .tag-active {
   background: #28a745;
