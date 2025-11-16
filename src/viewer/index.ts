@@ -312,6 +312,74 @@ function renderExcludedTags() {
   });
 }
 
+// Parse tagcount metatag from search query
+// Supports: tagcount:2 (exact), tagcount:1,3 (list), tagcount:>5 (gt), tagcount:<3 (lt), tagcount:1..10 (range)
+interface TagCountFilter {
+  operator: '=' | '>' | '<' | '>=' | '<=' | 'range' | 'list';
+  value?: number;
+  values?: number[];
+  min?: number;
+  max?: number;
+}
+
+interface ParsedSearch {
+  terms: string;
+  tagCount: TagCountFilter | null;
+}
+
+function parseSearchQuery(query: string): ParsedSearch {
+  // Try to match tagcount patterns in order of specificity
+  // 1. List: tagcount:1,3,5
+  const listRegex = /tagcount:(\d+(?:,\d+)+)/i;
+  const listMatch = query.match(listRegex);
+
+  if (listMatch) {
+    const values = listMatch[1].split(',').map(v => parseInt(v.trim(), 10));
+    const terms = query.replace(listRegex, '').trim();
+    return {
+      terms,
+      tagCount: { operator: 'list', values }
+    };
+  }
+
+  // 2. Range or comparison operators
+  const tagCountRegex = /tagcount:(>=|<=|>|<|)(\d+)(\.\.(\d+))?/i;
+  const match = query.match(tagCountRegex);
+
+  let tagCount: TagCountFilter | null = null;
+
+  if (match) {
+    const operator = match[1];
+    const firstNum = parseInt(match[2], 10);
+    const secondNum = match[4] ? parseInt(match[4], 10) : undefined;
+
+    if (secondNum !== undefined) {
+      // Range: tagcount:1..10
+      tagCount = {
+        operator: 'range',
+        min: Math.min(firstNum, secondNum),
+        max: Math.max(firstNum, secondNum),
+      };
+    } else if (operator === '>') {
+      tagCount = { operator: '>', value: firstNum };
+    } else if (operator === '<') {
+      tagCount = { operator: '<', value: firstNum };
+    } else if (operator === '>=') {
+      tagCount = { operator: '>=', value: firstNum };
+    } else if (operator === '<=') {
+      tagCount = { operator: '<=', value: firstNum };
+    } else {
+      // Exact: tagcount:2
+      tagCount = { operator: '=', value: firstNum };
+    }
+  }
+
+  // Remove tagcount: from query
+  const terms = query.replace(tagCountRegex, '').trim();
+
+  return { terms, tagCount };
+}
+
 function applyFilters() {
   let filtered = state.images;
 
@@ -417,15 +485,46 @@ function applyFilters() {
     filtered = filtered.filter(img => !img.tags || img.tags.length === 0);
   }
 
-  // Apply search filter
+  // Apply search filter (with tagcount metatag support)
   const searchInput = document.getElementById('search-input') as HTMLInputElement;
-  const query = searchInput.value.toLowerCase();
+  const query = searchInput.value;
   if (query) {
-    filtered = filtered.filter(img =>
-      img.imageUrl.toLowerCase().includes(query) ||
-      img.pageUrl.toLowerCase().includes(query) ||
-      (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
-    );
+    const parsed = parseSearchQuery(query);
+
+    // Apply text search to URL/pageTitle
+    if (parsed.terms) {
+      const lowerTerms = parsed.terms.toLowerCase();
+      filtered = filtered.filter(img =>
+        img.imageUrl.toLowerCase().includes(lowerTerms) ||
+        img.pageUrl.toLowerCase().includes(lowerTerms) ||
+        (img.pageTitle && img.pageTitle.toLowerCase().includes(lowerTerms))
+      );
+    }
+
+    // Apply tag count filter
+    if (parsed.tagCount) {
+      filtered = filtered.filter(img => {
+        const tagCount = img.tags?.length ?? 0;
+        const filter = parsed.tagCount!;
+
+        if (filter.operator === 'list') {
+          return filter.values!.includes(tagCount);
+        } else if (filter.operator === 'range') {
+          return tagCount >= filter.min! && tagCount <= filter.max!;
+        } else if (filter.operator === '=') {
+          return tagCount === filter.value!;
+        } else if (filter.operator === '>') {
+          return tagCount > filter.value!;
+        } else if (filter.operator === '<') {
+          return tagCount < filter.value!;
+        } else if (filter.operator === '>=') {
+          return tagCount >= filter.value!;
+        } else if (filter.operator === '<=') {
+          return tagCount <= filter.value!;
+        }
+        return true;
+      });
+    }
   }
 
   // Store filtered images for select all

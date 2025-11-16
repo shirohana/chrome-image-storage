@@ -14,6 +14,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 
 ### Organization & Filtering
 - **Search**: Filter images by image URL, page URL, or page title
+- **Tag count filter**: Filter by number of tags using Danbooru-style syntax (tagcount:2, tagcount:1,3, tagcount:>5, etc.)
 - **Type filter**: Filter by image type (PNG, JPEG, WebP, GIF, SVG)
 - **Rating filter**: Filter by content rating (General, Sensitive, Questionable, Explicit, Unrated)
 - **Sorting**: Sort by date, file size, dimensions, or URL
@@ -117,6 +118,16 @@ This will watch for changes and rebuild automatically.
 ### Managing Images
 
 **Search**: Use the search bar to filter images by image URL, source page URL, or page title.
+
+**Tag Count Filter**: Use Danbooru-style syntax in the search bar to filter by number of tags:
+- `tagcount:2` - Exactly 2 tags
+- `tagcount:1,3,5` - 1, 3, or 5 tags (list)
+- `tagcount:>5` - More than 5 tags
+- `tagcount:<3` - Less than 3 tags
+- `tagcount:>=2` - 2 or more tags
+- `tagcount:<=10` - 10 or fewer tags
+- `tagcount:1..10` - Between 1-10 tags (range)
+- Combine with text search: `pixiv tagcount:2,4` - Find Pixiv images with 2 or 4 tags
 
 **Filter by Type**: Use the type dropdown to filter by image format (PNG, JPEG, WebP, GIF, SVG).
 

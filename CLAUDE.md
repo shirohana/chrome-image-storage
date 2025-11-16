@@ -28,6 +28,7 @@ Chrome extensions run in three separate JavaScript contexts:
    - Full-page UI with multiple features:
      - Grid view for browsing images
      - Search by URL or page title
+     - Tag count filter with Danbooru-style syntax (tagcount:2, tagcount:1,3, tagcount:>5, etc.)
      - Filter by image type (PNG, JPEG, WebP, etc.)
      - Filter by rating (General, Sensitive, Questionable, Explicit, Unrated)
      - Multi-tag filter with AND/OR modes
@@ -255,6 +256,45 @@ interface TagRule {
 - Users filter by existing `rating:*` tags manually
 - Use bulk tag operations to convert old tags to new rating field
 - Rating tags automatically cleaned from tags array on conversion
+
+### Tag Count Filter (Danbooru-style Search)
+
+**Location**: Integrated into search input (`#search-input`)
+
+**Syntax Support**:
+- `tagcount:2` - Exactly 2 tags
+- `tagcount:1,3,5` - List: 1 OR 3 OR 5 tags
+- `tagcount:>5` - More than 5 tags
+- `tagcount:<3` - Less than 3 tags
+- `tagcount:>=2` - 2 or more tags
+- `tagcount:<=10` - 10 or fewer tags
+- `tagcount:1..10` - Range: 1 to 10 tags (inclusive)
+
+**Implementation**:
+- `parseSearchQuery(query)`: Parses search input to extract `tagcount:` metatag
+  - Returns `{ terms: string, tagCount: TagCountFilter | null }`
+  - Supports list, range, comparison operators, and exact match
+  - List regex checked first: `/tagcount:(\d+(?:,\d+)+)/i`
+  - Range/comparison regex: `/tagcount:(>=|<=|>|<|)(\d+)(\.\.(\d+))?/i`
+- Applied in `applyFilters()` after all other filters
+- Counts total tags: `img.tags?.length ?? 0`
+- Compatible with existing filters (type, rating, tag, search)
+
+**Data Model**:
+```typescript
+interface TagCountFilter {
+  operator: '=' | '>' | '<' | '>=' | '<=' | 'range' | 'list';
+  value?: number;        // For single value operators
+  values?: number[];     // For list operator
+  min?: number;          // For range operator
+  max?: number;          // For range operator
+}
+```
+
+**Examples**:
+- `tagcount:2` + select "girl" tag → Images with "girl" and exactly 2 total tags
+- `pixiv tagcount:0,1,2` → Pixiv images with 0-2 tags
+- `tagcount:>10` → Images with more than 10 tags
 
 ### Preview Pane
 
