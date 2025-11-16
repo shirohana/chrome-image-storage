@@ -46,7 +46,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Individual rating**: Set content rating for images (General/Sensitive/Questionable/Explicit)
 - **Bulk rating operations**: Set rating for multiple images at once
 - **Rating tags**: Apply `rating:g`, `rating:s`, `rating:q`, or `rating:e` tags to automatically set rating
-- **Rating filter**: Filter images by one or more ratings
+- **Quick rating filter**: Click rating pills above tag sidebar for fast multi-select filtering
 - **Color-coded badges**: Visual indicators on image cards (Green/Yellow/Orange/Red)
 - **Danbooru integration**: Ratings automatically pre-fill when uploading to Danbooru
 
@@ -258,9 +258,10 @@ Images can have content ratings to help organize and filter them:
 - Rating tags are automatically converted to the rating field and removed from tags
 
 **Filter by rating**:
-- Use the rating dropdown in the toolbar
-- Select one or more ratings to filter
-- Selected ratings appear as removable pills
+- Use the rating filter pills above the tag sidebar (G/S/Q/E/Unrated)
+- Click rating pills to toggle filters on/off (multi-select supported)
+- Active pills show with colored backgrounds
+- Alternatively, use tag search syntax: `rating:g,s` or `rating:g or s`
 - Shows images matching any of the selected ratings
 
 **Visual indicators**:

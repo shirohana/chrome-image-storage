@@ -387,6 +387,91 @@ function removeExcludedTagFromSearch(tag: string) {
   applyFilters();
 }
 
+// Toggle rating in search input (for rating filter pills)
+function toggleRatingInSearch(rating: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const parsed = parseTagSearch(current);
+
+  // Check if this rating is already active
+  const isActive = rating === 'unrated'
+    ? parsed.includeUnrated
+    : parsed.ratings.has(rating);
+
+  if (isActive) {
+    // Remove this rating from search
+    if (rating === 'unrated') {
+      // Remove is:unrated
+      const newValue = current.replace(/\bis:unrated\b/gi, '').replace(/\s+/g, ' ').trim();
+      input.value = newValue;
+    } else {
+      // Remove rating from rating: metatag
+      const remainingRatings = Array.from(parsed.ratings).filter(r => r !== rating).sort();
+
+      // Remove old rating: pattern - match comma-separated list first, then single values
+      let newValue = current.replace(/rating:([gsqe](?:,[gsqe])+|general|sensitive|questionable|explicit|[gsqe])/gi, '').replace(/\s+/g, ' ').trim();
+
+      // Add back remaining ratings if any
+      if (remainingRatings.length > 0) {
+        const ratingStr = `rating:${remainingRatings.join(',')}`;
+        newValue = newValue ? `${newValue} ${ratingStr}` : ratingStr;
+      }
+
+      input.value = newValue;
+    }
+  } else {
+    // Add this rating to search
+    if (rating === 'unrated') {
+      // Add is:unrated
+      const newValue = current ? `${current} is:unrated` : 'is:unrated';
+      input.value = newValue;
+    } else {
+      // Add to existing rating: or create new one
+      const existingRatings = Array.from(parsed.ratings);
+      existingRatings.push(rating);
+      existingRatings.sort(); // Sort for consistent ordering
+
+      // Remove old rating: pattern - match comma-separated list first, then single values
+      let newValue = current.replace(/rating:([gsqe](?:,[gsqe])+|general|sensitive|questionable|explicit|[gsqe])/gi, '').replace(/\s+/g, ' ').trim();
+
+      // Add new rating list
+      const ratingStr = `rating:${existingRatings.join(',')}`;
+      newValue = newValue ? `${newValue} ${ratingStr}` : ratingStr;
+
+      input.value = newValue;
+    }
+  }
+
+  applyFilters();
+}
+
+// Update rating pill UI to reflect current search state
+function updateRatingPills() {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const parsed = parseTagSearch(input.value.trim());
+
+  // Update each pill's active state
+  const pills = document.querySelectorAll('.rating-filter-pill');
+  pills.forEach((pill) => {
+    const rating = pill.getAttribute('data-rating');
+    if (!rating) return;
+
+    const isActive = rating === 'unrated'
+      ? parsed.includeUnrated
+      : parsed.ratings.has(rating);
+
+    if (isActive) {
+      pill.classList.add('active');
+    } else {
+      pill.classList.remove('active');
+    }
+  });
+}
+
 // Parse Danbooru-style tag search
 // Supports: tags (AND), tag1 or tag2 (OR), -tag (exclude), rating:, is:, tagcount:
 interface ParsedTagSearch {
@@ -455,8 +540,8 @@ function parseTagSearch(query: string): ParsedTagSearch {
     }
   }
 
-  // 2. Extract rating: metatags
-  const ratingRegex = /rating:(g|s|q|e|general|sensitive|questionable|explicit|[gsqe](?:,[gsqe])+)/gi;
+  // 2. Extract rating: metatags (match comma-separated list first, then single values)
+  const ratingRegex = /rating:([gsqe](?:,[gsqe])+|general|sensitive|questionable|explicit|[gsqe])/gi;
   const ratingMatches = remainingQuery.match(ratingRegex);
   if (ratingMatches) {
     ratingMatches.forEach(match => {
@@ -660,6 +745,7 @@ function applyFilters() {
   updateViewBadges();
   updateSelectionCount();
   updatePreviewPane();
+  updateRatingPills();
 }
 
 function applySorting() {
@@ -1847,8 +1933,22 @@ if (urlSearchInput) {
 }
 
 if (tagSearchInput) {
-  tagSearchInput.addEventListener('input', () => applyFilters());
+  tagSearchInput.addEventListener('input', () => {
+    applyFilters();
+    updateRatingPills();
+  });
 }
+
+// Rating filter pill event listeners
+const ratingPills = document.querySelectorAll('.rating-filter-pill');
+ratingPills.forEach((pill) => {
+  pill.addEventListener('click', () => {
+    const rating = pill.getAttribute('data-rating');
+    if (rating) {
+      toggleRatingInSearch(rating);
+    }
+  });
+});
 
 // Event delegation for image grid
 const imageGrid = document.getElementById('image-grid')!;

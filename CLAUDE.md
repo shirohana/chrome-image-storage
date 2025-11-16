@@ -35,6 +35,11 @@ Chrome extensions run in three separate JavaScript contexts:
        - Tag count filter: `tagcount:2`, `tagcount:>5`, `tagcount:1..10`
        - Unrated filter: `is:unrated`
        - Combine all: `girl cat -dog rating:s is:png tagcount:>2`
+     - Quick rating filter pills above tag sidebar
+       - 5 horizontal pills: G/S/Q/E/Unrated
+       - Click to toggle rating filters (multi-select)
+       - Active pills show colored backgrounds matching rating badge colors
+       - Syncs bidirectionally with tag search input (`rating:` syntax)
      - Dynamic tag sidebar showing tags from filtered results
        - Click tag name to include/remove from search
        - Click + to include, - to exclude
