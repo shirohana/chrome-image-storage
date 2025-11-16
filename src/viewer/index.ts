@@ -1077,13 +1077,30 @@ async function handleSaveTags(e: Event) {
   const uniqueTags = Array.from(new Set(tags));
 
   await updateImageTags(id, uniqueTags);
-  await loadImages();
 
-  const currentImage = state.filteredImages[state.currentLightboxIndex];
-  if (currentImage) {
-    updateLightboxMetadata(currentImage);
+  // Update local state (same pattern as rating updates)
+  const imageInState = state.images.find(img => img.id === id);
+  if (imageInState) {
+    // Extract rating from tags if present (same logic as updateImageTags in service.ts)
+    const ratingTag = uniqueTags.find(tag => /^rating:[gsqe]$/i.test(tag));
+    const cleanedTags = uniqueTags.filter(tag => !/^rating:[gsqe]$/i.test(tag));
+
+    imageInState.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
+    if (ratingTag) {
+      const match = ratingTag.match(/^rating:([gsqe])$/i);
+      if (match) {
+        imageInState.rating = match[1].toLowerCase() as 'g' | 's' | 'q' | 'e';
+      }
+    }
   }
-  updatePreviewPane();
+
+  // Update lightbox metadata to show new tags
+  if (imageInState) {
+    updateLightboxMetadata(imageInState);
+  }
+
+  // Re-render grid to reflect changes
+  applyFilters();
 }
 
 function handleCheckboxChange(e: Event) {
