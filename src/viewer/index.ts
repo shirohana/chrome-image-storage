@@ -944,6 +944,15 @@ function renderImages(images: ImageMetadata[]) {
     return;
   }
 
+  // Only revoke URLs for images no longer in the filtered set
+  const currentImageIds = new Set(images.map(img => img.id));
+  const urlsToRevoke = Array.from(state.objectUrls.keys()).filter(
+    id => !currentImageIds.has(id)
+  );
+  for (const id of urlsToRevoke) {
+    revokeObjectURL(id);
+  }
+
   emptyState.style.display = 'none';
   grid.style.display = '';
 
@@ -1924,19 +1933,34 @@ function scrollToImage(id: string) {
   card.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
 }
 
-// Search input event listeners
+// Debounce utility for performance
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: number | undefined;
+  return function(...args: Parameters<T>) {
+    clearTimeout(timeout);
+    timeout = window.setTimeout(() => func(...args), wait);
+  };
+}
+
+// Search input event listeners with debouncing
 const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
 const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
 
+const debouncedApplyFilters = debounce(() => applyFilters(), 200);
+const debouncedTagSearch = debounce(() => {
+  applyFilters();
+  updateRatingPills();
+}, 200);
+
 if (urlSearchInput) {
-  urlSearchInput.addEventListener('input', () => applyFilters());
+  urlSearchInput.addEventListener('input', debouncedApplyFilters);
 }
 
 if (tagSearchInput) {
-  tagSearchInput.addEventListener('input', () => {
-    applyFilters();
-    updateRatingPills();
-  });
+  tagSearchInput.addEventListener('input', debouncedTagSearch);
 }
 
 // Rating filter pill event listeners

@@ -440,6 +440,9 @@ h1 {
   -webkit-user-select: none;
   scroll-margin-top: 120px;
   scroll-margin-bottom: 40px;
+  /* Performance hints */
+  contain: layout style paint;
+  content-visibility: auto;
 }
 
 .image-card:hover {
