@@ -14,9 +14,20 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 
 ### Organization & Filtering
 - **Search**: Filter images by image URL, page URL, or page title
-- **Tag count filter**: Filter by number of tags using Danbooru-style syntax (tagcount:2, tagcount:1,3, tagcount:>5, etc.)
-- **Type filter**: Filter by image type (PNG, JPEG, WebP, GIF, SVG)
-- **Rating filter**: Filter by content rating (General, Sensitive, Questionable, Explicit, Unrated)
+- **Danbooru-style tag search**: Unified search syntax for powerful filtering
+  - Tag search (AND): `girl cat` - Images with both tags
+  - OR operator: `girl or cat` - Images with either tag
+  - Exclude tags: `-dog` - Images without specific tags
+  - Rating filter: `rating:s` or `rating:g,s` - Filter by ratings
+  - Type filter: `is:png` or `is:jpg,webp` - Filter by image types
+  - Tag count filter: `tagcount:2`, `tagcount:>5`, `tagcount:1..10` - Filter by tag count
+  - Unrated filter: `is:unrated` - Show only unrated images
+  - Combine filters: `girl cat -dog rating:s is:png tagcount:>2` - Mix any filters
+- **Tag sidebar**: Dynamic sidebar showing tags from filtered results
+  - Click tag name to include/remove from search
+  - Click + to include, - to exclude tags
+  - Selected tags highlighted and sorted to top
+  - Always shows active filters even with 0 results
 - **Sorting**: Sort by date, file size, dimensions, or URL
 - **Grouping**: Organize images by source domain or show duplicates
 - **Duplicate detection**: Groups images by dimensions + file size to find duplicates
@@ -25,10 +36,11 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Individual tagging**: Add tags to images with autocomplete
 - **Bulk tag operations**: Add or remove tags from multiple images at once
 - **Auto-tagging rules**: Automatically apply tags to new images based on page title patterns
-- **Clickable tags**: Click tags on image cards to instantly add/remove from filters
-- **Tag filtering**: Filter by multiple tags with Union (OR) or Intersection (AND) modes
-- **Exclude tags**: Filter out images with specific tags
-- **Untagged filter**: Show only images without tags
+- **Clickable tags**: Click tags on image cards to toggle them in/out of search
+- **Tag sidebar**: Interactive sidebar for quick tag filtering
+  - Shows tags from currently filtered results
+  - Click tag names to add/remove filters
+  - Visual highlighting for included (green) and excluded (red) tags
 
 ### Rating Management
 - **Individual rating**: Set content rating for images (General/Sensitive/Questionable/Explicit)
@@ -117,9 +129,29 @@ This will watch for changes and rebuild automatically.
 
 ### Managing Images
 
-**Search**: Use the search bar to filter images by image URL, source page URL, or page title.
+**URL/Page Search**: Use the top search bar to filter images by image URL, source page URL, or page title.
 
-**Tag Count Filter**: Use Danbooru-style syntax in the search bar to filter by number of tags:
+**Tag Search**: Use the bottom search bar with Danbooru-style syntax for powerful filtering:
+
+**Basic Tag Search**:
+- `girl cat` - Images with BOTH tags (AND logic)
+- `girl or cat` - Images with EITHER tag (OR logic)
+- `-dog` - Exclude images with "dog" tag
+- `girl cat -dog` - Combine: has girl AND cat, but NOT dog
+
+**Rating Filter**:
+- `rating:g` - General only
+- `rating:s` - Sensitive only
+- `rating:g,s` - General OR Sensitive (comma-separated)
+- `is:unrated` - Show only unrated images
+
+**Type Filter**:
+- `is:png` - PNG images only
+- `is:jpg` or `is:jpeg` - JPEG images
+- `is:webp`, `is:gif`, `is:svg` - Other formats
+- `is:png,jpg` - PNG OR JPEG (comma-separated)
+
+**Tag Count Filter**:
 - `tagcount:2` - Exactly 2 tags
 - `tagcount:1,3,5` - 1, 3, or 5 tags (list)
 - `tagcount:>5` - More than 5 tags
@@ -127,9 +159,18 @@ This will watch for changes and rebuild automatically.
 - `tagcount:>=2` - 2 or more tags
 - `tagcount:<=10` - 10 or fewer tags
 - `tagcount:1..10` - Between 1-10 tags (range)
-- Combine with text search: `pixiv tagcount:2,4` - Find Pixiv images with 2 or 4 tags
 
-**Filter by Type**: Use the type dropdown to filter by image format (PNG, JPEG, WebP, GIF, SVG).
+**Combine Everything**:
+- `girl cat -dog rating:s is:png tagcount:>2` - Mix any filters
+- `pixiv tagcount:2,4` - Pixiv images with 2 or 4 tags
+
+**Tag Sidebar**:
+- Left sidebar shows tags from currently filtered results
+- **Click tag name** to include (or remove if already selected)
+- **Click +** to include tag in search
+- **Click -** to exclude tag from search
+- Selected tags highlighted: green (included), red (excluded)
+- Selected tags always visible at top, even with 0 results
 
 **Sorting**: Sort images by newest/oldest, largest/smallest file size, dimensions, or URL using the sort dropdown.
 
@@ -159,12 +200,19 @@ This will watch for changes and rebuild automatically.
 4. Click "Save" to apply changes
 
 **Filter by tags**:
-- **Click tags on image cards** to quickly add them to filters (click again to remove)
-- Click the tag filter dropdown and select tags manually
-- Toggle between Union (OR) and Intersection (AND) modes
-- Use "Exclude" dropdown to filter out specific tags
-- Check "Untagged Only" to show only images without tags
+- **Click tags on image cards** to toggle them in the tag search (click again to remove)
+- **Use tag sidebar** for quick filtering:
+  - Click any tag name to include it in search
+  - Click + button to include tag
+  - Click - button to exclude tag
+  - Click selected tag name again to remove from search
+- **Use tag search syntax** for complex queries:
+  - `girl cat` - AND logic (both tags required)
+  - `girl or cat` - OR logic (either tag)
+  - `-dog` - Exclude specific tags
+  - Combine: `girl cat or boy -dog`
 - Active filtered tags are highlighted in green on image cards
+- Selected tags in sidebar are highlighted (green = included, red = excluded)
 
 **Auto-tagging rules**:
 1. Open Settings (⚙ button in header)

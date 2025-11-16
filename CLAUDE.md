@@ -27,11 +27,19 @@ Chrome extensions run in three separate JavaScript contexts:
 2. **Viewer Page** (`src/viewer/`)
    - Full-page UI with multiple features:
      - Grid view for browsing images
-     - Search by URL or page title
-     - Tag count filter with Danbooru-style syntax (tagcount:2, tagcount:1,3, tagcount:>5, etc.)
-     - Filter by image type (PNG, JPEG, WebP, etc.)
-     - Filter by rating (General, Sensitive, Questionable, Explicit, Unrated)
-     - Multi-tag filter with AND/OR modes
+     - Two search inputs: URL/page title search (top) and tag search (bottom)
+     - Danbooru-style unified tag search syntax:
+       - Tag filters: `girl cat` (AND), `girl or cat` (OR), `-dog` (exclude)
+       - Rating filter: `rating:g`, `rating:s,q` (comma-separated)
+       - Type filter: `is:png`, `is:jpg,webp` (comma-separated)
+       - Tag count filter: `tagcount:2`, `tagcount:>5`, `tagcount:1..10`
+       - Unrated filter: `is:unrated`
+       - Combine all: `girl cat -dog rating:s is:png tagcount:>2`
+     - Dynamic tag sidebar showing tags from filtered results
+       - Click tag name to include/remove from search
+       - Click + to include, - to exclude
+       - Selected tags highlighted and sorted to top
+       - Always shows selected tags even with 0 count
      - Clickable tags on image cards for instant filtering
      - Sort by date, size, dimensions, or URL
      - Group by domain or show duplicates
@@ -109,38 +117,56 @@ Chrome extensions run in three separate JavaScript contexts:
 - `addTagsToImages(imageIds, tagsToAdd)`: Bulk add operation
 - `removeTagsFromImages(imageIds, tagsToRemove)`: Bulk remove operation
 
-**Tag Filtering**:
-- Multi-tag dropdown with autocomplete
-- Selected tags shown as removable pills below dropdown
-- **Clickable Tags on Image Cards**: Click tags on image cards to toggle them in/out of filter
-  - Active tags highlighted in green with glow effect
-  - Click to add, click again to remove
-  - Auto-switches to AND mode when clicking second tag while in OR mode
-  - Only applies to tags in image cards (not lightbox/preview)
-  - Event handler in `imageGrid.addEventListener('click')` checks for `.image-tags .tag`
-- **Union Mode (OR)**: Shows images with ANY selected tag
-- **Intersection Mode (AND)**: Shows images with ALL selected tags
-- Toggle button switches between modes
-- **Exclude Tags**: Separate dropdown to filter out specific tags
-  - Shows only tags from currently visible images (updates dynamically)
-  - Hides already-selected include tags (prevents impossible combinations)
-  - Always uses AND logic: filters out images with ANY excluded tag
-  - Example: Include "Animal", Exclude "Dog" → shows all animals except dogs
-- **Untagged Only**: Checkbox to show only images without tags
-- `state.tagFilters`: Set<string> of active include tag filters
-- `state.excludedTagFilters`: Set<string> of active exclude tag filters
-- `state.tagFilterMode`: 'union' | 'intersection'
-- `state.showUntaggedOnly`: boolean for untagged filter
-- `populateTagFilter()`: Rebuilds dropdown from all existing tags
-- `updateExcludeTagFilterOptions(images)`: Updates exclude dropdown from filtered results
-- Filters update dynamically after tag modifications
-- **Mutual Exclusivity**: Untagged filter and tag selection auto-clear each other to prevent conflicts
-- **Dynamic Count Scoping** (bi-directional):
-  - Tag counts reflect rating filters: "girl (50)" shows only images matching selected ratings
-  - Rating counts reflect tag filters: "General (5)" shows only images matching selected tags
-  - AND mode shows only compatible tags: After selecting "girl", only shows tags from images that have "girl"
-  - OR mode shows all tags from rating-filtered images
-  - Prevents impossible filter combinations in AND mode
+**Danbooru-Style Tag Search System**:
+- Two search inputs in toolbar:
+  - `#url-search-input`: URL/page title search (top)
+  - `#tag-search-input`: Tag search with Danbooru syntax (bottom)
+- **Unified Search Syntax**: All filtering via single tag search input
+  - Tag include (AND): `girl cat` - Both tags required
+  - Tag include (OR): `girl or cat` - Either tag required
+  - Tag exclude: `-dog` - Exclude images with this tag
+  - Rating filter: `rating:g` or `rating:g,s,q` (comma-separated)
+  - Type filter: `is:png` or `is:jpg,webp` (comma-separated)
+  - Tag count: `tagcount:2`, `tagcount:>5`, `tagcount:1..10`
+  - Unrated: `is:unrated`
+  - Combine: `girl cat -dog rating:s is:png tagcount:>2`
+- **Parser**: `parseTagSearch(query)` extracts metatags and tag terms
+  - Returns `ParsedTagSearch` object with:
+    - `includeTags: string[]` - AND logic tags
+    - `excludeTags: string[]` - Excluded tags
+    - `orGroups: string[][]` - OR logic tag groups
+    - `ratings: Set<string>` - Rating filters
+    - `fileTypes: Set<string>` - Type filters
+    - `tagCount: TagCountFilter | null` - Tag count filter
+    - `includeUnrated: boolean` - Unrated filter flag
+- **No State Properties**: All filter state derived from search input value
+  - Removed: `state.tagFilters`, `state.excludedTagFilters`, `state.tagFilterMode`, `state.showUntaggedOnly`, `state.typeFilter`, `state.ratingFilters`
+  - Parse search input on every `applyFilters()` call
+
+**Tag Sidebar** (`#tag-sidebar`):
+- Dynamic sidebar showing tags from currently filtered results
+- **Location**: Left side of main container, sticky positioned
+- **Rendering**: `updateTagSidebar(images)` called after filtering
+  - Counts tags from filtered images
+  - Adds included/excluded tags with count 0 if missing (always visible)
+  - Sorts: selected tags first, then by count (desc), then alphabetically
+  - Selected tags highlighted: `.tag-sidebar-item-included` (green), `.tag-sidebar-item-excluded` (red)
+- **Interactions**:
+  - Click tag name: `addTagToSearch()` if unselected, `removeIncludedTagFromSearch()` if included, `removeExcludedTagFromSearch()` if excluded
+  - Click + button: `addTagToSearch(tag)` - adds to search (with duplicate check)
+  - Click - button: `excludeTagFromSearch(tag)` - removes from include if present, then adds exclusion
+- **Key Functions**:
+  - `addTagToSearch(tag)`: Appends tag to search input (checks for duplicates)
+  - `excludeTagFromSearch(tag)`: Removes from include first, then adds `-tag` exclusion
+  - `removeIncludedTagFromSearch(tag)`: Removes tag and cleans up orphaned "or" operators
+  - `removeExcludedTagFromSearch(tag)`: Removes `-tag` from search
+
+**Clickable Tags on Image Cards**:
+- Click tags on image cards to toggle them in/out of search
+- `toggleTagInSearch(tag)`: Checks if active, removes if yes, adds if no
+- Active tags highlighted in green with glow effect (`.tag-active`)
+- Event handler in `imageGrid.addEventListener('click')` checks for `.image-tags .tag`
+- Highlighting determined by parsing current tag search input
 
 ### Auto-Tagging Rules System
 
@@ -259,7 +285,7 @@ interface TagRule {
 
 ### Tag Count Filter (Danbooru-style Search)
 
-**Location**: Integrated into search input (`#search-input`)
+**Location**: Integrated into tag search input (`#tag-search-input`)
 
 **Syntax Support**:
 - `tagcount:2` - Exactly 2 tags
@@ -271,14 +297,15 @@ interface TagRule {
 - `tagcount:1..10` - Range: 1 to 10 tags (inclusive)
 
 **Implementation**:
-- `parseSearchQuery(query)`: Parses search input to extract `tagcount:` metatag
-  - Returns `{ terms: string, tagCount: TagCountFilter | null }`
+- Part of `parseTagSearch(query)` function which parses all Danbooru-style syntax
+  - Extracts `tagcount:` metatag along with other filters
+  - Returns `ParsedTagSearch` object with `tagCount: TagCountFilter | null`
   - Supports list, range, comparison operators, and exact match
   - List regex checked first: `/tagcount:(\d+(?:,\d+)+)/i`
   - Range/comparison regex: `/tagcount:(>=|<=|>|<|)(\d+)(\.\.(\d+))?/i`
-- Applied in `applyFilters()` after all other filters
+- Applied in `applyFilters()` after URL search and tag filtering
 - Counts total tags: `img.tags?.length ?? 0`
-- Compatible with existing filters (type, rating, tag, search)
+- Compatible with all other filters (tags, rating, type, exclude)
 
 **Data Model**:
 ```typescript

@@ -20,12 +20,6 @@ const state = {
   filteredImages: [] as ImageMetadata[],
   loadedBlobs: new Map<string, Blob>(),
   sort: 'savedAt-desc',
-  typeFilter: 'all',
-  ratingFilters: new Set<string>(),
-  tagFilters: new Set<string>(),
-  excludedTagFilters: new Set<string>(),
-  tagFilterMode: 'union' as 'union' | 'intersection',
-  showUntaggedOnly: false,
   groupBy: 'none',
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
@@ -51,268 +45,11 @@ async function saveSettings(settings: { showNotifications: boolean }) {
 
 async function loadImages() {
   state.images = await getAllImagesMetadata();
-  populateTypeFilter();
-  populateRatingFilter();
-  populateTagFilter();
   applySorting();
   applyFilters();
 }
 
-function populateTypeFilter() {
-  const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
-  const mimeTypes = new Set(state.images.map(img => img.mimeType));
-
-  const mimeTypeLabels: Record<string, string> = {
-    'image/png': 'PNG',
-    'image/jpeg': 'JPEG',
-    'image/jpg': 'JPEG',
-    'image/gif': 'GIF',
-    'image/webp': 'WebP',
-    'image/svg+xml': 'SVG',
-  };
-
-  typeFilter.innerHTML = '<option value="all">All Types</option>';
-
-  const sortedTypes = Array.from(mimeTypes).sort();
-  sortedTypes.forEach(mimeType => {
-    const label = mimeTypeLabels[mimeType] || mimeType;
-    const option = document.createElement('option');
-    option.value = mimeType;
-    option.textContent = label;
-    typeFilter.appendChild(option);
-  });
-
-  typeFilter.value = state.typeFilter;
-}
-
-function populateRatingFilter(images: ImageMetadata[] = state.images) {
-  const ratingFilter = document.getElementById('rating-filter') as HTMLSelectElement;
-
-  const ratingCounts = {
-    g: 0,
-    s: 0,
-    q: 0,
-    e: 0,
-    unrated: 0
-  };
-
-  images.forEach(img => {
-    if (img.rating) {
-      ratingCounts[img.rating as keyof typeof ratingCounts]++;
-    } else {
-      ratingCounts.unrated++;
-    }
-  });
-
-  const ratingLabels: { [key: string]: string } = {
-    'g': 'General',
-    's': 'Sensitive',
-    'q': 'Questionable',
-    'e': 'Explicit',
-    'unrated': 'Unrated'
-  };
-
-  ratingFilter.innerHTML = '<option value="">Filter by rating...</option>';
-
-  const ratings: Array<keyof typeof ratingCounts> = ['g', 's', 'q', 'e', 'unrated'];
-  ratings.forEach(rating => {
-    const option = document.createElement('option');
-    option.value = rating;
-    const count = ratingCounts[rating];
-    option.textContent = `${ratingLabels[rating]} (${count})`;
-    ratingFilter.appendChild(option);
-  });
-}
-
-function populateTagFilter(images: ImageMetadata[] = state.images) {
-  const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
-  const tagCounts = new Map<string, number>();
-
-  images.forEach(img => {
-    if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => {
-        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-      });
-    }
-  });
-
-  tagFilter.innerHTML = '<option value="">Select tags...</option>';
-
-  const sortedTags = Array.from(tagCounts.keys()).sort();
-  sortedTags.forEach(tag => {
-    // Skip tags that are already selected
-    if (!state.tagFilters.has(tag)) {
-      const option = document.createElement('option');
-      option.value = tag;
-      const count = tagCounts.get(tag) || 0;
-      option.textContent = `${tag} (${count})`;
-      tagFilter.appendChild(option);
-    }
-  });
-
-  renderSelectedTags();
-}
-
-function updateTagFilterOptions(images: ImageMetadata[] = state.images) {
-  const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
-  if (!tagFilter) return;
-
-  const tagCounts = new Map<string, number>();
-  images.forEach(img => {
-    if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => {
-        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-      });
-    }
-  });
-
-  tagFilter.innerHTML = '<option value="">Select tags...</option>';
-
-  const sortedTags = Array.from(tagCounts.keys()).sort();
-  sortedTags.forEach(tag => {
-    // Skip tags that are already selected
-    if (!state.tagFilters.has(tag)) {
-      const option = document.createElement('option');
-      option.value = tag;
-      const count = tagCounts.get(tag) || 0;
-      option.textContent = `${tag} (${count})`;
-      tagFilter.appendChild(option);
-    }
-  });
-
-  tagFilter.value = '';
-}
-
-function renderSelectedTags() {
-  const container = document.getElementById('selected-tags');
-  if (!container) return;
-
-  if (state.tagFilters.size === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = Array.from(state.tagFilters)
-    .map(tag => `
-      <span class="selected-tag">
-        ${tag}
-        <button class="remove-tag" data-tag="${tag}">&times;</button>
-      </span>
-    `)
-    .join('');
-
-  // Attach remove handlers
-  container.querySelectorAll('.remove-tag').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tag = btn.getAttribute('data-tag')!;
-      state.tagFilters.delete(tag);
-
-      renderSelectedTags();
-      applyFilters();
-    });
-  });
-}
-
-function renderSelectedRatings() {
-  const container = document.getElementById('selected-ratings');
-  if (!container) return;
-
-  if (state.ratingFilters.size === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  const ratingLabels: { [key: string]: string } = {
-    'g': 'General',
-    's': 'Sensitive',
-    'q': 'Questionable',
-    'e': 'Explicit',
-    'unrated': 'Unrated'
-  };
-
-  container.innerHTML = Array.from(state.ratingFilters)
-    .map(rating => `
-      <span class="selected-rating">
-        ${ratingLabels[rating] || rating}
-        <button class="remove-rating" data-rating="${rating}">&times;</button>
-      </span>
-    `)
-    .join('');
-
-  // Attach remove handlers
-  container.querySelectorAll('.remove-rating').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const rating = btn.getAttribute('data-rating')!;
-      state.ratingFilters.delete(rating);
-
-      renderSelectedRatings();
-      applyFilters();
-    });
-  });
-}
-
-function updateExcludeTagFilterOptions(images: ImageMetadata[] = state.filteredImages) {
-  const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
-  if (!excludeTagFilter) return;
-
-  const tagCounts = new Map<string, number>();
-  images.forEach(img => {
-    if (img.tags && img.tags.length > 0) {
-      img.tags.forEach(tag => {
-        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-      });
-    }
-  });
-
-  excludeTagFilter.innerHTML = '<option value="">Exclude tags...</option>';
-
-  const sortedTags = Array.from(tagCounts.keys()).sort();
-  sortedTags.forEach(tag => {
-    // Skip tags that are already selected for inclusion or exclusion
-    if (!state.excludedTagFilters.has(tag) && !state.tagFilters.has(tag)) {
-      const option = document.createElement('option');
-      option.value = tag;
-      const count = tagCounts.get(tag) || 0;
-      option.textContent = `${tag} (${count})`;
-      excludeTagFilter.appendChild(option);
-    }
-  });
-
-  excludeTagFilter.value = '';
-}
-
-function renderExcludedTags() {
-  const container = document.getElementById('excluded-tags');
-  if (!container) return;
-
-  if (state.excludedTagFilters.size === 0) {
-    container.innerHTML = '';
-    return;
-  }
-
-  container.innerHTML = Array.from(state.excludedTagFilters)
-    .map(tag => `
-      <span class="excluded-tag">
-        ${tag}
-        <button class="remove-excluded-tag" data-tag="${tag}">&times;</button>
-      </span>
-    `)
-    .join('');
-
-  // Attach remove handlers
-  container.querySelectorAll('.remove-excluded-tag').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tag = btn.getAttribute('data-tag')!;
-      state.excludedTagFilters.delete(tag);
-
-      updateExcludeTagFilterOptions();
-      renderExcludedTags();
-      applyFilters();
-    });
-  });
-}
-
-// Parse tagcount metatag from search query
+// Parse tagcount metatag from search query (legacy, used by parseTagSearch)
 // Supports: tagcount:2 (exact), tagcount:1,3 (list), tagcount:>5 (gt), tagcount:<3 (lt), tagcount:1..10 (range)
 interface TagCountFilter {
   operator: '=' | '>' | '<' | '>=' | '<=' | 'range' | 'list';
@@ -380,125 +117,477 @@ function parseSearchQuery(query: string): ParsedSearch {
   return { terms, tagCount };
 }
 
+// Update tag sidebar with tags from filtered images
+function updateTagSidebar(images: ImageMetadata[] = state.filteredImages) {
+  const sidebar = document.getElementById('tag-sidebar-list');
+  if (!sidebar) return;
+
+  // Parse current tag search to determine active tags
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  const parsed = input ? parseTagSearch(input.value) : {
+    includeTags: [],
+    excludeTags: [],
+    orGroups: [],
+    ratings: new Set(),
+    fileTypes: new Set(),
+    tagCount: null,
+    includeUnrated: false
+  };
+
+  // Build sets for quick lookup
+  const includedTags = new Set<string>(parsed.includeTags);
+  parsed.orGroups.forEach(group => group.forEach(tag => includedTags.add(tag)));
+  const excludedTags = new Set<string>(parsed.excludeTags);
+
+  // Count tags
+  const tagCounts = new Map<string, number>();
+  images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      });
+    }
+  });
+
+  // Add included tags to the list with count 0 (so they show even when filtered out)
+  includedTags.forEach(tag => {
+    if (!tagCounts.has(tag)) {
+      tagCounts.set(tag, 0);
+    }
+  });
+
+  // Add excluded tags to the list with count 0 (so they show even when filtered out)
+  excludedTags.forEach(tag => {
+    if (!tagCounts.has(tag)) {
+      tagCounts.set(tag, 0);
+    }
+  });
+
+  // Sort: selected tags (included/excluded) first, then by count, then alphabetically
+  const sortedTags = Array.from(tagCounts.entries())
+    .sort((a, b) => {
+      const aSelected = includedTags.has(a[0]) || excludedTags.has(a[0]);
+      const bSelected = includedTags.has(b[0]) || excludedTags.has(b[0]);
+
+      // Selected tags come first
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+
+      // Within selected or unselected groups, sort by count then alphabetically
+      if (b[1] !== a[1]) {
+        return b[1] - a[1]; // Count descending
+      }
+      return a[0].localeCompare(b[0]); // Name ascending
+    });
+
+  // Render tag list with highlighting
+  sidebar.innerHTML = sortedTags
+    .map(([tag, count]) => {
+      const isIncluded = includedTags.has(tag);
+      const isExcluded = excludedTags.has(tag);
+      const itemClass = isIncluded ? 'tag-sidebar-item tag-sidebar-item-included' :
+                        isExcluded ? 'tag-sidebar-item tag-sidebar-item-excluded' :
+                        'tag-sidebar-item';
+
+      return `
+        <div class="${itemClass}">
+          <button class="tag-add-btn" data-tag="${tag}" title="Include this tag">+</button>
+          <button class="tag-exclude-btn" data-tag="${tag}" title="Exclude this tag">−</button>
+          <span class="tag-name" data-tag="${tag}">${tag}</span>
+          <span class="tag-count">${count}</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  // Attach click handlers for + buttons
+  sidebar.querySelectorAll('.tag-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-tag')!;
+      addTagToSearch(tag);
+    });
+  });
+
+  // Attach click handlers for - buttons
+  sidebar.querySelectorAll('.tag-exclude-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-tag')!;
+      excludeTagFromSearch(tag);
+    });
+  });
+
+  // Attach click handlers for tag names (to toggle tags)
+  sidebar.querySelectorAll('.tag-name').forEach(span => {
+    span.addEventListener('click', () => {
+      const tag = span.getAttribute('data-tag')!;
+      if (includedTags.has(tag)) {
+        removeIncludedTagFromSearch(tag);
+      } else if (excludedTags.has(tag)) {
+        removeExcludedTagFromSearch(tag);
+      } else {
+        // Unselected tag - add it
+        addTagToSearch(tag);
+      }
+    });
+  });
+}
+
+// Toggle tag in search input (for clicking tags on image cards)
+function toggleTagInSearch(tag: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const parsed = parseTagSearch(current);
+
+  // Check if tag is currently active (in includeTags or orGroups)
+  const isActive = parsed.includeTags.includes(tag) ||
+                   parsed.orGroups.some(group => group.includes(tag));
+
+  if (isActive) {
+    // Remove tag from search
+    // Split by spaces and filter out this tag (and "or" if it becomes orphaned)
+    const tokens = current.split(/\s+/);
+    const newTokens: string[] = [];
+
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i] === tag) {
+        // Skip this tag
+        // Also skip "or" if it's before or after this tag
+        if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
+          newTokens.pop(); // Remove the "or" we just added
+        } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
+          i++; // Skip the next "or"
+        }
+      } else {
+        newTokens.push(tokens[i]);
+      }
+    }
+
+    input.value = newTokens.join(' ').trim();
+  } else {
+    // Add tag to search
+    if (current) {
+      input.value = `${current} ${tag}`;
+    } else {
+      input.value = tag;
+    }
+  }
+
+  applyFilters();
+}
+
+// Add tag to search input (for sidebar + button)
+function addTagToSearch(tag: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const parsed = parseTagSearch(current);
+
+  // Check if tag already included (prevent duplicates)
+  const isIncluded = parsed.includeTags.includes(tag) ||
+                     parsed.orGroups.some(group => group.includes(tag));
+  if (isIncluded) return;
+
+  if (current) {
+    input.value = `${current} ${tag}`;
+  } else {
+    input.value = tag;
+  }
+  applyFilters();
+}
+
+// Exclude tag from search input (for sidebar - button)
+function excludeTagFromSearch(tag: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const parsed = parseTagSearch(current);
+
+  // Check if tag already excluded (prevent duplicates)
+  if (parsed.excludeTags.includes(tag)) return;
+
+  // If tag is currently included, remove it first
+  const isIncluded = parsed.includeTags.includes(tag) ||
+                     parsed.orGroups.some(group => group.includes(tag));
+
+  let newValue = current;
+  if (isIncluded) {
+    // Remove the included tag first
+    const tokens = current.split(/\s+/);
+    const newTokens: string[] = [];
+
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i] === tag) {
+        // Skip this tag
+        // Also skip "or" if it's before or after this tag
+        if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
+          newTokens.pop(); // Remove the "or" we just added
+        } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
+          i++; // Skip the next "or"
+        }
+      } else {
+        newTokens.push(tokens[i]);
+      }
+    }
+    newValue = newTokens.join(' ').trim();
+  }
+
+  // Add the exclusion
+  if (newValue) {
+    input.value = `${newValue} -${tag}`;
+  } else {
+    input.value = `-${tag}`;
+  }
+  applyFilters();
+}
+
+// Remove included tag from search input (for clicking included tag name in sidebar)
+function removeIncludedTagFromSearch(tag: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const tokens = current.split(/\s+/);
+  const newTokens: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] === tag) {
+      // Skip this tag
+      // Also skip "or" if it's before or after this tag
+      if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
+        newTokens.pop(); // Remove the "or" we just added
+      } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
+        i++; // Skip the next "or"
+      }
+    } else {
+      newTokens.push(tokens[i]);
+    }
+  }
+
+  input.value = newTokens.join(' ').trim();
+  applyFilters();
+}
+
+// Remove excluded tag from search input (for clicking excluded tag name)
+function removeExcludedTagFromSearch(tag: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const tokens = current.split(/\s+/);
+  const excludedPattern = `-${tag}`;
+
+  // Filter out the excluded tag
+  const newTokens = tokens.filter(token => token !== excludedPattern);
+
+  input.value = newTokens.join(' ').trim();
+  applyFilters();
+}
+
+// Parse Danbooru-style tag search
+// Supports: tags (AND), tag1 or tag2 (OR), -tag (exclude), rating:, is:, tagcount:
+interface ParsedTagSearch {
+  includeTags: string[];       // Tags to include (AND)
+  excludeTags: string[];       // Tags to exclude
+  orGroups: string[][];        // OR groups: [[tag1, tag2], [tag3, tag4]]
+  ratings: Set<string>;        // Rating filters: g, s, q, e
+  fileTypes: Set<string>;      // File type filters: jpg, png, webp, gif
+  tagCount: TagCountFilter | null;  // Tag count filter
+  includeUnrated: boolean;     // is:unrated flag
+}
+
+function parseTagSearch(query: string): ParsedTagSearch {
+  const result: ParsedTagSearch = {
+    includeTags: [],
+    excludeTags: [],
+    orGroups: [],
+    ratings: new Set(),
+    fileTypes: new Set(),
+    tagCount: null,
+    includeUnrated: false,
+  };
+
+  if (!query.trim()) {
+    return result;
+  }
+
+  let remainingQuery = query;
+
+  // 1. Extract tagcount: metatag
+  const tagCountListRegex = /tagcount:(\d+(?:,\d+)+)/gi;
+  const tagCountListMatch = remainingQuery.match(tagCountListRegex);
+  if (tagCountListMatch) {
+    const values = tagCountListMatch[0].substring(9).split(',').map(v => parseInt(v.trim(), 10));
+    result.tagCount = { operator: 'list', values };
+    remainingQuery = remainingQuery.replace(tagCountListRegex, '').trim();
+  } else {
+    const tagCountRegex = /tagcount:(>=|<=|>|<|)(\d+)(\.\.(\d+))?/gi;
+    const tagCountMatch = remainingQuery.match(tagCountRegex);
+    if (tagCountMatch) {
+      const match = tagCountRegex.exec(query);
+      if (match) {
+        const operator = match[1];
+        const firstNum = parseInt(match[2], 10);
+        const secondNum = match[4] ? parseInt(match[4], 10) : undefined;
+
+        if (secondNum !== undefined) {
+          result.tagCount = {
+            operator: 'range',
+            min: Math.min(firstNum, secondNum),
+            max: Math.max(firstNum, secondNum),
+          };
+        } else if (operator === '>') {
+          result.tagCount = { operator: '>', value: firstNum };
+        } else if (operator === '<') {
+          result.tagCount = { operator: '<', value: firstNum };
+        } else if (operator === '>=') {
+          result.tagCount = { operator: '>=', value: firstNum };
+        } else if (operator === '<=') {
+          result.tagCount = { operator: '<=', value: firstNum };
+        } else {
+          result.tagCount = { operator: '=', value: firstNum };
+        }
+      }
+      remainingQuery = remainingQuery.replace(tagCountRegex, '').trim();
+    }
+  }
+
+  // 2. Extract rating: metatags
+  const ratingRegex = /rating:(g|s|q|e|general|sensitive|questionable|explicit|[gsqe](?:,[gsqe])+)/gi;
+  const ratingMatches = remainingQuery.match(ratingRegex);
+  if (ratingMatches) {
+    ratingMatches.forEach(match => {
+      const value = match.substring(7).toLowerCase(); // Remove "rating:"
+      if (value.includes(',')) {
+        value.split(',').forEach(r => result.ratings.add(r.trim().charAt(0))); // First char only (g/s/q/e)
+      } else {
+        result.ratings.add(value.charAt(0)); // First char only
+      }
+    });
+    remainingQuery = remainingQuery.replace(ratingRegex, '').trim();
+  }
+
+  // 3. Extract is: metatags
+  const isRegex = /is:(unrated|jpg|jpeg|png|webp|gif|svg)/gi;
+  const isMatches = remainingQuery.match(isRegex);
+  if (isMatches) {
+    isMatches.forEach(match => {
+      const value = match.substring(3).toLowerCase(); // Remove "is:"
+      if (value === 'unrated') {
+        result.includeUnrated = true;
+      } else if (value === 'jpeg') {
+        result.fileTypes.add('image/jpeg');
+      } else if (value === 'jpg') {
+        result.fileTypes.add('image/jpeg');
+      } else if (value === 'png') {
+        result.fileTypes.add('image/png');
+      } else if (value === 'webp') {
+        result.fileTypes.add('image/webp');
+      } else if (value === 'gif') {
+        result.fileTypes.add('image/gif');
+      } else if (value === 'svg') {
+        result.fileTypes.add('image/svg+xml');
+      }
+    });
+    remainingQuery = remainingQuery.replace(isRegex, '').trim();
+  }
+
+  // 4. Parse tag terms (handle OR, exclusion, regular tags)
+  // Split by spaces but respect "or" as operator
+  const tokens = remainingQuery.split(/\s+/).filter(t => t.length > 0);
+
+  let i = 0;
+  while (i < tokens.length) {
+    const token = tokens[i];
+
+    if (token.toLowerCase() === 'or') {
+      // Handle OR: take previous tag and next tag as OR group
+      if (i > 0 && i < tokens.length - 1) {
+        const prevTag = tokens[i - 1];
+        const nextTag = tokens[i + 1];
+
+        // Remove previous tag from includeTags if it was just added
+        const prevIndex = result.includeTags.indexOf(prevTag);
+        if (prevIndex !== -1) {
+          result.includeTags.splice(prevIndex, 1);
+        }
+
+        // Check if previous tag is already in an OR group
+        let foundGroup = false;
+        for (const group of result.orGroups) {
+          if (group.includes(prevTag)) {
+            group.push(nextTag);
+            foundGroup = true;
+            break;
+          }
+        }
+
+        if (!foundGroup) {
+          result.orGroups.push([prevTag, nextTag]);
+        }
+
+        i += 2; // Skip 'or' and next tag
+        continue;
+      }
+    } else if (token.startsWith('-')) {
+      // Exclusion
+      const tag = token.substring(1);
+      if (tag) {
+        result.excludeTags.push(tag);
+      }
+    } else {
+      // Regular tag (include, AND)
+      result.includeTags.push(token);
+    }
+
+    i++;
+  }
+
+  return result;
+}
+
 function applyFilters() {
   let filtered = state.images;
 
-  // Apply view filter (all or trash)
+  // 1. Apply view filter (all or trash)
   if (state.currentView === 'all') {
     filtered = filtered.filter(img => !img.isDeleted);
   } else {
     filtered = filtered.filter(img => img.isDeleted);
   }
 
-  // Apply type filter
-  if (state.typeFilter !== 'all') {
-    filtered = filtered.filter(img => img.mimeType === state.typeFilter);
-  }
-
-  // At this point: filtered by view + type
-  // Compute what rating counts should be (based on tag filters)
-  let ratingCountImages = filtered;
-
-  // Apply tag filter for rating counts
-  if (state.tagFilters.size > 0) {
-    if (state.tagFilterMode === 'union') {
-      ratingCountImages = ratingCountImages.filter(img =>
-        img.tags && img.tags.some(tag => state.tagFilters.has(tag))
-      );
-    } else {
-      ratingCountImages = ratingCountImages.filter(img =>
-        img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
-      );
-    }
-  }
-
-  // Apply exclude tag filter for rating counts
-  if (state.excludedTagFilters.size > 0) {
-    ratingCountImages = ratingCountImages.filter(img =>
-      !img.tags || !img.tags.some(tag => state.excludedTagFilters.has(tag))
-    );
-  }
-
-  // Apply untagged-only filter for rating counts
-  if (state.showUntaggedOnly) {
-    ratingCountImages = ratingCountImages.filter(img => !img.tags || img.tags.length === 0);
-  }
-
-  // Update rating filter counts based on tag-filtered images
-  populateRatingFilter(ratingCountImages);
-
-  // Apply rating filter (multi-select with OR logic)
-  if (state.ratingFilters.size > 0) {
-    filtered = filtered.filter(img => {
-      // Check if image matches any selected rating
-      for (const ratingFilter of state.ratingFilters) {
-        if (ratingFilter === 'unrated') {
-          if (!img.rating) return true;
-        } else {
-          if (img.rating === ratingFilter) return true;
-        }
-      }
-      return false;
-    });
-  }
-
-  // At this point: filtered by view + type + rating
-  // Update tag filter counts based on rating-filtered images
-  // In AND mode: only show tags from images that have ALL currently selected tags
-  // In OR mode: show tags from all rating-filtered images
-  let tagCountImages = filtered;
-  if (state.tagFilterMode === 'intersection' && state.tagFilters.size > 0) {
-    tagCountImages = tagCountImages.filter(img =>
-      img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
-    );
-  }
-  updateTagFilterOptions(tagCountImages);
-
-  // Apply tag filter (multi-tag with union/intersection mode)
-  if (state.tagFilters.size > 0) {
-    if (state.tagFilterMode === 'union') {
-      // Union (OR): Image has ANY of the selected tags
-      filtered = filtered.filter(img =>
-        img.tags && img.tags.some(tag => state.tagFilters.has(tag))
-      );
-    } else {
-      // Intersection (AND): Image has ALL of the selected tags
-      filtered = filtered.filter(img =>
-        img.tags && Array.from(state.tagFilters).every(tag => img.tags!.includes(tag))
-      );
-    }
-  }
-
-  // Update exclude tag options based on current filtered results
-  // (before applying exclude filter so dropdown shows only effective options)
-  updateExcludeTagFilterOptions(filtered);
-
-  // Apply exclude tag filter (filter out images with ANY excluded tag)
-  if (state.excludedTagFilters.size > 0) {
+  // 2. Apply URL/page title search filter
+  const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
+  if (urlSearchInput && urlSearchInput.value) {
+    const query = urlSearchInput.value.toLowerCase();
     filtered = filtered.filter(img =>
-      !img.tags || !img.tags.some(tag => state.excludedTagFilters.has(tag))
+      img.imageUrl.toLowerCase().includes(query) ||
+      img.pageUrl.toLowerCase().includes(query) ||
+      (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
     );
   }
 
-  // Apply untagged-only filter
-  if (state.showUntaggedOnly) {
-    filtered = filtered.filter(img => !img.tags || img.tags.length === 0);
-  }
+  // 3. Apply tag search filter (Danbooru syntax)
+  const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (tagSearchInput && tagSearchInput.value) {
+    const parsed = parseTagSearch(tagSearchInput.value);
 
-  // Apply search filter (with tagcount metatag support)
-  const searchInput = document.getElementById('search-input') as HTMLInputElement;
-  const query = searchInput.value;
-  if (query) {
-    const parsed = parseSearchQuery(query);
+    // Apply rating filters
+    if (parsed.ratings.size > 0 || parsed.includeUnrated) {
+      filtered = filtered.filter(img => {
+        if (parsed.includeUnrated && !img.rating) {
+          return true;
+        }
+        return img.rating && parsed.ratings.has(img.rating);
+      });
+    }
 
-    // Apply text search to URL/pageTitle
-    if (parsed.terms) {
-      const lowerTerms = parsed.terms.toLowerCase();
-      filtered = filtered.filter(img =>
-        img.imageUrl.toLowerCase().includes(lowerTerms) ||
-        img.pageUrl.toLowerCase().includes(lowerTerms) ||
-        (img.pageTitle && img.pageTitle.toLowerCase().includes(lowerTerms))
-      );
+    // Apply file type filters
+    if (parsed.fileTypes.size > 0) {
+      filtered = filtered.filter(img => parsed.fileTypes.has(img.mimeType));
     }
 
     // Apply tag count filter
@@ -525,6 +614,31 @@ function applyFilters() {
         return true;
       });
     }
+
+    // Apply include tags (AND logic)
+    if (parsed.includeTags.length > 0) {
+      filtered = filtered.filter(img =>
+        img.tags && parsed.includeTags.every(tag => img.tags!.includes(tag))
+      );
+    }
+
+    // Apply OR groups
+    if (parsed.orGroups.length > 0) {
+      filtered = filtered.filter(img => {
+        if (!img.tags) return false;
+        // Image must match at least one tag from each OR group
+        return parsed.orGroups.every(group =>
+          group.some(tag => img.tags!.includes(tag))
+        );
+      });
+    }
+
+    // Apply exclude tags
+    if (parsed.excludeTags.length > 0) {
+      filtered = filtered.filter(img =>
+        !img.tags || !parsed.excludeTags.some(tag => img.tags!.includes(tag))
+      );
+    }
   }
 
   // Store filtered images for select all
@@ -537,6 +651,9 @@ function applyFilters() {
       state.selectedIds.delete(id);
     }
   }
+
+  // Update tag sidebar with tags from filtered images
+  updateTagSidebar(filtered);
 
   renderImages(filtered);
   updateImageCount();
@@ -635,10 +752,19 @@ function createImageCardHTML(image: ImageMetadata): string {
       <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
     `;
 
+  // Parse current tag search to highlight active tags
+  const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
+  const activeTags = new Set<string>();
+  if (tagSearchInput && tagSearchInput.value) {
+    const parsed = parseTagSearch(tagSearchInput.value);
+    parsed.includeTags.forEach(tag => activeTags.add(tag));
+    parsed.orGroups.forEach(group => group.forEach(tag => activeTags.add(tag)));
+  }
+
   const tagsHTML = image.tags && image.tags.length > 0
     ? `<div class="image-tags">
         ${image.tags.map(tag => {
-          const isActive = state.tagFilters.has(tag);
+          const isActive = activeTags.has(tag);
           return `<span class="tag${isActive ? ' tag-active' : ''}" data-tag="${tag}">${tag}</span>`;
         }).join('')}
       </div>`
@@ -1712,11 +1838,17 @@ function scrollToImage(id: string) {
   card.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
 }
 
-function handleSearch(e: Event) {
-  applyFilters();
+// Search input event listeners
+const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
+const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
+
+if (urlSearchInput) {
+  urlSearchInput.addEventListener('input', () => applyFilters());
 }
 
-document.getElementById('search-input')!.addEventListener('input', handleSearch);
+if (tagSearchInput) {
+  tagSearchInput.addEventListener('input', () => applyFilters());
+}
 
 // Event delegation for image grid
 const imageGrid = document.getElementById('image-grid')!;
@@ -1764,35 +1896,12 @@ imageGrid.addEventListener('click', (e: Event) => {
     return;
   }
 
-  // 2. Tag clicks (toggle tag filter) - only for tags in image cards
+  // 2. Tag clicks - toggle tag in search input
   if (target.matches('.image-tags .tag')) {
     const tag = target.getAttribute('data-tag');
     if (tag) {
       e.stopPropagation(); // Prevent card selection
-
-      // Toggle tag in filter
-      if (state.tagFilters.has(tag)) {
-        state.tagFilters.delete(tag);
-      } else {
-        // Switch to AND mode if in OR mode and at least one tag is already selected
-        if (state.tagFilterMode === 'union' && state.tagFilters.size > 0) {
-          state.tagFilterMode = 'intersection';
-          const tagFilterModeBtn = document.getElementById('tag-filter-mode')!;
-          tagFilterModeBtn.textContent = 'AND';
-        }
-
-        state.tagFilters.add(tag);
-
-        // Clear "Untagged only" when selecting a tag (mutually exclusive)
-        if (state.showUntaggedOnly) {
-          state.showUntaggedOnly = false;
-          const untaggedOnlyCheckbox = document.getElementById('untagged-only-checkbox') as HTMLInputElement;
-          untaggedOnlyCheckbox.checked = false;
-        }
-      }
-
-      renderSelectedTags();
-      applyFilters();
+      toggleTagInSearch(tag);
     }
     return;
   }
@@ -1915,82 +2024,6 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'IMAGE_SAVED') {
     loadImages();
   }
-});
-
-// Type filter
-const typeFilter = document.getElementById('type-filter') as HTMLSelectElement;
-
-typeFilter.addEventListener('change', () => {
-  state.typeFilter = typeFilter.value;
-  applyFilters();
-});
-
-// Rating filter
-const ratingFilter = document.getElementById('rating-filter') as HTMLSelectElement;
-
-ratingFilter.addEventListener('change', () => {
-  const selectedRating = ratingFilter.value;
-  if (selectedRating && !state.ratingFilters.has(selectedRating)) {
-    state.ratingFilters.add(selectedRating);
-    renderSelectedRatings();
-    applyFilters();
-  }
-  ratingFilter.value = ''; // Reset dropdown
-});
-
-// Tag filter
-const tagFilter = document.getElementById('tag-filter') as HTMLSelectElement;
-
-tagFilter.addEventListener('change', () => {
-  const selectedTag = tagFilter.value;
-  if (selectedTag && !state.tagFilters.has(selectedTag)) {
-    // Uncheck "Untagged only" when selecting a tag (mutually exclusive)
-    state.showUntaggedOnly = false;
-    untaggedOnlyCheckbox.checked = false;
-
-    state.tagFilters.add(selectedTag);
-    renderSelectedTags();
-    applyFilters();
-  }
-});
-
-// Tag filter mode toggle
-const tagFilterModeBtn = document.getElementById('tag-filter-mode')!;
-
-tagFilterModeBtn.addEventListener('click', () => {
-  state.tagFilterMode = state.tagFilterMode === 'union' ? 'intersection' : 'union';
-  tagFilterModeBtn.textContent = state.tagFilterMode === 'union' ? 'OR' : 'AND';
-  if (state.tagFilters.size > 0) {
-    applyFilters();
-  }
-});
-
-// Exclude tag filter
-const excludeTagFilter = document.getElementById('exclude-tag-filter') as HTMLSelectElement;
-
-excludeTagFilter.addEventListener('change', () => {
-  const selectedTag = excludeTagFilter.value;
-  if (selectedTag && !state.excludedTagFilters.has(selectedTag)) {
-    state.excludedTagFilters.add(selectedTag);
-    updateExcludeTagFilterOptions();
-    renderExcludedTags();
-    applyFilters();
-  }
-});
-
-// Untagged-only filter
-const untaggedOnlyCheckbox = document.getElementById('untagged-only-checkbox') as HTMLInputElement;
-
-untaggedOnlyCheckbox.addEventListener('change', () => {
-  state.showUntaggedOnly = untaggedOnlyCheckbox.checked;
-
-  // Clear tag filters when "Untagged only" is checked (mutually exclusive)
-  if (state.showUntaggedOnly) {
-    state.tagFilters.clear();
-    renderSelectedTags();
-  }
-
-  applyFilters();
 });
 
 // Group by

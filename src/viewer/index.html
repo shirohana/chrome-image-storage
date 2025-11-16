@@ -120,45 +120,11 @@
           <span class="view-badge" id="trash-badge">0</span>
         </button>
       </div>
-      <div class="search-bar">
-        <input type="text" id="search-input" placeholder="Search by URL or page title (supports tagcount:2, tagcount:1,3, tagcount:>5, etc.)...">
+      <div class="search-bars">
+        <input type="text" id="url-search-input" class="search-input" placeholder="Search by URL or page title...">
+        <input type="text" id="tag-search-input" class="search-input" placeholder="Tag search (girl cat, girl or cat, -cat, rating:s, is:png, tagcount:2, etc.)...">
       </div>
       <div class="view-controls">
-        <!-- Filtering controls -->
-        <select id="type-filter" class="type-filter">
-          <option value="all">All Types</option>
-        </select>
-        <div class="rating-filter-container">
-          <select id="rating-filter" class="rating-filter">
-            <option value="">Filter by rating...</option>
-            <option value="g">General</option>
-            <option value="s">Sensitive</option>
-            <option value="q">Questionable</option>
-            <option value="e">Explicit</option>
-            <option value="unrated">Unrated</option>
-          </select>
-          <div id="selected-ratings" class="selected-ratings"></div>
-        </div>
-        <div class="tag-filter-container">
-          <div>
-            <select id="tag-filter" class="tag-filter">
-              <option value="">Select tags...</option>
-            </select>
-            <button id="tag-filter-mode" class="btn btn-secondary tag-filter-mode" title="Toggle AND/OR mode">OR</button>
-          </div>
-          <div id="selected-tags" class="selected-tags"></div>
-          <div>
-            <select id="exclude-tag-filter" class="tag-filter">
-              <option value="">Exclude tags...</option>
-            </select>
-          </div>
-          <div id="excluded-tags" class="excluded-tags"></div>
-          <label class="untagged-filter">
-            <input type="checkbox" id="untagged-only-checkbox">
-            <span>Untagged only</span>
-          </label>
-        </div>
-        <!-- Organization controls -->
         <select id="group-by" class="group-by">
           <option value="none">No Grouping</option>
           <option value="domain">Group by Domain</option>
@@ -174,19 +140,27 @@
           <option value="url-asc">URL (A-Z)</option>
           <option value="url-desc">URL (Z-A)</option>
         </select>
-        <!-- Display controls -->
         <button id="preview-pane-toggle" class="btn btn-secondary" title="Toggle preview pane">
           Preview
         </button>
       </div>
     </div>
 
-    <div id="empty-state" class="empty-state">
-      <p>No images saved yet</p>
-      <p class="hint">Right-click on any image and select "Save to Image Storage"</p>
-    </div>
+    <div class="main-container">
+      <aside id="tag-sidebar" class="tag-sidebar">
+        <h3>Tags</h3>
+        <div id="tag-sidebar-list" class="tag-sidebar-list"></div>
+      </aside>
 
-    <div id="image-grid" class="image-grid"></div>
+      <div class="content-area">
+        <div id="empty-state" class="empty-state">
+          <p>No images saved yet</p>
+          <p class="hint">Right-click on any image and select "Save to Image Storage"</p>
+        </div>
+
+        <div id="image-grid" class="image-grid"></div>
+      </div>
+    </div>
   </div>
 
   <div id="preview-pane" class="preview-pane">
