@@ -1718,7 +1718,8 @@ function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, 
       return;
     }
 
-    selectedIndex = -1;
+    // Auto-select first item only when actively typing/filtering
+    selectedIndex = currentTag.length > 0 ? 0 : -1;
     renderSuggestions();
     autocompleteDiv.style.display = 'block';
   }
@@ -1891,7 +1892,8 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
       return;
     }
 
-    selectedIndex = -1;
+    // Auto-select first item only when actively typing/filtering
+    selectedIndex = tagPrefix.length > 0 ? 0 : -1;
     renderSuggestions();
     autocompleteDiv.style.display = 'block';
   }

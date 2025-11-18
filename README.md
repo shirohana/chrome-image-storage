@@ -131,7 +131,7 @@ This will watch for changes and rebuild automatically.
 
 **URL/Page Search**: Use the top search bar to filter images by image URL, source page URL, or page title.
 
-**Tag Search**: Use the bottom search bar with Danbooru-style syntax for powerful filtering. Features autocomplete suggestions as you type (use Tab or Enter to select).
+**Tag Search**: Use the bottom search bar with Danbooru-style syntax for powerful filtering. Features autocomplete suggestions as you type (first match auto-selected, press Enter to accept).
 
 **Basic Tag Search**:
 - `girl cat` - Images with BOTH tags (AND logic)
@@ -187,7 +187,7 @@ This will watch for changes and rebuild automatically.
 **Add tags to single image**:
 1. Select an image and open the preview pane or lightbox
 2. Enter tags in the tag input field (space-separated)
-3. Use autocomplete suggestions by pressing Tab or Enter
+3. Use autocomplete suggestions (first match auto-selected when typing, press Enter to accept)
 4. Click "Save Tags" to apply
 
 **Bulk tag operations**:

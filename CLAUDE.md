@@ -153,6 +153,7 @@ Chrome extensions run in three separate JavaScript contexts:
   - Preserves exclusion prefix (`-`) when completing excluded tags
   - Skips metatags (`rating:`, `is:`, `tagcount:`) and operators (`or`)
   - Excludes already-entered tags from suggestions
+  - Auto-selects first item only when actively typing/filtering (not when showing all tags)
   - Arrow keys to navigate, Enter/Tab to select, Escape to dismiss
   - Tag list refreshed after images load via `updateTagAutocompleteAvailableTags()`
 
