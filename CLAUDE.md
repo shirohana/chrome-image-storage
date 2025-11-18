@@ -147,6 +147,14 @@ Chrome extensions run in three separate JavaScript contexts:
 - **No State Properties**: All filter state derived from search input value
   - Removed: `state.tagFilters`, `state.excludedTagFilters`, `state.tagFilterMode`, `state.showUntaggedOnly`, `state.typeFilter`, `state.ratingFilters`
   - Parse search input on every `applyFilters()` call
+- **Autocomplete**: `setupTagSearchAutocomplete()` provides tag suggestions
+  - Shows up to 8 matching tags from existing image tags
+  - Filters based on current token at cursor position
+  - Preserves exclusion prefix (`-`) when completing excluded tags
+  - Skips metatags (`rating:`, `is:`, `tagcount:`) and operators (`or`)
+  - Excludes already-entered tags from suggestions
+  - Arrow keys to navigate, Enter/Tab to select, Escape to dismiss
+  - Tag list refreshed after images load via `updateTagAutocompleteAvailableTags()`
 
 **Tag Sidebar** (`#tag-sidebar`):
 - Dynamic sidebar showing tags from currently filtered results

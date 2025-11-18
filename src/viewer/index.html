@@ -122,7 +122,10 @@
       </div>
       <div class="search-bars">
         <input type="text" id="url-search-input" class="search-input" placeholder="Search by URL or page title...">
-        <input type="text" id="tag-search-input" class="search-input" placeholder="Tag search (girl cat, girl or cat, -cat, rating:s, is:png, tagcount:2, etc.)...">
+        <div style="position: relative;">
+          <input type="text" id="tag-search-input" class="search-input" placeholder="Tag search (girl cat, girl or cat, -cat, rating:s, is:png, tagcount:2, etc.)...">
+          <div id="tag-search-autocomplete" class="tag-autocomplete"></div>
+        </div>
       </div>
       <div class="view-controls">
         <select id="group-by" class="group-by">

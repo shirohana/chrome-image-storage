@@ -47,6 +47,11 @@ async function loadImages() {
   state.images = await getAllImagesMetadata();
   applySorting();
   applyFilters();
+
+  // Update tag autocomplete with newly loaded tags
+  if (typeof updateTagAutocompleteAvailableTags === 'function') {
+    updateTagAutocompleteAvailableTags();
+  }
 }
 
 // Parse tagcount metatag from search query (legacy, used by parseTagSearch)
@@ -1802,6 +1807,191 @@ function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, 
   }, { signal });
 }
 
+// Setup autocomplete for tag search input (handles Danbooru syntax)
+function setupTagSearchAutocomplete(input: HTMLInputElement) {
+  const autocompleteDiv = document.getElementById('tag-search-autocomplete');
+  if (!autocompleteDiv) return;
+
+  // Remove existing event listeners by aborting previous controller
+  const controllerKey = 'autocomplete_controller_tag_search';
+  if ((input as any)[controllerKey]) {
+    (input as any)[controllerKey].abort();
+  }
+  const controller = new AbortController();
+  (input as any)[controllerKey] = controller;
+  const signal = controller.signal;
+
+  // Collect all unique tags from images
+  let availableTags: string[] = [];
+  function updateAvailableTags() {
+    const allTags = new Set<string>();
+    state.images.forEach(img => {
+      if (img.tags && img.tags.length > 0) {
+        img.tags.forEach(tag => allTags.add(tag));
+      }
+    });
+    availableTags = Array.from(allTags).sort();
+  }
+  updateAvailableTags();
+
+  let selectedIndex = -1;
+  let currentMatches: string[] = [];
+  let blurTimeout: number | null = null;
+
+  function showSuggestions() {
+    const value = input.value;
+    const cursorPos = input.selectionStart || 0;
+
+    // Find the current token being typed
+    const beforeCursor = value.substring(0, cursorPos);
+    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const currentToken = beforeCursor.substring(lastSpaceIndex + 1).trim();
+
+    // Check if we're in a metatag context (rating:, is:, tagcount:)
+    const metatagPattern = /^(rating|is|tagcount):/i;
+    if (metatagPattern.test(currentToken)) {
+      autocompleteDiv.style.display = 'none';
+      return;
+    }
+
+    // Handle exclusion prefix
+    const isExclusion = currentToken.startsWith('-');
+    const tagPrefix = isExclusion ? currentToken.substring(1) : currentToken;
+
+    // Don't autocomplete if typing "or" operator
+    if (tagPrefix.toLowerCase() === 'or' || tagPrefix.toLowerCase() === 'o') {
+      autocompleteDiv.style.display = 'none';
+      return;
+    }
+
+    // Get already-entered tags to exclude them from suggestions
+    const tokens = value.split(/\s+/).map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+    const enteredTags = new Set<string>();
+
+    tokens.forEach(token => {
+      // Skip metatags and operators
+      if (metatagPattern.test(token) || token === 'or') return;
+      // Remove exclusion prefix
+      const tag = token.startsWith('-') ? token.substring(1) : token;
+      if (tag) enteredTags.add(tag);
+    });
+
+    // Filter matching tags
+    currentMatches = availableTags.filter(tag => {
+      // Exclude already-entered tags
+      if (enteredTags.has(tag.toLowerCase())) return false;
+
+      if (tagPrefix.length === 0) return true;
+      return tag.toLowerCase().startsWith(tagPrefix.toLowerCase()) &&
+             tag.toLowerCase() !== tagPrefix.toLowerCase();
+    });
+
+    if (currentMatches.length === 0) {
+      autocompleteDiv.style.display = 'none';
+      return;
+    }
+
+    selectedIndex = -1;
+    renderSuggestions();
+    autocompleteDiv.style.display = 'block';
+  }
+
+  function renderSuggestions() {
+    autocompleteDiv.innerHTML = currentMatches.slice(0, 8).map((tag, index) =>
+      `<div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}" data-index="${index}">${tag}</div>`
+    ).join('');
+
+    // Attach click handlers
+    autocompleteDiv.querySelectorAll('.tag-suggestion').forEach(suggestionEl => {
+      suggestionEl.addEventListener('click', () => {
+        const selectedTag = suggestionEl.getAttribute('data-tag')!;
+        insertTag(selectedTag);
+      });
+    });
+  }
+
+  function insertTag(tag: string) {
+    // Clear any pending blur timeout
+    if (blurTimeout !== null) {
+      clearTimeout(blurTimeout);
+      blurTimeout = null;
+    }
+
+    const value = input.value;
+    const cursorPos = input.selectionStart || 0;
+    const beforeCursor = value.substring(0, cursorPos);
+    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const currentToken = beforeCursor.substring(lastSpaceIndex + 1);
+
+    // Preserve exclusion prefix if present
+    const isExclusion = currentToken.startsWith('-');
+    const tagWithPrefix = isExclusion ? '-' + tag : tag;
+
+    const beforeTag = value.substring(0, lastSpaceIndex + 1);
+    const afterCursor = value.substring(cursorPos);
+    const nextSpaceOrEnd = afterCursor.indexOf(' ');
+    const afterTag = nextSpaceOrEnd >= 0 ? afterCursor.substring(nextSpaceOrEnd) : '';
+
+    input.value = beforeTag + tagWithPrefix + ' ' + afterTag;
+    input.focus();
+
+    // Move cursor after the inserted tag
+    const newCursorPos = beforeTag.length + tagWithPrefix.length + 1;
+    input.setSelectionRange(newCursorPos, newCursorPos);
+
+    // Re-show autocomplete with remaining tags
+    showSuggestions();
+
+    // Trigger search
+    input.dispatchEvent(new Event('input'));
+  }
+
+  input.addEventListener('input', showSuggestions, { signal });
+  input.addEventListener('focus', showSuggestions, { signal });
+
+  input.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (autocompleteDiv.style.display !== 'block') return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
+      renderSuggestions();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, -1);
+      renderSuggestions();
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      if (selectedIndex >= 0 && selectedIndex < currentMatches.length) {
+        e.preventDefault();
+        insertTag(currentMatches[selectedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      autocompleteDiv.style.display = 'none';
+      selectedIndex = -1;
+    }
+  }, { signal });
+
+  // Hide autocomplete when clicking outside
+  input.addEventListener('blur', () => {
+    blurTimeout = window.setTimeout(() => {
+      autocompleteDiv.style.display = 'none';
+      selectedIndex = -1;
+      blurTimeout = null;
+    }, 200);
+  }, { signal });
+
+  // Clear timeout and keep open when refocusing
+  input.addEventListener('focus', () => {
+    if (blurTimeout !== null) {
+      clearTimeout(blurTimeout);
+      blurTimeout = null;
+    }
+  }, { signal });
+
+  // Refresh available tags when images change (e.g., after import)
+  return updateAvailableTags;
+}
+
 function closeLightbox() {
   const lightbox = document.getElementById('lightbox')!;
   lightbox.classList.remove('active');
@@ -1972,12 +2162,16 @@ const debouncedTagSearch = debounce(() => {
   updateRatingPills();
 }, 200);
 
+// Store the tag autocomplete update function globally
+let updateTagAutocompleteAvailableTags: (() => void) | undefined;
+
 if (urlSearchInput) {
   urlSearchInput.addEventListener('input', debouncedApplyFilters);
 }
 
 if (tagSearchInput) {
   tagSearchInput.addEventListener('input', debouncedTagSearch);
+  updateTagAutocompleteAvailableTags = setupTagSearchAutocomplete(tagSearchInput);
 }
 
 // Rating filter pill event listeners

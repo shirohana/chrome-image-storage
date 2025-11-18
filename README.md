@@ -131,7 +131,7 @@ This will watch for changes and rebuild automatically.
 
 **URL/Page Search**: Use the top search bar to filter images by image URL, source page URL, or page title.
 
-**Tag Search**: Use the bottom search bar with Danbooru-style syntax for powerful filtering:
+**Tag Search**: Use the bottom search bar with Danbooru-style syntax for powerful filtering. Features autocomplete suggestions as you type (use Tab or Enter to select).
 
 **Basic Tag Search**:
 - `girl cat` - Images with BOTH tags (AND logic)
