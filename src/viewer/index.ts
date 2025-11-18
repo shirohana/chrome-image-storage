@@ -1651,31 +1651,12 @@ function updateLightboxMetadata(image: ImageMetadata) {
   // Setup tag autocomplete with save callback
   const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
   if (input) {
-    setupTagAutocomplete(input, 'tag-autocomplete', undefined, async () => {
-      // Save tags when Enter is pressed with complete token
-      const currentImage = state.filteredImages[state.currentLightboxIndex];
-      if (!currentImage) return;
-
-      const tagsString = input.value.trim();
-      const tags = tagsString
-        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
-        : [];
-
-      // Remove duplicates using Set
-      const uniqueTags = Array.from(new Set(tags));
-
-      await updateImageTags(currentImage.id, uniqueTags);
-      await loadImages();
-      updatePreviewPane();
-
-      // Update lightbox metadata display
-      const imageInState = state.images.find(img => img.id === currentImage.id);
-      if (imageInState) {
-        updateLightboxMetadata(imageInState);
+    setupTagAutocomplete(input, 'tag-autocomplete', undefined, () => {
+      // Save tags when Enter is pressed with complete token - just click the save button
+      const saveBtn = document.querySelector('.save-tags-btn') as HTMLElement;
+      if (saveBtn) {
+        saveBtn.click();
       }
-
-      // Re-render the grid to update tags
-      applyFilters();
     });
   }
 }
