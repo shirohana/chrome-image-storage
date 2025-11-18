@@ -1648,14 +1648,73 @@ function updateLightboxMetadata(image: ImageMetadata) {
     });
   });
 
-  // Setup tag autocomplete
+  // Setup tag autocomplete with save callback
   const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
   if (input) {
-    setupTagAutocomplete(input);
+    setupTagAutocomplete(input, 'tag-autocomplete', undefined, async () => {
+      // Save tags when Enter is pressed with complete token
+      const currentImage = state.filteredImages[state.currentLightboxIndex];
+      if (!currentImage) return;
+
+      const tagsString = input.value.trim();
+      const tags = tagsString
+        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
+        : [];
+
+      // Remove duplicates using Set
+      const uniqueTags = Array.from(new Set(tags));
+
+      await updateImageTags(currentImage.id, uniqueTags);
+      await loadImages();
+      updatePreviewPane();
+
+      // Update lightbox metadata display
+      const imageInState = state.images.find(img => img.id === currentImage.id);
+      if (imageInState) {
+        updateLightboxMetadata(imageInState);
+      }
+
+      // Re-render the grid to update tags
+      applyFilters();
+    });
   }
 }
 
-function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, customTags?: string[]) {
+// Helper function to check if current token is incomplete (no trailing space)
+function isCurrentTokenIncomplete(input: HTMLInputElement): boolean {
+  const value = input.value;
+  const cursorPos = input.selectionStart || 0;
+  const beforeCursor = value.substring(0, cursorPos);
+
+  // Token is incomplete if there's text before cursor and no trailing space
+  if (beforeCursor.length === 0) return false;
+  if (beforeCursor.endsWith(' ')) return false;
+
+  // Check if there's a token being typed
+  const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+  const currentToken = beforeCursor.substring(lastSpaceIndex + 1).trim();
+
+  return currentToken.length > 0;
+}
+
+// Helper function to complete the current token by adding a space
+function completeCurrentToken(input: HTMLInputElement): void {
+  const value = input.value;
+  const cursorPos = input.selectionStart || 0;
+  const beforeCursor = value.substring(0, cursorPos);
+  const afterCursor = value.substring(cursorPos);
+
+  input.value = beforeCursor + ' ' + afterCursor;
+  const newCursorPos = cursorPos + 1;
+  input.setSelectionRange(newCursorPos, newCursorPos);
+}
+
+function setupTagAutocomplete(
+  input: HTMLInputElement,
+  autocompleteId?: string,
+  customTags?: string[],
+  onEnterComplete?: () => void | Promise<void>
+) {
   const divId = autocompleteId || 'tag-autocomplete';
   const autocompleteDiv = document.getElementById(divId);
   if (!autocompleteDiv) return;
@@ -1769,24 +1828,52 @@ function setupTagAutocomplete(input: HTMLInputElement, autocompleteId?: string, 
   input.addEventListener('focus', showSuggestions, { signal });
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (autocompleteDiv.style.display !== 'block') return;
+    const autocompleteVisible = autocompleteDiv.style.display === 'block';
 
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
-      renderSuggestions();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      selectedIndex = Math.max(selectedIndex - 1, -1);
-      renderSuggestions();
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      if (selectedIndex >= 0 && selectedIndex < currentMatches.length) {
+    // Handle Enter key - priority: autocomplete selection > token completion > submit
+    if (e.key === 'Enter') {
+      // Priority 1: If autocomplete has a selection, insert the selected tag
+      if (autocompleteVisible && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
         e.preventDefault();
         insertTag(currentMatches[selectedIndex]);
       }
-    } else if (e.key === 'Escape') {
-      autocompleteDiv.style.display = 'none';
-      selectedIndex = -1;
+      // Priority 2: If token is incomplete, complete it by adding a space
+      else if (isCurrentTokenIncomplete(input)) {
+        e.preventDefault();
+        completeCurrentToken(input);
+        autocompleteDiv.style.display = 'none';
+        selectedIndex = -1;
+      }
+      // Priority 3: Call the callback if provided (submit action)
+      else if (onEnterComplete) {
+        e.preventDefault();
+        onEnterComplete();
+      }
+      // If no callback, let the event bubble (default behavior)
+      return;
+    }
+
+    // Handle Tab key for autocomplete selection
+    if (e.key === 'Tab' && autocompleteVisible && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
+      e.preventDefault();
+      insertTag(currentMatches[selectedIndex]);
+      return;
+    }
+
+    // Handle other keys when autocomplete is visible
+    if (autocompleteVisible) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
+        renderSuggestions();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, -1);
+        renderSuggestions();
+      } else if (e.key === 'Escape') {
+        autocompleteDiv.style.display = 'none';
+        selectedIndex = -1;
+      }
     }
   }, { signal });
 
@@ -1952,24 +2039,51 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
   input.addEventListener('focus', showSuggestions, { signal });
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
-    if (autocompleteDiv.style.display !== 'block') return;
+    const autocompleteVisible = autocompleteDiv.style.display === 'block';
 
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
-      renderSuggestions();
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      selectedIndex = Math.max(selectedIndex - 1, -1);
-      renderSuggestions();
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      if (selectedIndex >= 0 && selectedIndex < currentMatches.length) {
+    // Handle Enter key - priority: autocomplete selection > token completion > submit
+    if (e.key === 'Enter') {
+      // Priority 1: If autocomplete has a selection, insert the selected tag
+      if (autocompleteVisible && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
         e.preventDefault();
         insertTag(currentMatches[selectedIndex]);
       }
-    } else if (e.key === 'Escape') {
-      autocompleteDiv.style.display = 'none';
-      selectedIndex = -1;
+      // Priority 2: If token is incomplete, complete it by adding a space
+      else if (isCurrentTokenIncomplete(input)) {
+        e.preventDefault();
+        completeCurrentToken(input);
+        autocompleteDiv.style.display = 'none';
+        selectedIndex = -1;
+      }
+      // Priority 3: Blur to complete the search
+      else {
+        e.preventDefault();
+        input.blur();
+      }
+      return;
+    }
+
+    // Handle Tab key for autocomplete selection
+    if (e.key === 'Tab' && autocompleteVisible && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
+      e.preventDefault();
+      insertTag(currentMatches[selectedIndex]);
+      return;
+    }
+
+    // Handle other keys when autocomplete is visible
+    if (autocompleteVisible) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
+        renderSuggestions();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, -1);
+        renderSuggestions();
+      } else if (e.key === 'Escape') {
+        autocompleteDiv.style.display = 'none';
+        selectedIndex = -1;
+      }
     }
   }, { signal });
 
@@ -2590,10 +2704,12 @@ function openBulkTagModal() {
 
   bulkTagModal.classList.add('active');
 
-  // Setup autocomplete for add input (all tags)
-  setupTagAutocomplete(bulkAddTagsInput, 'bulk-add-autocomplete');
+  // Setup autocomplete for add input (all tags) - Enter focuses next input
+  setupTagAutocomplete(bulkAddTagsInput, 'bulk-add-autocomplete', undefined, () => {
+    bulkRemoveTagsInput.focus();
+  });
 
-  // Setup autocomplete for remove input (only tags from selected images)
+  // Setup autocomplete for remove input (only tags from selected images) - Enter blurs
   const selectedImages = state.images.filter(img => state.selectedIds.has(img.id));
   const selectedImageTags = new Set<string>();
   selectedImages.forEach(img => {
@@ -2602,7 +2718,9 @@ function openBulkTagModal() {
     }
   });
   const selectedImageTagsArray = Array.from(selectedImageTags);
-  setupTagAutocomplete(bulkRemoveTagsInput, 'bulk-remove-autocomplete', selectedImageTagsArray);
+  setupTagAutocomplete(bulkRemoveTagsInput, 'bulk-remove-autocomplete', selectedImageTagsArray, () => {
+    bulkRemoveTagsInput.blur();
+  });
 
   // Focus the first input
   bulkAddTagsInput.focus();
@@ -2664,27 +2782,6 @@ bulkTagCloseBtn.addEventListener('click', closeBulkTagModal);
 bulkTagOverlay.addEventListener('click', closeBulkTagModal);
 bulkTagCancelBtn.addEventListener('click', closeBulkTagModal);
 bulkTagSaveBtn.addEventListener('click', saveBulkTags);
-
-// Handle Enter key in bulk tag inputs
-bulkAddTagsInput.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    const autocompleteDiv = document.getElementById('bulk-add-autocomplete');
-    if (!autocompleteDiv || autocompleteDiv.style.display !== 'block') {
-      e.preventDefault();
-      saveBulkTags();
-    }
-  }
-});
-
-bulkRemoveTagsInput.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    const autocompleteDiv = document.getElementById('bulk-remove-autocomplete');
-    if (!autocompleteDiv || autocompleteDiv.style.display !== 'block') {
-      e.preventDefault();
-      saveBulkTags();
-    }
-  }
-});
 
 // Database Import/Export handlers
 document.getElementById('export-database-btn')!.addEventListener('click', async () => {

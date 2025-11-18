@@ -182,6 +182,32 @@ Chrome extensions run in three separate JavaScript contexts:
 - Event handler in `imageGrid.addEventListener('click')` checks for `.image-tags .tag`
 - Highlighting determined by parsing current tag search input
 
+**Enter Key Behavior for Tag Inputs**:
+All tag inputs support two-step completion flow for better UX:
+
+1. **Priority Order** (when Enter is pressed):
+   - Autocomplete has selection? → Insert selected tag
+   - Current token incomplete? → Complete it (add space)
+   - Otherwise → Execute submit action
+
+2. **Main Tag Search Input** (`#tag-search-input`):
+   - Enter with incomplete token (`girl longhair|`) → Complete to `girl longhair |`
+   - Enter with complete token → Blur input (completes search, hides autocomplete)
+
+3. **Preview/Lightbox Tag Input** (`#lightbox-tag-input`):
+   - Enter with incomplete token → Complete token
+   - Enter with complete token → Save tags
+
+4. **Bulk Tag Modal Inputs**:
+   - Add Tags input → Enter focuses Remove Tags input
+   - Remove Tags input → Enter blurs input (user can adjust rating options, then click Save)
+
+**Implementation**:
+- `setupTagAutocomplete()` accepts optional `onEnterComplete` callback
+- `isCurrentTokenIncomplete()`: Checks if current token has trailing space
+- `completeCurrentToken()`: Adds space to complete token
+- AbortController used to clean up event listeners when inputs are re-rendered
+
 ### Auto-Tagging Rules System
 
 **Location**: `src/storage/tag-rules.ts`
