@@ -601,6 +601,7 @@ h1 {
   max-width: 320px;
   max-height: 90vh;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .lightbox-metadata h3 {
