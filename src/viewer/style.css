@@ -63,6 +63,11 @@ h1 {
   transition: background 0.2s;
 }
 
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .btn-primary {
   background: #007bff;
   color: white;
@@ -443,6 +448,9 @@ h1 {
   /* Performance hints */
   contain: layout style paint;
   content-visibility: auto;
+  /* Flex layout for content */
+  display: flex;
+  flex-direction: column;
 }
 
 .image-card:hover {
@@ -494,6 +502,9 @@ h1 {
 
 .image-info {
   padding: 15px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .image-meta {
@@ -515,10 +526,21 @@ h1 {
   margin-bottom: 10px;
 }
 
+.page-link {
+  color: #007bff;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.page-link:hover {
+  text-decoration: underline;
+}
+
 .image-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-top: auto;
 }
 
 .image-actions button {
@@ -816,6 +838,44 @@ body.preview-pane-open .container {
   font-size: 14px;
   color: #333;
   word-break: break-word;
+}
+
+.preview-meta-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  background: white;
+}
+
+.preview-meta-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.preview-meta-input::placeholder {
+  color: #999;
+}
+
+.preview-tag-input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #333;
+  background: white;
+}
+
+.preview-tag-input:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.preview-tag-input::placeholder {
+  color: #999;
 }
 
 .preview-actions {

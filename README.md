@@ -196,7 +196,7 @@ This will watch for changes and rebuild automatically.
 1. Select an image and open the preview pane or lightbox
 2. Enter tags in the tag input field (space-separated)
 3. Use autocomplete suggestions (first match auto-selected when typing, press Enter to accept)
-4. Click "Save Tags" to apply
+4. Tags auto-save when you press Enter or blur the input (click away)
 
 **Bulk tag operations**:
 1. Select multiple images using checkboxes
@@ -333,9 +333,10 @@ Images are soft-deleted (moved to trash) instead of permanent deletion:
 **Preview sidebar (quick editing)**:
 1. Select an image to open preview sidebar
 2. Metadata inputs are always editable
-3. Edit Page Title or Page URL directly
-4. Changes auto-save when you blur the input (click away or tab out)
-5. No save button needed - completely silent updates
+3. Edit Page Title, Page URL, or Tags directly
+4. Tag input features autocomplete from existing tags
+5. Changes auto-save when you blur the input (click away or tab out)
+6. No save button needed - completely silent updates
 
 **Lightbox (viewing mode)**:
 1. Open image in lightbox (click image or press Space)

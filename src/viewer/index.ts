@@ -833,14 +833,12 @@ function createImageCardHTML(image: ImageMetadata): string {
 
   const actions = state.currentView === 'trash'
     ? `
-      <button class="btn btn-primary restore-btn" data-id="${image.id}">Restore</button>
-      <button class="btn btn-danger permanent-delete-btn" data-id="${image.id}">Delete Forever</button>
+      <button class="btn btn-sm btn-primary restore-btn" data-id="${image.id}">Restore</button>
+      <button class="btn btn-sm btn-danger permanent-delete-btn" data-id="${image.id}">Delete Forever</button>
     `
     : `
-      <button class="btn btn-secondary download-btn" data-id="${image.id}">Download</button>
-      <button class="btn btn-primary view-page-btn" data-id="${image.id}">View Page</button>
-      <button class="btn btn-primary view-btn" data-id="${image.id}">View Original</button>
-      <button class="btn btn-danger delete-btn" data-id="${image.id}">Delete</button>
+      <button class="btn btn-sm btn-secondary download-btn" data-id="${image.id}">Save</button>
+      <button class="btn btn-sm btn-danger delete-btn" data-id="${image.id}">Delete</button>
     `;
 
   // Parse current tag search to highlight active tags
@@ -886,8 +884,8 @@ function createImageCardHTML(image: ImageMetadata): string {
           <div><strong>Type:</strong> ${image.mimeType}</div>
         </div>
         ${tagsHTML}
-        <div class="image-url" title="${image.imageUrl}">
-          <strong>From:</strong> ${image.pageTitle || image.pageUrl}
+        <div class="image-url" title="${image.pageUrl}">
+          <strong>From:</strong> <a href="${image.pageUrl}" target="_blank" rel="noopener noreferrer" class="page-link">${image.pageTitle || image.pageUrl}</a>
         </div>
         <div class="image-actions">
           ${actions}
@@ -1250,36 +1248,42 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
           <div class="preview-meta-tags">${tagsHTML}</div>
         </div>
         <div class="preview-meta-row">
+          <div class="tag-input-container">
+            <input type="text" id="preview-tag-input-${image.id}" class="preview-tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? image.tags.join(' ') : ''}">
+            <div id="preview-tag-autocomplete-${image.id}" class="tag-autocomplete"></div>
+          </div>
+        </div>
+        <div class="preview-meta-row">
           <span class="preview-meta-label">Rating</span>
           <div class="preview-rating-selector">
             <label class="rating-radio">
               <input type="radio" name="preview-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
-              <span>General</span>
+              <span>G</span>
             </label>
             <label class="rating-radio">
               <input type="radio" name="preview-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
-              <span>Sensitive</span>
+              <span>S</span>
             </label>
             <label class="rating-radio">
               <input type="radio" name="preview-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
-              <span>Questionable</span>
+              <span>Q</span>
             </label>
             <label class="rating-radio">
               <input type="radio" name="preview-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
-              <span>Explicit</span>
+              <span>E</span>
             </label>
             <label class="rating-radio">
               <input type="radio" name="preview-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
-              <span>Unrated</span>
+              <span>-</span>
             </label>
           </div>
         </div>
       </div>
       <div class="preview-actions">
-        <button class="btn btn-secondary download-btn preview-download-btn" data-id="${image.id}">Download</button>
-        <button class="btn btn-primary view-page-btn preview-view-page-btn" data-id="${image.id}">View Page</button>
-        <button class="btn btn-primary preview-view-btn" data-id="${image.id}">View</button>
-        <button class="btn btn-primary preview-danbooru-btn" data-id="${image.id}">Upload to Danbooru</button>
+        <button class="btn btn-sm btn-secondary view-page-btn preview-view-page-btn" data-id="${image.id}">Source</button>
+        <button class="btn btn-sm btn-secondary preview-view-btn" data-id="${image.id}">View</button>
+        <button class="btn btn-sm btn-secondary download-btn preview-download-btn" data-id="${image.id}">Save</button>
+        <button class="btn btn-sm btn-primary preview-danbooru-btn" data-id="${image.id}">Danbooru</button>
       </div>
     </div>
   `;
@@ -1365,6 +1369,58 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
       // Re-render the grid to update display
       applyFilters();
+    });
+  }
+
+  // Attach tag input with autocomplete and auto-save on blur
+  const previewTagInput = document.getElementById(`preview-tag-input-${image.id}`) as HTMLInputElement;
+  if (previewTagInput) {
+    setupTagAutocomplete(previewTagInput, `preview-tag-autocomplete-${image.id}`, undefined, async () => {
+      // Save tags when Enter is pressed with complete token
+      const tagsString = previewTagInput.value.trim();
+      const tags = tagsString
+        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
+        : [];
+
+      // Remove duplicates using Set
+      const uniqueTags = Array.from(new Set(tags));
+
+      const { updateImageTags } = await import('../storage/service');
+      await updateImageTags(image.id, uniqueTags);
+
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.tags = uniqueTags;
+      }
+
+      // Re-render the grid and preview pane
+      applyFilters();
+      updatePreviewPane();
+    });
+
+    // Auto-save on blur
+    previewTagInput.addEventListener('blur', async () => {
+      const tagsString = previewTagInput.value.trim();
+      const tags = tagsString
+        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
+        : [];
+
+      // Remove duplicates using Set
+      const uniqueTags = Array.from(new Set(tags));
+
+      const { updateImageTags } = await import('../storage/service');
+      await updateImageTags(image.id, uniqueTags);
+
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.tags = uniqueTags;
+      }
+
+      // Re-render the grid and preview pane
+      applyFilters();
+      updatePreviewPane();
     });
   }
 }
@@ -1585,6 +1641,14 @@ function updateLightboxMetadata(image: ImageMetadata) {
   metadata.innerHTML = `
     <h3>Image Details</h3>
     <div class="metadata-row">
+      <div class="lightbox-actions">
+        <button class="btn btn-sm btn-secondary view-page-btn lightbox-view-page-btn" data-id="${image.id}">Source</button>
+        <button class="btn btn-sm btn-secondary view-btn lightbox-view-original-btn" data-id="${image.id}">Raw</button>
+        <button class="btn btn-sm btn-secondary download-btn lightbox-download-btn" data-id="${image.id}">Save</button>
+        <button class="btn btn-sm btn-primary lightbox-edit-metadata-btn" data-id="${image.id}">Edit</button>
+      </div>
+    </div>
+    <div class="metadata-row">
       <span class="metadata-label">Dimensions:</span>
       <span class="metadata-value">${image.width} × ${image.height}</span>
     </div>
@@ -1613,16 +1677,6 @@ function updateLightboxMetadata(image: ImageMetadata) {
       <span class="metadata-value metadata-readonly" title="${image.imageUrl}">${image.imageUrl}</span>
     </div>
     <div class="metadata-row">
-      <button class="btn btn-secondary lightbox-edit-metadata-btn" data-id="${image.id}">Edit Metadata</button>
-    </div>
-    <div class="metadata-row">
-      <div class="lightbox-actions">
-        <button class="btn btn-secondary download-btn lightbox-download-btn" data-id="${image.id}">Download</button>
-        <button class="btn btn-primary view-page-btn lightbox-view-page-btn" data-id="${image.id}">View Page</button>
-        <button class="btn btn-primary view-btn lightbox-view-original-btn" data-id="${image.id}">View Original</button>
-      </div>
-    </div>
-    <div class="metadata-row">
       <span class="metadata-label">Rating:</span>
       <div class="metadata-rating-display">
         <span class="metadata-rating-badge" style="background-color: ${ratingInfo.color}">${ratingInfo.badge}</span>
@@ -1634,23 +1688,23 @@ function updateLightboxMetadata(image: ImageMetadata) {
       <div class="lightbox-rating-selector">
         <label class="rating-radio">
           <input type="radio" name="lightbox-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
-          <span>General</span>
+          <span>G</span>
         </label>
         <label class="rating-radio">
           <input type="radio" name="lightbox-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
-          <span>Sensitive</span>
+          <span>S</span>
         </label>
         <label class="rating-radio">
           <input type="radio" name="lightbox-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
-          <span>Questionable</span>
+          <span>Q</span>
         </label>
         <label class="rating-radio">
           <input type="radio" name="lightbox-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
-          <span>Explicit</span>
+          <span>E</span>
         </label>
         <label class="rating-radio">
           <input type="radio" name="lightbox-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
-          <span>Unrated</span>
+          <span>-</span>
         </label>
       </div>
     </div>
@@ -1663,15 +1717,8 @@ function updateLightboxMetadata(image: ImageMetadata) {
         <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? image.tags.join(' ') : ''}">
         <div id="tag-autocomplete" class="tag-autocomplete"></div>
       </div>
-      <button class="btn btn-primary save-tags-btn" data-id="${image.id}">Save Tags</button>
     </div>
   `;
-
-  // Attach event listener for save tags button
-  const saveBtn = metadata.querySelector('.save-tags-btn');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', handleSaveTags);
-  }
 
   // Attach event listeners for action buttons
   const downloadBtn = metadata.querySelector('.lightbox-download-btn');
@@ -1774,12 +1821,29 @@ function updateLightboxMetadata(image: ImageMetadata) {
   // Setup tag autocomplete with save callback
   const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
   if (input) {
-    setupTagAutocomplete(input, 'tag-autocomplete', undefined, () => {
-      // Save tags when Enter is pressed with complete token - just click the save button
-      const saveBtn = document.querySelector('.save-tags-btn') as HTMLElement;
-      if (saveBtn) {
-        saveBtn.click();
+    setupTagAutocomplete(input, 'tag-autocomplete', undefined, async () => {
+      // Save tags when Enter is pressed with complete token
+      const tagsString = input.value.trim();
+      const tags = tagsString
+        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
+        : [];
+
+      // Remove duplicates using Set
+      const uniqueTags = Array.from(new Set(tags));
+
+      await updateImageTags(image.id, uniqueTags);
+
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.tags = uniqueTags;
       }
+
+      // Update lightbox metadata display
+      updateLightboxMetadata(imageInState || image);
+
+      // Re-render the grid to update tags display
+      applyFilters();
     });
   }
 }

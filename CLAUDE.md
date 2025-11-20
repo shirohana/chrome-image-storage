@@ -91,6 +91,12 @@ Chrome extensions run in three separate JavaScript contexts:
    - Try canvas capture from DOM first (fast, no network request, works for same-origin)
    - Fall back to `declarativeNetRequest` API to inject Referer header (bypasses 403 errors from sites like Pixiv)
    - Canvas `toBlob()` fails on tainted (cross-origin) images, unlike what docs suggest
+9. **UI Simplification**: Streamlined interface with compact controls
+   - Smaller buttons (`.btn-sm` class: 6px 12px padding, 12px font)
+   - Shorter button labels: "Download" → "Save", "View Page" → "Source", "View Original" → "Raw"
+   - Single-char ratings (G/S/Q/E/-) instead of full words
+   - Image cards: Only Save and Delete buttons, "From:" text is clickable link
+   - Flexbox layout for button alignment (`.image-card` and `.image-info` use flex, `.image-actions` has `margin-top: auto`)
 
 ## Advanced Patterns
 
@@ -109,10 +115,11 @@ Chrome extensions run in three separate JavaScript contexts:
 - Empty array or undefined if no tags
 
 **Individual Image Tagging**:
-- Tag editor in preview pane (single selection)
+- Tag editor in preview pane (single selection) and lightbox
 - Inline tag input with autocomplete from existing tags
+- Auto-save on blur or Enter key (no save button needed)
 - `updateImageTags(id, tags)`: Updates tags for single image
-- Tags rendered as pills with remove buttons
+- Tags rendered as pills (click to filter)
 
 **Bulk Tag Operations**:
 - "Tag Selected" button opens modal for multi-image operations
@@ -298,7 +305,7 @@ interface TagRule {
 
 3. **Rating Editor** (Preview Pane):
    - Radio buttons for single image selection
-   - Five options: General, Sensitive, Questionable, Explicit, Unrated
+   - Five options: G, S, Q, E, - (single-char format)
    - Updates rating immediately on change, re-renders grid with new badge
 
 4. **Bulk Rating** (Bulk Tag Modal):
@@ -366,7 +373,11 @@ interface TagCountFilter {
 ### Preview Pane
 
 - Right-side collapsible pane showing selected image details
-- **Single Selection**: Full preview image + metadata panel
+- **Single Selection**: Full preview image + metadata panel with editable fields
+  - Always-editable inputs for page title and page URL (auto-save on blur)
+  - Tag input with autocomplete (auto-save on blur or Enter)
+  - Single-char rating selector (G/S/Q/E/-)
+  - Compact action buttons (.btn-sm): Source, View, Save, Danbooru
 - **Multi-Selection**: Thumbnail grid with count
 - **State**: `previewPaneVisible` persisted in localStorage
 - **Updates**: Synced on selection change via `updatePreviewPane()`
@@ -470,19 +481,23 @@ User preferences saved across sessions:
 **Metadata Editing - Preview Sidebar** (right panel for quick editing):
 - **Always editable**: Inputs always visible and editable
 - **Auto-save on blur**: Changes saved when input loses focus (click away or tab)
-- **No save button**: Completely silent updates
+- **Tag input**: Space-separated tags with autocomplete, auto-save on blur or Enter
+- **No save buttons**: Completely silent updates
 - **Pattern**: Blur event listeners call update functions, update local state, re-render grid
 - **Use case**: Quick metadata edits while browsing images
 
 **Metadata Editing - Lightbox** (fullscreen modal for viewing):
+- **Compact action buttons**: Source, Raw, Save, Edit (all .btn-sm size)
 - **Read-only by default**: Page title and URL shown as text
-- **Edit mode**: Click "Edit Metadata" button to enable editing
+- **Edit mode**: Click "Edit" button to enable editing
   - Fields become inputs
   - Button changes to "Save Metadata" (primary style)
 - **Save and revert**: Click "Save Metadata" to apply changes
   - Updates DB and local state
   - Re-renders lightbox back to read-only view
-  - Button changes back to "Edit Metadata" (secondary style)
+  - Button changes back to "Edit" (secondary style)
+- **Tag input**: Auto-save on Enter key (no save button)
+- **Rating**: Single-char format (G/S/Q/E/-)
 - **Use case**: Clean viewing experience, edit only when needed
 
 **Key Design Decisions**:
