@@ -71,7 +71,15 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Preview pane**: Collapsible side panel showing selected image details and metadata
 - **View page button**: Open the original source page in a new tab
 
+### Metadata Management
+- **Local file upload**: Import images from your computer via "Upload" button in header
+- **Edit metadata**: Update page title and page URL for individual images
+  - **Preview sidebar**: Always editable inputs with auto-save on blur (quick editing)
+  - **Lightbox**: Read-only by default, click "Edit Metadata" to enable editing
+- **Auto-tagging on import**: Local uploads automatically apply auto-tagging rules based on filename
+
 ### Import & Export
+- **Upload from computer**: Import images from local files via header button
 - **ZIP export**: Export all or selected images as a ZIP with metadata.json
 - **SQLite export**: Export database as SQLite format for backups with folder picker
 - **Progress indicator**: Visual progress modal shows export status in real-time
@@ -308,6 +316,33 @@ Images are soft-deleted (moved to trash) instead of permanent deletion:
 - **Left/Right arrows**: Previous/next image
 - **Up/Down arrows**: Navigate by grid columns
 - **Space or Escape**: Close lightbox
+
+### Uploading Local Files
+
+**Import images from your computer**:
+1. Click "Upload" button in the header (between image count and "Select All")
+2. Select one or multiple image files from your computer
+3. Images are imported with metadata:
+   - **Page Title**: Extracted from filename (without extension)
+   - **Page URL**: Set to local file path (`file:///filename`)
+   - **Tags**: Auto-tagging rules applied based on filename
+4. Edit metadata afterwards using preview sidebar or lightbox
+
+### Editing Metadata
+
+**Preview sidebar (quick editing)**:
+1. Select an image to open preview sidebar
+2. Metadata inputs are always editable
+3. Edit Page Title or Page URL directly
+4. Changes auto-save when you blur the input (click away or tab out)
+5. No save button needed - completely silent updates
+
+**Lightbox (viewing mode)**:
+1. Open image in lightbox (click image or press Space)
+2. Metadata shown as read-only text by default
+3. Click "Edit Metadata" button to enable editing
+4. Make changes to Page Title or Page URL
+5. Click "Save Metadata" to apply and return to read-only view
 
 ### Exporting & Importing
 

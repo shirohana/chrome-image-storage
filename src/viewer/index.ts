@@ -1234,10 +1234,16 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
           <span class="preview-meta-value">${date}</span>
         </div>
         <div class="preview-meta-row">
-          <span class="preview-meta-label">Source Page</span>
-          <a href="${image.pageUrl}" target="_blank" class="preview-meta-value preview-meta-link" title="${image.pageUrl}">
-            ${truncateUrl(image.pageUrl)}
-          </a>
+          <span class="preview-meta-label">Page Title</span>
+          <input type="text" class="preview-meta-input" id="preview-page-title-${image.id}" value="${image.pageTitle || ''}" placeholder="Enter page title">
+        </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Page URL</span>
+          <input type="url" class="preview-meta-input" id="preview-page-url-${image.id}" value="${image.pageUrl}" placeholder="Enter page URL">
+        </div>
+        <div class="preview-meta-row">
+          <span class="preview-meta-label">Image URL</span>
+          <span class="preview-meta-value preview-meta-readonly" title="${image.imageUrl}">${truncateUrl(image.imageUrl)}</span>
         </div>
         <div class="preview-meta-row">
           <span class="preview-meta-label">Tags</span>
@@ -1316,6 +1322,51 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       applyFilters();
     });
   });
+
+  // Attach metadata auto-save on blur for preview sidebar
+  const previewPageTitleInput = document.getElementById(`preview-page-title-${image.id}`) as HTMLInputElement;
+  const previewPageUrlInput = document.getElementById(`preview-page-url-${image.id}`) as HTMLInputElement;
+
+  if (previewPageTitleInput) {
+    previewPageTitleInput.addEventListener('blur', async () => {
+      const newPageTitle = previewPageTitleInput.value.trim() || undefined;
+      const { updateImagePageTitle } = await import('../storage/service');
+      await updateImagePageTitle(image.id, newPageTitle);
+
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.pageTitle = newPageTitle;
+      }
+
+      // Re-render the grid to update display
+      applyFilters();
+    });
+  }
+
+  if (previewPageUrlInput) {
+    previewPageUrlInput.addEventListener('blur', async () => {
+      const newPageUrl = previewPageUrlInput.value.trim();
+
+      if (!newPageUrl) {
+        alert('Page URL cannot be empty');
+        previewPageUrlInput.value = image.pageUrl;
+        return;
+      }
+
+      const { updateImagePageUrl } = await import('../storage/service');
+      await updateImagePageUrl(image.id, newPageUrl);
+
+      // Update local state
+      const imageInState = state.images.find(img => img.id === image.id);
+      if (imageInState) {
+        imageInState.pageUrl = newPageUrl;
+      }
+
+      // Re-render the grid to update display
+      applyFilters();
+    });
+  }
 }
 
 async function renderMultiPreview(images: ImageMetadata[], container: HTMLElement) {
@@ -1549,9 +1600,20 @@ function updateLightboxMetadata(image: ImageMetadata) {
       <span class="metadata-label">Saved:</span>
       <span class="metadata-value">${date}</span>
     </div>
+    <div class="metadata-row" id="lightbox-page-title-row-${image.id}">
+      <span class="metadata-label">Page Title:</span>
+      <span class="metadata-value">${image.pageTitle || '(not set)'}</span>
+    </div>
+    <div class="metadata-row" id="lightbox-page-url-row-${image.id}">
+      <span class="metadata-label">Page URL:</span>
+      <span class="metadata-value" title="${image.pageUrl}">${image.pageUrl}</span>
+    </div>
     <div class="metadata-row">
-      <span class="metadata-label">Page:</span>
-      <span class="metadata-value" title="${image.pageUrl}">${image.pageTitle || image.pageUrl}</span>
+      <span class="metadata-label">Image URL:</span>
+      <span class="metadata-value metadata-readonly" title="${image.imageUrl}">${image.imageUrl}</span>
+    </div>
+    <div class="metadata-row">
+      <button class="btn btn-secondary lightbox-edit-metadata-btn" data-id="${image.id}">Edit Metadata</button>
     </div>
     <div class="metadata-row">
       <div class="lightbox-actions">
@@ -1623,6 +1685,67 @@ function updateLightboxMetadata(image: ImageMetadata) {
   const viewOriginalBtn = metadata.querySelector('.lightbox-view-original-btn');
   if (viewOriginalBtn) {
     viewOriginalBtn.addEventListener('click', () => handleViewOriginal({ target: viewOriginalBtn } as any));
+  }
+
+  // Attach metadata edit/save toggle listener for lightbox
+  const editMetadataBtn = metadata.querySelector('.lightbox-edit-metadata-btn') as HTMLButtonElement;
+  let isEditMode = false;
+
+  if (editMetadataBtn) {
+    editMetadataBtn.addEventListener('click', async () => {
+      if (!isEditMode) {
+        // Switch to edit mode
+        const pageTitleRow = document.getElementById(`lightbox-page-title-row-${image.id}`);
+        const pageUrlRow = document.getElementById(`lightbox-page-url-row-${image.id}`);
+
+        if (pageTitleRow && pageUrlRow) {
+          pageTitleRow.innerHTML = `
+            <span class="metadata-label">Page Title:</span>
+            <input type="text" class="lightbox-meta-input" id="lightbox-page-title-input-${image.id}" value="${image.pageTitle || ''}" placeholder="Enter page title">
+          `;
+          pageUrlRow.innerHTML = `
+            <span class="metadata-label">Page URL:</span>
+            <input type="url" class="lightbox-meta-input" id="lightbox-page-url-input-${image.id}" value="${image.pageUrl}" placeholder="Enter page URL">
+          `;
+
+          editMetadataBtn.textContent = 'Save Metadata';
+          editMetadataBtn.classList.remove('btn-secondary');
+          editMetadataBtn.classList.add('btn-primary');
+          isEditMode = true;
+        }
+      } else {
+        // Save and switch back to display mode
+        const pageTitleInput = document.getElementById(`lightbox-page-title-input-${image.id}`) as HTMLInputElement;
+        const pageUrlInput = document.getElementById(`lightbox-page-url-input-${image.id}`) as HTMLInputElement;
+
+        if (pageTitleInput && pageUrlInput) {
+          const newPageTitle = pageTitleInput.value.trim() || undefined;
+          const newPageUrl = pageUrlInput.value.trim();
+
+          if (!newPageUrl) {
+            alert('Page URL cannot be empty');
+            return;
+          }
+
+          const { updateImagePageTitle, updateImagePageUrl } = await import('../storage/service');
+          await updateImagePageTitle(image.id, newPageTitle);
+          await updateImagePageUrl(image.id, newPageUrl);
+
+          // Update local state
+          const imageInState = state.images.find(img => img.id === image.id);
+          if (imageInState) {
+            imageInState.pageTitle = newPageTitle;
+            imageInState.pageUrl = newPageUrl;
+          }
+
+          // Re-render the grid to update display
+          applyFilters();
+
+          // Update lightbox metadata display
+          updateLightboxMetadata(imageInState || image);
+        }
+      }
+    });
   }
 
   // Attach rating change listeners
@@ -2765,6 +2888,33 @@ bulkTagCancelBtn.addEventListener('click', closeBulkTagModal);
 bulkTagSaveBtn.addEventListener('click', saveBulkTags);
 
 // Database Import/Export handlers
+// Import local files button handler
+document.getElementById('import-local-files-btn')!.addEventListener('click', async () => {
+  // Create hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = 'image/*';
+  fileInput.multiple = true;
+
+  fileInput.onchange = async () => {
+    const files = Array.from(fileInput.files || []);
+    if (files.length === 0) return;
+
+    try {
+      const { importLocalFiles } = await import('../storage/service');
+      const importedImages = await importLocalFiles(files);
+
+      // Reload images to reflect the new imports
+      await loadImages();
+    } catch (error) {
+      console.error('Failed to import files:', error);
+      alert(`Failed to import files: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  fileInput.click();
+});
+
 document.getElementById('export-database-btn')!.addEventListener('click', async () => {
   try {
     // Check if File System Access API is available

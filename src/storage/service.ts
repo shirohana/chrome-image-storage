@@ -215,3 +215,60 @@ export async function updateImagesRating(imageIds: string[], rating?: 'g' | 's' 
     }
   }
 }
+
+export async function updateImagePageTitle(id: string, pageTitle?: string): Promise<void> {
+  const image = await imageDB.get(id);
+  if (image) {
+    image.pageTitle = pageTitle;
+    await imageDB.update(image);
+  }
+}
+
+export async function updateImagePageUrl(id: string, pageUrl: string): Promise<void> {
+  const image = await imageDB.get(id);
+  if (image) {
+    image.pageUrl = pageUrl;
+    await imageDB.update(image);
+  }
+}
+
+export async function importLocalFiles(files: File[]): Promise<SavedImage[]> {
+  const importedImages: SavedImage[] = [];
+
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      continue;
+    }
+
+    const blob = new Blob([await file.arrayBuffer()], { type: file.type });
+    const dimensions = await getImageDimensions(blob);
+
+    // Use filename without extension as page title
+    const filename = file.name;
+    const pageTitle = filename.substring(0, filename.lastIndexOf('.')) || filename;
+
+    const rules = await loadTagRules();
+    const autoTags = getAutoTags(pageTitle, rules);
+    const { rating, cleanedTags } = extractRatingFromTags(autoTags);
+
+    const image: SavedImage = {
+      id: crypto.randomUUID(),
+      blob,
+      imageUrl: `file:///${filename}`,
+      pageUrl: `file:///${filename}`,
+      pageTitle,
+      mimeType: blob.type,
+      fileSize: blob.size,
+      width: dimensions.width,
+      height: dimensions.height,
+      savedAt: Date.now(),
+      tags: cleanedTags.length > 0 ? cleanedTags : undefined,
+      rating,
+    };
+
+    await imageDB.add(image);
+    importedImages.push(image);
+  }
+
+  return importedImages;
+}

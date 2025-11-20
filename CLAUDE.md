@@ -447,6 +447,50 @@ User preferences saved across sessions:
 - `previewPaneVisible`: 'true' | 'false'
 - **Pattern**: Save immediately on change, load on init
 
+### Local File Import & Metadata Management
+
+**Location**: Header toolbar "Upload" button (`#import-local-files-btn`)
+
+**Import Flow**:
+1. User clicks "Upload" button in header (between image count and "Select All")
+2. Native file picker opens (multiple selection, image files only)
+3. `importLocalFiles(files: File[])` processes each file:
+   - Reads file as blob
+   - Extracts dimensions using `createImageBitmap()`
+   - Sets `pageTitle` from filename (without extension)
+   - Sets `pageUrl` and `imageUrl` to `file:///filename`
+   - Applies auto-tagging rules based on filename
+   - Saves to IndexedDB
+4. Reloads image grid (no alert, silent import)
+
+**Metadata Editing - Storage Layer**:
+- `updateImagePageTitle(id, pageTitle?)`: Updates single image title
+- `updateImagePageUrl(id, pageUrl)`: Updates single image URL
+
+**Metadata Editing - Preview Sidebar** (right panel for quick editing):
+- **Always editable**: Inputs always visible and editable
+- **Auto-save on blur**: Changes saved when input loses focus (click away or tab)
+- **No save button**: Completely silent updates
+- **Pattern**: Blur event listeners call update functions, update local state, re-render grid
+- **Use case**: Quick metadata edits while browsing images
+
+**Metadata Editing - Lightbox** (fullscreen modal for viewing):
+- **Read-only by default**: Page title and URL shown as text
+- **Edit mode**: Click "Edit Metadata" button to enable editing
+  - Fields become inputs
+  - Button changes to "Save Metadata" (primary style)
+- **Save and revert**: Click "Save Metadata" to apply changes
+  - Updates DB and local state
+  - Re-renders lightbox back to read-only view
+  - Button changes back to "Edit Metadata" (secondary style)
+- **Use case**: Clean viewing experience, edit only when needed
+
+**Key Design Decisions**:
+- Preview sidebar optimized for quick editing (always editable)
+- Lightbox optimized for viewing/gallerying (read-only by default)
+- No alerts on metadata saves (silent updates)
+- Page URL cannot be empty (validation on blur/save)
+
 ### Danbooru Upload Integration
 
 **Settings** (stored in chrome.storage.local):
