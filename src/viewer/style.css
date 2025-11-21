@@ -2104,6 +2104,24 @@ body.preview-pane-open .container {
   background: #f8f9fa;
 }
 
+.tag-rule-card.newly-imported {
+  border-color: #4CAF50;
+  border-width: 2px;
+  background: linear-gradient(135deg, #f0fff4 0%, #ffffff 100%);
+}
+
+.new-badge {
+  display: inline-block;
+  background: #4CAF50;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 .tag-rule-header {
   display: flex;
   justify-content: space-between;

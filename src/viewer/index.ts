@@ -2620,9 +2620,14 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 const settingsBtn = document.getElementById('settings-btn')!;
 const settingsPanel = document.getElementById('settings-panel')!;
 
-settingsBtn.addEventListener('click', () => {
+settingsBtn.addEventListener('click', async () => {
   const isVisible = settingsPanel.style.display !== 'none';
   settingsPanel.style.display = isVisible ? 'none' : 'block';
+
+  if (isVisible && newlyImportedRuleIds.size > 0) {
+    newlyImportedRuleIds.clear();
+    await renderTagRules();
+  }
 });
 
 // Settings initialization and handling
@@ -3757,7 +3762,10 @@ import {
   addTagRule,
   updateTagRule,
   deleteTagRule,
-  type TagRule
+  exportRulesToJSON,
+  importRulesFromJSON,
+  type TagRule,
+  type ImportResult
 } from '../storage/tag-rules';
 
 const tagRulesList = document.getElementById('tag-rules-list')!;
@@ -3767,8 +3775,12 @@ const ruleRegexToggle = document.getElementById('rule-regex-toggle') as HTMLInpu
 const ruleTagsInput = document.getElementById('rule-tags-input') as HTMLInputElement;
 const addRuleBtn = document.getElementById('add-rule-btn')!;
 const cancelRuleBtn = document.getElementById('cancel-rule-btn')!;
+const exportRulesBtn = document.getElementById('export-rules-btn')!;
+const importRulesBtn = document.getElementById('import-rules-btn')!;
+const importRulesInput = document.getElementById('import-rules-input') as HTMLInputElement;
 
 let editingRuleId: string | null = null;
+let newlyImportedRuleIds = new Set<string>();
 
 async function renderTagRules() {
   const rules = await loadTagRules();
@@ -3779,10 +3791,13 @@ async function renderTagRules() {
   }
 
   tagRulesList.innerHTML = rules.map(rule => `
-    <div class="tag-rule-card ${!rule.enabled ? 'disabled' : ''}" data-rule-id="${rule.id}">
+    <div class="tag-rule-card ${!rule.enabled ? 'disabled' : ''} ${newlyImportedRuleIds.has(rule.id) ? 'newly-imported' : ''}" data-rule-id="${rule.id}">
       <div class="tag-rule-header">
         <div class="tag-rule-info">
-          <strong>${escapeHtml(rule.name)}</strong>
+          <strong>
+            ${escapeHtml(rule.name)}
+            ${newlyImportedRuleIds.has(rule.id) ? '<span class="new-badge">NEW</span>' : ''}
+          </strong>
           <span class="tag-rule-pattern">
             ${rule.pattern === '' ? '(matches all)' : escapeHtml(rule.pattern)}
             ${rule.isRegex ? '<span class="regex-badge">regex</span>' : ''}
@@ -3887,6 +3902,49 @@ cancelRuleBtn.addEventListener('click', () => {
   ruleTagsInput.value = '';
   addRuleBtn.textContent = 'Add Rule';
   cancelRuleBtn.style.display = 'none';
+});
+
+exportRulesBtn.addEventListener('click', async () => {
+  const rules = await loadTagRules();
+  const jsonString = exportRulesToJSON(rules);
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '-' + Date.now();
+  const filename = `auto-tagging-rules-${timestamp}.json`;
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+importRulesBtn.addEventListener('click', () => {
+  importRulesInput.click();
+});
+
+importRulesInput.addEventListener('change', async (e) => {
+  const file = (e.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const result: ImportResult = await importRulesFromJSON(text);
+
+    newlyImportedRuleIds = new Set(result.imported.map(r => r.id));
+    await renderTagRules();
+
+    const message = result.imported.length > 0
+      ? `Imported ${result.imported.length} new rule${result.imported.length > 1 ? 's' : ''}${result.skipped > 0 ? `, skipped ${result.skipped} duplicate${result.skipped > 1 ? 's' : ''}` : ''}`
+      : `No new rules imported (${result.skipped} duplicate${result.skipped > 1 ? 's' : ''} skipped)`;
+
+    alert(message);
+  } catch (error) {
+    console.error('Import failed:', error);
+    alert('Failed to import rules. Please check the file format.');
+  }
+
+  importRulesInput.value = '';
 });
 
 function escapeHtml(text: string): string {

@@ -235,6 +235,11 @@ This will watch for changes and rebuild automatically.
    - **Toggle**: Enable/disable rules without deleting
    - **Edit**: Click ✎ to modify a rule
    - **Delete**: Click × to remove a rule
+6. Export/Import rules:
+   - **Export Rules**: Download all rules as JSON file with timestamp
+   - **Import Rules**: Upload JSON file to import rules
+   - Smart duplicate detection: Identical rules are skipped, new/edited rules are imported
+   - Newly imported rules are highlighted with green border and "NEW" badge until settings panel is closed
 
 When you save a new image, all enabled rules that match the page title will automatically apply their tags to the image.
 

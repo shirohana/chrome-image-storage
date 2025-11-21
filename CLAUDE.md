@@ -289,6 +289,18 @@ interface TagRule {
 - `updateTagRule(id, updates)`: Partial update of existing rule
 - `deleteTagRule(id)`: Remove rule by ID
 - `getAutoTags(pageTitle, rules)`: Returns merged tags from all matching enabled rules
+- `exportRulesToJSON(rules)`: Export rules as formatted JSON string
+- `importRulesFromJSON(jsonString)`: Import rules with smart duplicate detection
+
+**Export/Import System**:
+- **Export**: Download all rules as timestamped JSON file (`auto-tagging-rules-YYYY-MM-DD-timestamp.json`)
+- **Import**: Upload JSON file with smart duplicate detection
+  - Duplicate detection by content fingerprint (name + pattern + isRegex + tags), not ID
+  - Identical rules skipped automatically
+  - New/edited rules imported with fresh IDs, enabled by default
+  - Visual feedback: Newly imported rules highlighted with green border and "NEW" badge
+  - Highlights persist until settings panel collapsed
+  - Import message shows count: "Imported X new rules, skipped Y duplicates"
 
 **Pattern Examples**:
 - `''` (empty) → Always matches

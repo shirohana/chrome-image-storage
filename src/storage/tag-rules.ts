@@ -76,3 +76,58 @@ export function getAutoTags(pageTitle: string, rules: TagRule[]): string[] {
 
   return Array.from(tags);
 }
+
+export function exportRulesToJSON(rules: TagRule[]): string {
+  return JSON.stringify(rules, null, 2);
+}
+
+export interface ImportResult {
+  imported: TagRule[];
+  skipped: number;
+}
+
+function getRuleFingerprint(rule: Omit<TagRule, 'id' | 'enabled'>): string {
+  return JSON.stringify({
+    name: rule.name,
+    pattern: rule.pattern,
+    isRegex: rule.isRegex,
+    tags: [...rule.tags].sort(),
+  });
+}
+
+export async function importRulesFromJSON(jsonString: string): Promise<ImportResult> {
+  const importedRules = JSON.parse(jsonString) as TagRule[];
+  const existingRules = await loadTagRules();
+
+  const existingFingerprints = new Set(
+    existingRules.map(rule => getRuleFingerprint(rule))
+  );
+
+  const newRules: TagRule[] = [];
+  let skippedCount = 0;
+
+  for (const rule of importedRules) {
+    const fingerprint = getRuleFingerprint(rule);
+    if (existingFingerprints.has(fingerprint)) {
+      skippedCount++;
+    } else {
+      const newRule: TagRule = {
+        ...rule,
+        id: crypto.randomUUID(),
+        enabled: true,
+      };
+      newRules.push(newRule);
+      existingFingerprints.add(fingerprint);
+    }
+  }
+
+  if (newRules.length > 0) {
+    const allRules = [...existingRules, ...newRules];
+    await saveTagRules(allRules);
+  }
+
+  return {
+    imported: newRules,
+    skipped: skippedCount,
+  };
+}
