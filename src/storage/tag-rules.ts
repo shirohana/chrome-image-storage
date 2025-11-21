@@ -44,7 +44,7 @@ export async function deleteTagRule(id: string): Promise<void> {
   await saveTagRules(filtered);
 }
 
-function matchesRule(pageTitle: string, rule: TagRule): boolean {
+export function matchesRule(pageTitle: string, rule: TagRule): boolean {
   if (!rule.enabled) return false;
   if (!pageTitle) pageTitle = '';
 

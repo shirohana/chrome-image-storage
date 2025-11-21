@@ -10,8 +10,35 @@ Early prototype with core features completed. All planned "Quick Wins" and "Usef
 
 - `pnpm build` - Build extension to `dist/`
 - `pnpm dev` - Dev mode with hot reload
+- `pnpm test` - Run all tests
+- `pnpm test:watch` - Watch mode for TDD workflow
 
 Load `dist/` as unpacked extension in Chrome.
+
+## Testing
+
+Comprehensive test suite (101 tests, ~11ms execution time):
+
+**Test Files** (`tests/` directory):
+- `tag-parser.test.ts`: 50 tests for `parseTagSearch()` - Danbooru-style syntax parsing
+- `auto-tagging.test.ts`: 26 tests for `matchesRule()` and `getAutoTags()` - Rule matching logic
+- `rating-extraction.test.ts`: 25 tests for `extractRatingFromTags()` - Tag-to-rating conversion
+
+**Extracted for Testing**:
+- `src/viewer/tag-utils.ts`: Pure tag parsing functions (no DOM dependencies)
+  - `parseTagSearch(query: string): ParsedTagSearch` - Main parser function
+  - `TagCountFilter` interface - Tag count filter types
+  - `ParsedTagSearch` interface - Parser result type
+- `src/storage/service.ts`: Exported `extractRatingFromTags()` for testing
+- `src/storage/tag-rules.ts`: Exported `matchesRule()` for testing
+
+**Why Tests Matter**:
+- Tag parser has 15+ parsing rules with complex interactions
+- User-configured regex patterns in auto-tagging are error-prone
+- Rating extraction affects data integrity across multiple operations
+- Fast feedback loop prevents regressions during refactoring
+
+See `tests/README.md` for detailed documentation.
 
 ## Architecture
 

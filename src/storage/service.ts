@@ -7,7 +7,7 @@ import { loadTagRules, getAutoTags } from './tag-rules';
  * Rating tags format: rating:g, rating:s, rating:q, rating:e
  * Returns the first found rating tag and removes all rating tags from array.
  */
-function extractRatingFromTags(tags: string[]): { rating?: 'g' | 's' | 'q' | 'e'; cleanedTags: string[] } {
+export function extractRatingFromTags(tags: string[]): { rating?: 'g' | 's' | 'q' | 'e'; cleanedTags: string[] } {
   let rating: 'g' | 's' | 'q' | 'e' | undefined;
   const cleanedTags: string[] = [];
 

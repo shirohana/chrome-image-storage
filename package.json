@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage"
   },
   "keywords": [],
   "author": "",
@@ -15,10 +18,12 @@
   "devDependencies": {
     "@types/chrome": "^0.1.23",
     "@types/sql.js": "^1.4.9",
+    "@vitest/ui": "^4.0.12",
     "sharp": "^0.34.4",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",
-    "vite-plugin-web-extension": "^4.4.5"
+    "vite-plugin-web-extension": "^4.4.5",
+    "vitest": "^4.0.12"
   },
   "dependencies": {
     "jszip": "^3.10.1",

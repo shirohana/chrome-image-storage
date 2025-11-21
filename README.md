@@ -457,7 +457,22 @@ interface SavedImage {
 
 - `pnpm dev` - Development mode with hot reload
 - `pnpm build` - Production build
+- `pnpm test` - Run tests
+- `pnpm test:watch` - Run tests in watch mode
+- `pnpm test:ui` - Run tests with visual UI
+- `pnpm test:coverage` - Run tests with coverage report
 - `node scripts/generate-icons.js` - Regenerate icons from SVG
+
+### Testing
+
+The project includes comprehensive unit tests for core logic functions:
+
+- **101 tests** covering tag search parsing, auto-tagging rules, and rating extraction
+- **Fast execution**: All tests run in ~11ms
+- **Test files**: Located in `tests/` directory
+- **Coverage**: Tag parser (50 tests), auto-tagging (26 tests), rating extraction (25 tests)
+
+See `tests/README.md` for detailed documentation.
 
 ### Building
 
