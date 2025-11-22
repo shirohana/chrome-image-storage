@@ -9,6 +9,7 @@ export interface SavedImage {
   width: number;
   height: number;
   savedAt: number;
+  updatedAt?: number;
   tags?: string[];
   isDeleted?: boolean;
   rating?: 'g' | 's' | 'q' | 'e';
@@ -24,6 +25,7 @@ export interface ImageMetadata {
   width: number;
   height: number;
   savedAt: number;
+  updatedAt?: number;
   tags?: string[];
   isDeleted?: boolean;
   rating?: 'g' | 's' | 'q' | 'e';

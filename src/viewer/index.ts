@@ -473,6 +473,9 @@ function updateRatingPills() {
 // parseTagSearch moved to tag-utils.ts
 
 function applyFilters() {
+  // Re-sort first so updated images move to correct position
+  applySorting();
+
   let filtered = state.images;
 
   // 1. Apply view filter (all or trash)
@@ -596,6 +599,9 @@ function applySorting() {
     switch (field) {
       case 'savedAt':
         comparison = a.savedAt - b.savedAt;
+        break;
+      case 'updatedAt':
+        comparison = (a.updatedAt ?? a.savedAt) - (b.updatedAt ?? b.savedAt);
         break;
       case 'fileSize':
         comparison = a.fileSize - b.fileSize;
@@ -928,6 +934,7 @@ async function handleSaveTags(e: Event) {
         imageInState.rating = match[1].toLowerCase() as 'g' | 's' | 'q' | 'e';
       }
     }
+    imageInState.updatedAt = Date.now();
   }
 
   // Update lightbox metadata to show new tags
@@ -1154,6 +1161,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.rating = ratingValue as any;
+        imageInState.updatedAt = Date.now();
       }
       // Re-render the grid to update badge
       applyFilters();
@@ -1174,6 +1182,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.pageTitle = newPageTitle;
+        imageInState.updatedAt = Date.now();
       }
 
       // Re-render the grid to update display
@@ -1198,6 +1207,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.pageUrl = newPageUrl;
+        imageInState.updatedAt = Date.now();
       }
 
       // Re-render the grid to update display
@@ -1225,6 +1235,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.tags = uniqueTags;
+        imageInState.updatedAt = Date.now();
       }
 
       // Re-render the grid and preview pane
@@ -1249,6 +1260,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.tags = uniqueTags;
+        imageInState.updatedAt = Date.now();
       }
 
       // Re-render the grid and preview pane
@@ -1616,6 +1628,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
           if (imageInState) {
             imageInState.pageTitle = newPageTitle;
             imageInState.pageUrl = newPageUrl;
+            imageInState.updatedAt = Date.now();
           }
 
           // Re-render the grid to update display
@@ -1641,6 +1654,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.rating = ratingValue as any;
+        imageInState.updatedAt = Date.now();
       }
 
       // Update lightbox metadata display
@@ -1670,6 +1684,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
       const imageInState = state.images.find(img => img.id === image.id);
       if (imageInState) {
         imageInState.tags = uniqueTags;
+        imageInState.updatedAt = Date.now();
       }
 
       // Update lightbox metadata display

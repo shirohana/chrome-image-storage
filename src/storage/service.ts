@@ -158,6 +158,7 @@ export async function updateImageTags(id: string, tags: string[]): Promise<void>
     if (rating !== undefined) {
       image.rating = rating;
     }
+    image.updatedAt = Date.now();
     await imageDB.update(image);
   }
 }
@@ -175,6 +176,7 @@ export async function addTagsToImages(imageIds: string[], tagsToAdd: string[]): 
       if (rating !== undefined) {
         image.rating = rating;
       }
+      image.updatedAt = Date.now();
       await imageDB.update(image);
     }
   }
@@ -193,6 +195,7 @@ export async function removeTagsFromImages(imageIds: string[], tagsToRemove: str
       if (removingRating) {
         image.rating = undefined;
       }
+      image.updatedAt = Date.now();
       await imageDB.update(image);
     }
   }
@@ -202,6 +205,7 @@ export async function updateImageRating(id: string, rating?: 'g' | 's' | 'q' | '
   const image = await imageDB.get(id);
   if (image) {
     image.rating = rating;
+    image.updatedAt = Date.now();
     await imageDB.update(image);
   }
 }
@@ -211,6 +215,7 @@ export async function updateImagesRating(imageIds: string[], rating?: 'g' | 's' 
     const image = await imageDB.get(id);
     if (image) {
       image.rating = rating;
+      image.updatedAt = Date.now();
       await imageDB.update(image);
     }
   }
@@ -220,6 +225,7 @@ export async function updateImagePageTitle(id: string, pageTitle?: string): Prom
   const image = await imageDB.get(id);
   if (image) {
     image.pageTitle = pageTitle;
+    image.updatedAt = Date.now();
     await imageDB.update(image);
   }
 }
@@ -228,6 +234,7 @@ export async function updateImagePageUrl(id: string, pageUrl: string): Promise<v
   const image = await imageDB.get(id);
   if (image) {
     image.pageUrl = pageUrl;
+    image.updatedAt = Date.now();
     await imageDB.update(image);
   }
 }

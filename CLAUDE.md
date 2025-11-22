@@ -73,7 +73,7 @@ Chrome extensions run in three separate JavaScript contexts:
        - Selected tags highlighted and sorted to top
        - Always shows selected tags even with 0 count
      - Clickable tags on image cards for instant filtering
-     - Sort by date, size, dimensions, or URL
+     - Sort by saved date, updated date, size, dimensions, or URL
      - Group by domain or show duplicates
      - Multi-select with checkboxes
      - Bulk operations: delete selected, export selected, tag selected, set rating
@@ -91,11 +91,16 @@ Chrome extensions run in three separate JavaScript contexts:
 ### Storage
 
 - **`storage/db.ts`**: IndexedDB wrapper (store: `images`, keyPath: `id`)
+  - Database version 3: Added `updatedAt` index for sorting performance
   - `getAllMetadata()`: Loads metadata without blobs (for lazy loading)
   - `getBlob(id)`: Loads single blob on-demand
 - **`storage/service.ts`**: High-level operations like `saveImage()`, `deleteImage()`
   - `getAllImagesMetadata()`: Returns metadata-only for initial load
   - `getImageBlob(id)`: Fetches individual blob when needed
+  - All metadata update functions set `updatedAt = Date.now()`:
+    - `updateImageTags()`, `addTagsToImages()`, `removeTagsFromImages()`
+    - `updateImageRating()`, `updateImagesRating()`
+    - `updateImagePageTitle()`, `updateImagePageUrl()`
 - Images stored as Blobs, lazy-loaded on scroll using Intersection Observer
 
 ### Communication
@@ -490,10 +495,35 @@ Single event listener on `#image-grid` for all image cards:
 - **Benefit**: No need to re-attach listeners after re-render
 - **Note**: Checkbox changes use separate 'change' event listener
 
+### Updated At Timestamp Tracking
+
+**Data Model**:
+- `updatedAt?: number` field tracks last modification time
+- Set automatically when metadata changes (tags, rating, title, URL)
+- Falls back to `savedAt` if undefined (for images saved before this feature)
+
+**Update Triggers**:
+All metadata modification functions set `updatedAt`:
+- Tag operations: `updateImageTags()`, `addTagsToImages()`, `removeTagsFromImages()`
+- Rating operations: `updateImageRating()`, `updateImagesRating()`
+- Metadata edits: `updateImagePageTitle()`, `updateImagePageUrl()`
+
+**Sorting Behavior**:
+- `applySorting()` handles `updatedAt` field with fallback: `(a.updatedAt ?? a.savedAt)`
+- When sorted by "Recently updated", changes trigger automatic re-sort
+- `applyFilters()` calls `applySorting()` first to ensure updated images move to correct position
+- Local state tracking: `imageInState.updatedAt = Date.now()` syncs with database updates
+
+**Use Case**:
+Find recently modified images without remembering when you edited them. Perfect for:
+- Finding images you just tagged incorrectly
+- Locating images you recently changed the rating on
+- Tracking metadata corrections you made
+
 ### LocalStorage Persistence
 
 User preferences saved across sessions:
-- `sortBy`: e.g., 'savedAt-desc', 'fileSize-asc'
+- `sortBy`: e.g., 'savedAt-desc', 'updatedAt-desc', 'fileSize-asc'
 - `previewPaneVisible`: 'true' | 'false'
 - **Pattern**: Save immediately on change, load on init
 
@@ -595,12 +625,14 @@ CREATE TABLE IF NOT EXISTS images (
   width INTEGER NOT NULL,
   height INTEGER NOT NULL,
   savedAt INTEGER NOT NULL,
+  updatedAt INTEGER,
   tags TEXT,
   isDeleted INTEGER DEFAULT 0,
   rating TEXT,
   blob BLOB NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_savedAt ON images(savedAt);
+CREATE INDEX IF NOT EXISTS idx_updatedAt ON images(updatedAt);
 CREATE INDEX IF NOT EXISTS idx_pageUrl ON images(pageUrl);
 CREATE INDEX IF NOT EXISTS idx_rating ON images(rating);
 ```

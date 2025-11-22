@@ -14,12 +14,14 @@ const SCHEMA = `
     width INTEGER NOT NULL,
     height INTEGER NOT NULL,
     savedAt INTEGER NOT NULL,
+    updatedAt INTEGER,
     tags TEXT,
     isDeleted INTEGER DEFAULT 0,
     rating TEXT,
     blob BLOB NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_savedAt ON images(savedAt);
+  CREATE INDEX IF NOT EXISTS idx_updatedAt ON images(updatedAt);
   CREATE INDEX IF NOT EXISTS idx_pageUrl ON images(pageUrl);
   CREATE INDEX IF NOT EXISTS idx_rating ON images(rating);
 `;
@@ -32,6 +34,7 @@ export interface ImportConflict {
     pageUrl: string;
     pageTitle?: string;
     savedAt: number;
+    updatedAt?: number;
     tags?: string[];
     rating?: 'g' | 's' | 'q' | 'e';
   };
@@ -64,7 +67,7 @@ export async function exportDatabase(
     db.run(SCHEMA);
 
     const stmt = db.prepare(`
-      INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO images VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const startIdx = fileIndex * IMAGES_PER_FILE;
@@ -95,6 +98,7 @@ export async function exportDatabase(
           metadata.width,
           metadata.height,
           metadata.savedAt,
+          metadata.updatedAt || null,
           metadata.tags ? JSON.stringify(metadata.tags) : null,
           metadata.isDeleted ? 1 : 0,
           metadata.rating || null,
@@ -126,7 +130,7 @@ export async function analyzeImport(file: File, existingImages: SavedImage[]): P
   const arrayBuffer = await file.arrayBuffer();
   const db = new SQL.Database(new Uint8Array(arrayBuffer));
 
-  const result = db.exec('SELECT id, imageUrl, pageUrl, pageTitle, savedAt, tags, rating FROM images');
+  const result = db.exec('SELECT id, imageUrl, pageUrl, pageTitle, savedAt, updatedAt, tags, rating FROM images');
 
   if (result.length === 0) {
     db.close();
@@ -151,8 +155,9 @@ export async function analyzeImport(file: File, existingImages: SavedImage[]): P
           pageUrl: row[2] as string,
           pageTitle: row[3] as string | undefined,
           savedAt: row[4] as number,
-          tags: row[5] ? JSON.parse(row[5] as string) : undefined,
-          rating: (row[6] as string) || undefined,
+          updatedAt: (row[5] as number) || undefined,
+          tags: row[6] ? JSON.parse(row[6] as string) : undefined,
+          rating: (row[7] as string) || undefined,
         }
       });
     } else {
@@ -218,6 +223,7 @@ export async function importDatabase(
       width: rowData.width,
       height: rowData.height,
       savedAt: rowData.savedAt,
+      updatedAt: rowData.updatedAt || undefined,
       tags: rowData.tags ? JSON.parse(rowData.tags) : undefined,
       isDeleted: rowData.isDeleted === 1,
       rating: rowData.rating || undefined,

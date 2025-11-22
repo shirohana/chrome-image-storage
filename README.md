@@ -28,7 +28,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
   - Click + to include, - to exclude tags
   - Selected tags highlighted and sorted to top
   - Always shows active filters even with 0 results
-- **Sorting**: Sort by date, file size, dimensions, or URL
+- **Sorting**: Sort by saved date, updated date, file size, dimensions, or URL
 - **Grouping**: Organize images by source domain or show duplicates
 - **Duplicate detection**: Groups images by dimensions + file size to find duplicates
 
@@ -180,7 +180,14 @@ This will watch for changes and rebuild automatically.
 - Selected tags highlighted: green (included), red (excluded)
 - Selected tags always visible at top, even with 0 results
 
-**Sorting**: Sort images by newest/oldest, largest/smallest file size, dimensions, or URL using the sort dropdown.
+**Sorting**: Sort images using the sort dropdown with multiple options:
+- **Newest/Oldest first**: Sort by original save date
+- **Recently updated/Least recently updated**: Sort by last modification time (tags, rating, title, URL changes)
+- **Largest/Smallest file size**: Sort by image file size
+- **Biggest/Smallest dimensions**: Sort by image dimensions (width × height)
+- **URL (A-Z/Z-A)**: Sort alphabetically by image URL
+
+When sorted by "Recently updated", any metadata changes automatically re-sort the list to show the updated image at the top.
 
 **Grouping**:
 - Group images by source domain to organize by website
@@ -449,7 +456,8 @@ interface SavedImage {
   fileSize: number;        // Bytes
   width: number;           // Pixels
   height: number;          // Pixels
-  savedAt: number;         // Timestamp
+  savedAt: number;         // Timestamp (original save time)
+  updatedAt?: number;      // Timestamp (last modification time)
   tags?: string[];         // Optional tags
   isDeleted?: boolean;     // Soft delete flag for trash
   rating?: 'g' | 's' | 'q' | 'e';  // Content rating (General/Sensitive/Questionable/Explicit)
