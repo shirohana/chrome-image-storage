@@ -385,6 +385,192 @@ function removeExcludedTagFromSearch(tag: string) {
   applyFilters();
 }
 
+// Account sidebar functions (for X/Twitter account filtering)
+function updateAccountSidebar(images: ImageMetadata[] = state.filteredImages) {
+  const sidebar = document.getElementById('account-sidebar-list');
+  if (!sidebar) return;
+
+  // Parse current tag search to determine active accounts
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  const parsed = input ? parseTagSearch(input.value) : {
+    includeTags: [],
+    excludeTags: [],
+    orGroups: [],
+    ratings: new Set(),
+    fileTypes: new Set(),
+    tagCount: null,
+    includeUnrated: false,
+    accounts: new Set(),
+    excludeAccounts: new Set()
+  };
+
+  // Build sets for quick lookup
+  const includedAccounts = new Set<string>(parsed.accounts);
+  const excludedAccounts = new Set<string>(parsed.excludeAccounts);
+
+  // Count accounts
+  const accountCounts = new Map<string, number>();
+  images.forEach(img => {
+    const account = getXAccountFromUrl(img.pageUrl);
+    if (account) {
+      accountCounts.set(account, (accountCounts.get(account) || 0) + 1);
+    }
+  });
+
+  // Add included accounts to the list with count 0 (so they show even when filtered out)
+  includedAccounts.forEach(account => {
+    if (!accountCounts.has(account)) {
+      accountCounts.set(account, 0);
+    }
+  });
+
+  // Add excluded accounts to the list with count 0 (so they show even when filtered out)
+  excludedAccounts.forEach(account => {
+    if (!accountCounts.has(account)) {
+      accountCounts.set(account, 0);
+    }
+  });
+
+  // Sort: selected accounts (included/excluded) first, then by count (desc), then alphabetically
+  const sortedAccounts = Array.from(accountCounts.entries())
+    .sort((a, b) => {
+      const aSelected = includedAccounts.has(a[0]) || excludedAccounts.has(a[0]);
+      const bSelected = includedAccounts.has(b[0]) || excludedAccounts.has(b[0]);
+
+      // Selected accounts come first
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+
+      // Within selected or unselected groups, sort by count then alphabetically
+      if (b[1] !== a[1]) {
+        return b[1] - a[1]; // Count descending
+      }
+      return a[0].localeCompare(b[0]); // Name ascending
+    });
+
+  // Render account list with highlighting
+  sidebar.innerHTML = sortedAccounts
+    .map(([account, count]) => {
+      const isIncluded = includedAccounts.has(account);
+      const isExcluded = excludedAccounts.has(account);
+      const itemClass = isIncluded ? 'account-sidebar-item account-sidebar-item-included' :
+                        isExcluded ? 'account-sidebar-item account-sidebar-item-excluded' :
+                        'account-sidebar-item';
+
+      return `
+        <div class="${itemClass}">
+          <button class="account-add-btn" data-account="${account}" title="Include this account">+</button>
+          <button class="account-exclude-btn" data-account="${account}" title="Exclude this account">−</button>
+          <span class="account-name" data-account="${account}">@${account}</span>
+          <span class="account-count">${count}</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  // Attach click handlers for + buttons
+  sidebar.querySelectorAll('.account-add-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const account = btn.getAttribute('data-account')!;
+      addAccountToSearch(account);
+    });
+  });
+
+  // Attach click handlers for - buttons
+  sidebar.querySelectorAll('.account-exclude-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const account = btn.getAttribute('data-account')!;
+      excludeAccountFromSearch(account);
+    });
+  });
+
+  // Attach click handlers for account names (to toggle accounts)
+  sidebar.querySelectorAll('.account-name').forEach(span => {
+    span.addEventListener('click', () => {
+      const account = span.getAttribute('data-account')!;
+      if (includedAccounts.has(account)) {
+        removeAccountFromSearch(account);
+      } else if (excludedAccounts.has(account)) {
+        removeExcludedAccountFromSearch(account);
+      } else {
+        // Unselected account - add it
+        addAccountToSearch(account);
+      }
+    });
+  });
+}
+
+function addAccountToSearch(account: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+
+  // Check if already in search
+  const accountPattern = new RegExp(`\\baccount:${account}\\b`, 'i');
+  if (accountPattern.test(current)) {
+    return; // Already present
+  }
+
+  // Append to search
+  input.value = current ? `${current} account:${account}` : `account:${account}`;
+  applyFilters();
+}
+
+function excludeAccountFromSearch(account: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  // Remove from included accounts first
+  removeAccountFromSearch(account);
+
+  const current = input.value.trim();
+
+  // Check if already excluded
+  const excludedPattern = new RegExp(`-account:${account}\\b`, 'i');
+  if (excludedPattern.test(current)) {
+    return; // Already excluded
+  }
+
+  // Add exclusion
+  input.value = current ? `${current} -account:${account}` : `-account:${account}`;
+  applyFilters();
+}
+
+function removeAccountFromSearch(account: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+
+  // Remove account:xxx pattern
+  const accountPattern = new RegExp(`\\baccount:${account}\\b`, 'gi');
+  let newValue = current.replace(accountPattern, '').trim();
+
+  // Clean up multiple spaces
+  newValue = newValue.replace(/\s+/g, ' ');
+
+  input.value = newValue;
+  applyFilters();
+}
+
+function removeExcludedAccountFromSearch(account: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+
+  // Remove -account:xxx pattern
+  const excludedPattern = new RegExp(`-account:${account}\\b`, 'gi');
+  let newValue = current.replace(excludedPattern, '').trim();
+
+  // Clean up multiple spaces
+  newValue = newValue.replace(/\s+/g, ' ');
+
+  input.value = newValue;
+  applyFilters();
+}
+
 // Toggle rating in search input (for rating filter pills)
 function toggleRatingInSearch(rating: string) {
   const input = document.getElementById('tag-search-input') as HTMLInputElement;
@@ -541,6 +727,22 @@ function applyFilters() {
       });
     }
 
+    // Apply account filters (OR logic for included accounts)
+    if (parsed.accounts.size > 0) {
+      filtered = filtered.filter(img => {
+        const account = getXAccountFromUrl(img.pageUrl);
+        return account && parsed.accounts.has(account);
+      });
+    }
+
+    // Apply excluded account filters
+    if (parsed.excludeAccounts.size > 0) {
+      filtered = filtered.filter(img => {
+        const account = getXAccountFromUrl(img.pageUrl);
+        return !account || !parsed.excludeAccounts.has(account);
+      });
+    }
+
     // Apply include tags (AND logic)
     if (parsed.includeTags.length > 0) {
       filtered = filtered.filter(img =>
@@ -578,8 +780,22 @@ function applyFilters() {
     }
   }
 
-  // Update tag sidebar with tags from filtered images
-  updateTagSidebar(filtered);
+  // Update sidebars based on grouping mode
+  const tagSidebar = document.getElementById('tag-sidebar');
+  const accountSidebar = document.getElementById('account-sidebar');
+
+  if (state.groupBy === 'x-account') {
+    // Show BOTH account sidebar and tag sidebar
+    updateAccountSidebar(filtered);
+    updateTagSidebar(filtered);
+    if (accountSidebar) accountSidebar.style.display = 'block';
+    if (tagSidebar) tagSidebar.style.display = 'block';
+  } else {
+    // Show only tag sidebar, hide account sidebar
+    updateTagSidebar(filtered);
+    if (tagSidebar) tagSidebar.style.display = 'block';
+    if (accountSidebar) accountSidebar.style.display = 'none';
+  }
 
   renderImages(filtered);
   updateImageCount();
@@ -798,8 +1014,8 @@ function renderImages(images: ImageMetadata[]) {
   emptyState.style.display = 'none';
   grid.style.display = '';
 
-  if (state.groupBy === 'domain') {
-    renderGroupedImages(images);
+  if (state.groupBy === 'x-account') {
+    renderXAccountGroups(images);
   } else if (state.groupBy === 'duplicates') {
     renderDuplicateGroups(images);
   } else {
@@ -811,6 +1027,8 @@ function renderImages(images: ImageMetadata[]) {
 
 function renderUngroupedImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
+  // Restore grid layout for ungrouped display
+  grid.style.display = '';
   grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
 }
 
@@ -1312,24 +1530,41 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-function getDomainFromUrl(url: string): string {
+function getXAccountFromUrl(url: string): string | null {
   try {
     const urlObj = new URL(url);
-    return urlObj.hostname;
+    // Match x.com or twitter.com
+    if (urlObj.hostname === 'x.com' || urlObj.hostname === 'twitter.com' ||
+        urlObj.hostname === 'www.x.com' || urlObj.hostname === 'www.twitter.com') {
+      // Extract account from path like /accountname/status/...
+      const match = urlObj.pathname.match(/^\/([^\/]+)/);
+      if (match && match[1]) {
+        // Skip non-account paths
+        const path = match[1].toLowerCase();
+        if (path === 'i' || path === 'home' || path === 'explore' ||
+            path === 'notifications' || path === 'messages' || path === 'search') {
+          return null;
+        }
+        return match[1];
+      }
+    }
+    return null;
   } catch {
-    return 'Unknown';
+    return null;
   }
 }
 
-function groupImagesByDomain(images: ImageMetadata[]): Map<string, ImageMetadata[]> {
+function groupImagesByXAccount(images: ImageMetadata[]): Map<string, ImageMetadata[]> {
   const groups = new Map<string, ImageMetadata[]>();
 
   for (const image of images) {
-    const domain = getDomainFromUrl(image.pageUrl);
-    if (!groups.has(domain)) {
-      groups.set(domain, []);
+    const account = getXAccountFromUrl(image.pageUrl);
+    if (account) {
+      if (!groups.has(account)) {
+        groups.set(account, []);
+      }
+      groups.get(account)!.push(image);
     }
-    groups.get(domain)!.push(image);
   }
 
   return groups;
@@ -1358,20 +1593,36 @@ function groupImagesByDuplicates(images: ImageMetadata[]): Map<string, ImageMeta
   return duplicates;
 }
 
-function renderGroupedImages(images: ImageMetadata[]) {
+function renderXAccountGroups(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
-  const groups = groupImagesByDomain(images);
-  const sortedDomains = Array.from(groups.keys()).sort();
+  const groups = groupImagesByXAccount(images);
+
+  if (groups.size === 0) {
+    grid.innerHTML = '<div class="empty-state" style="display: block;"><p>No images from X/Twitter accounts found</p></div>';
+    return;
+  }
+
+  // Remove grid layout from outer container (let group-content handle it)
+  grid.style.display = 'block';
+
+  // Sort accounts by image count (descending), then alphabetically
+  const sortedAccounts = Array.from(groups.entries())
+    .sort((a, b) => {
+      const countDiff = b[1].length - a[1].length;
+      if (countDiff !== 0) return countDiff;
+      return a[0].localeCompare(b[0]);
+    })
+    .map(([account]) => account);
 
   let html = '';
-  for (const domain of sortedDomains) {
-    const groupImages = groups.get(domain)!;
+  for (const account of sortedAccounts) {
+    const groupImages = groups.get(account)!;
     const count = groupImages.length;
 
     html += `
       <div class="group-section">
         <div class="group-header">
-          <h3 class="group-title">${domain}</h3>
+          <h3 class="group-title">@${account}</h3>
           <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
         </div>
         <div class="group-content image-grid">
@@ -1396,6 +1647,9 @@ function renderDuplicateGroups(images: ImageMetadata[]) {
     grid.innerHTML = '<div class="empty-state" style="display: block;"><p>No duplicates found</p></div>';
     return;
   }
+
+  // Remove grid layout from outer container (let group-content handle it)
+  grid.style.display = 'block';
 
   const sortedKeys = Array.from(groups.keys()).sort();
 

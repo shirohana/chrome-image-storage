@@ -137,7 +137,7 @@
       <div class="view-controls">
         <select id="group-by" class="group-by">
           <option value="none">No Grouping</option>
-          <option value="domain">Group by Domain</option>
+          <option value="x-account">Group by X Account</option>
           <option value="duplicates">Show Duplicates</option>
         </select>
         <select id="sort-select" class="sort-select">
@@ -184,6 +184,13 @@
 
         <div id="image-grid" class="image-grid"></div>
       </div>
+
+      <aside id="account-sidebar" class="account-sidebar" style="display: none;">
+        <div class="account-filter-section">
+          <h3>Accounts</h3>
+          <div id="account-sidebar-list" class="account-sidebar-list"></div>
+        </div>
+      </aside>
     </div>
   </div>
 

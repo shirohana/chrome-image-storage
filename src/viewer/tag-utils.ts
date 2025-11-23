@@ -9,7 +9,7 @@ export interface TagCountFilter {
 }
 
 // Parse Danbooru-style tag search
-// Supports: tags (AND), tag1 or tag2 (OR), -tag (exclude), rating:, is:, tagcount:
+// Supports: tags (AND), tag1 or tag2 (OR), -tag (exclude), rating:, is:, tagcount:, account:
 export interface ParsedTagSearch {
   includeTags: string[];       // Tags to include (AND)
   excludeTags: string[];       // Tags to exclude
@@ -18,6 +18,8 @@ export interface ParsedTagSearch {
   fileTypes: Set<string>;      // File type filters: jpg, png, webp, gif
   tagCount: TagCountFilter | null;  // Tag count filter
   includeUnrated: boolean;     // is:unrated flag
+  accounts: Set<string>;       // Account filters (X/Twitter accounts)
+  excludeAccounts: Set<string>; // Excluded accounts
 }
 
 export function parseTagSearch(query: string): ParsedTagSearch {
@@ -29,6 +31,8 @@ export function parseTagSearch(query: string): ParsedTagSearch {
     fileTypes: new Set(),
     tagCount: null,
     includeUnrated: false,
+    accounts: new Set(),
+    excludeAccounts: new Set(),
   };
 
   if (!query.trim()) {
@@ -116,7 +120,40 @@ export function parseTagSearch(query: string): ParsedTagSearch {
     remainingQuery = remainingQuery.replace(isRegex, '').trim();
   }
 
-  // 4. Parse tag terms (handle OR, exclusion, regular tags)
+  // 4. Extract account: metatags (support comma-separated list and exclusions)
+  const accountRegex = /-?account:([a-zA-Z0-9_]+(?:,[a-zA-Z0-9_]+)*)/gi;
+  const accountMatches = remainingQuery.match(accountRegex);
+  if (accountMatches) {
+    accountMatches.forEach(match => {
+      const isExclusion = match.startsWith('-');
+      const value = match.substring(isExclusion ? 9 : 8); // Remove "-account:" or "account:"
+      if (value.includes(',')) {
+        // Multiple accounts
+        value.split(',').forEach(acc => {
+          const trimmed = acc.trim();
+          if (trimmed) {
+            if (isExclusion) {
+              result.excludeAccounts.add(trimmed);
+            } else {
+              result.accounts.add(trimmed);
+            }
+          }
+        });
+      } else {
+        // Single account
+        if (value) {
+          if (isExclusion) {
+            result.excludeAccounts.add(value);
+          } else {
+            result.accounts.add(value);
+          }
+        }
+      }
+    });
+    remainingQuery = remainingQuery.replace(accountRegex, '').trim();
+  }
+
+  // 5. Parse tag terms (handle OR, exclusion, regular tags)
   // Split by spaces but respect "or" as operator
   const tokens = remainingQuery.split(/\s+/).filter(t => t.length > 0);
 

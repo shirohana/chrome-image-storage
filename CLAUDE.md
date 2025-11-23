@@ -60,8 +60,10 @@ Chrome extensions run in three separate JavaScript contexts:
        - Rating filter: `rating:g`, `rating:s,q` (comma-separated)
        - Type filter: `is:png`, `is:jpg,webp` (comma-separated)
        - Tag count filter: `tagcount:2`, `tagcount:>5`, `tagcount:1..10`
+       - Account filter: `account:username`, `account:user1,user2` (comma-separated)
+       - Exclude accounts: `-account:spammer`
        - Unrated filter: `is:unrated`
-       - Combine all: `girl cat -dog rating:s is:png tagcount:>2`
+       - Combine all: `girl cat -dog rating:s is:png account:artist123`
      - Quick rating filter pills above tag sidebar
        - 5 horizontal pills: G/S/Q/E/Unrated
        - Click to toggle rating filters (multi-select)
@@ -72,9 +74,14 @@ Chrome extensions run in three separate JavaScript contexts:
        - Click + to include, - to exclude
        - Selected tags highlighted and sorted to top
        - Always shows selected tags even with 0 count
+     - Dynamic account sidebar (only shown when grouping by X account)
+       - Shows X/Twitter accounts with image counts (sorted by count desc)
+       - Click account name to include/remove from search
+       - Click + to include, - to exclude accounts
+       - Works alongside tag sidebar for combined filtering
      - Clickable tags on image cards for instant filtering
      - Sort by saved date, updated date, size, dimensions, or URL
-     - Group by domain or show duplicates
+     - Group by X account or show duplicates
      - Multi-select with checkboxes
      - Bulk operations: delete selected, export selected, tag selected, set rating
      - Tag management per image or in bulk
@@ -114,9 +121,11 @@ Chrome extensions run in three separate JavaScript contexts:
 2. **Service Worker APIs**: Use `createImageBitmap()` for dimensions, not `new Image()`
 3. **Icon Paths**: Full paths like `src/icons/icon-48.png` in notifications
 4. **Event Listeners**: Extract `attachEventListeners()` function for code reuse between grouped and ungrouped rendering
-5. **Grouping**: Use `Map<string, SavedImage[]>` for domain grouping, render sections with headers
+5. **Grouping**: Use `Map<string, SavedImage[]>` for X account/duplicate grouping, render sections with headers
+   - X Account grouping: Extracts account from x.com/twitter.com URLs, sorts by image count (desc)
    - Duplicate detection: Groups images by `${width}×${height}-${fileSize}`, shows only groups with 2+ images
    - Simple matching (no hash computation) for performance
+   - Important: Set `grid.style.display = 'block'` for grouped rendering to prevent outer container from using grid layout
 6. **Selection State**: Use `Set<string>` to track selected image IDs, persists across re-renders
 7. **Export Filenames**: Use image IDs instead of sequential numbers for easier metadata matching
 8. **Anti-Hotlinking Bypass**: Two-tier approach:

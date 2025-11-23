@@ -303,6 +303,123 @@ h1 {
   font-weight: 500;
 }
 
+/* Account sidebar (for X/Twitter account filtering) */
+.account-sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  height: fit-content;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  position: sticky;
+  top: 100px;
+}
+
+.account-sidebar h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.account-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.account-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.account-sidebar-item:hover {
+  background: #f5f5f5;
+}
+
+.account-sidebar-item-included {
+  background: rgba(40, 167, 69, 0.1);
+  border-left: 3px solid #28a745;
+  padding-left: 5px;
+}
+
+.account-sidebar-item-included:hover {
+  background: rgba(40, 167, 69, 0.2);
+}
+
+.account-sidebar-item-included .account-name {
+  font-weight: 500;
+}
+
+.account-sidebar-item-excluded {
+  background: rgba(220, 53, 69, 0.1);
+  border-left: 3px solid #dc3545;
+  padding-left: 5px;
+}
+
+.account-sidebar-item-excluded:hover {
+  background: rgba(220, 53, 69, 0.2);
+}
+
+.account-sidebar-item-excluded .account-name {
+  text-decoration: line-through;
+}
+
+.account-sidebar-item button {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #666;
+}
+
+.account-sidebar-item .account-add-btn:hover {
+  background: #28a745;
+  border-color: #28a745;
+  color: white;
+}
+
+.account-sidebar-item .account-exclude-btn:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+}
+
+.account-sidebar-item .account-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+}
+
+.account-sidebar-item .account-name:hover {
+  opacity: 0.7;
+}
+
+.account-sidebar-item .account-count {
+  flex-shrink: 0;
+  color: #999;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 /* Rating filter section */
 .rating-filter-section {
   margin-bottom: 20px;

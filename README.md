@@ -21,15 +21,22 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
   - Rating filter: `rating:s` or `rating:g,s` - Filter by ratings
   - Type filter: `is:png` or `is:jpg,webp` - Filter by image types
   - Tag count filter: `tagcount:2`, `tagcount:>5`, `tagcount:1..10` - Filter by tag count
+  - Account filter: `account:username` or `account:user1,user2` - Filter by X/Twitter account
+  - Exclude accounts: `-account:username` - Exclude specific accounts
   - Unrated filter: `is:unrated` - Show only unrated images
-  - Combine filters: `girl cat -dog rating:s is:png tagcount:>2` - Mix any filters
+  - Combine filters: `girl cat -dog rating:s is:png account:artist123` - Mix any filters
 - **Tag sidebar**: Dynamic sidebar showing tags from filtered results
   - Click tag name to include/remove from search
   - Click + to include, - to exclude tags
   - Selected tags highlighted and sorted to top
   - Always shows active filters even with 0 results
+- **Account sidebar**: Shows when grouping by X account
+  - Lists X/Twitter accounts with image counts (sorted by count)
+  - Click account name to include/remove from search
+  - Click + to include, - to exclude accounts
+  - Works alongside tag filters for combined filtering
 - **Sorting**: Sort by saved date, updated date, file size, dimensions, or URL
-- **Grouping**: Organize images by source domain or show duplicates
+- **Grouping**: Organize images by X/Twitter account or show duplicates
 - **Duplicate detection**: Groups images by dimensions + file size to find duplicates
 
 ### Tag Management
@@ -168,9 +175,15 @@ This will watch for changes and rebuild automatically.
 - `tagcount:<=10` - 10 or fewer tags
 - `tagcount:1..10` - Between 1-10 tags (range)
 
+**Account Filter** (X/Twitter only):
+- `account:username` - Images from specific account
+- `account:user1,user2` - Images from multiple accounts (OR logic)
+- `-account:spammer` - Exclude images from specific account
+
 **Combine Everything**:
-- `girl cat -dog rating:s is:png tagcount:>2` - Mix any filters
+- `girl cat -dog rating:s is:png tagcount:>2 account:artist123` - Mix any filters
 - `pixiv tagcount:2,4` - Pixiv images with 2 or 4 tags
+- `account:myartist rating:g` - Images from myartist with General rating
 
 **Tag Sidebar**:
 - Left sidebar shows tags from currently filtered results
@@ -190,8 +203,11 @@ This will watch for changes and rebuild automatically.
 When sorted by "Recently updated", any metadata changes automatically re-sort the list to show the updated image at the top.
 
 **Grouping**:
-- Group images by source domain to organize by website
-- Use "Duplicates" mode to find images with matching dimensions and file size
+- **Group by X Account**: Organize images by X/Twitter account (sorted by image count)
+  - Shows account sidebar for filtering by account
+  - Both tag sidebar and account sidebar visible for combined filtering
+  - Images displayed in grid layout within each account section
+- **Show Duplicates**: Find images with matching dimensions and file size
 
 **Lightbox**: Click any image to view it in full size. Use arrow keys to navigate between images. Close with Space, Escape, × button, or by clicking outside.
 
