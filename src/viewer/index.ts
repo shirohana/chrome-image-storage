@@ -2417,8 +2417,22 @@ function navigatePrevious() {
 }
 
 function getGridColumns(): number {
-  const grid = document.getElementById('image-grid')!;
-  const gridStyle = window.getComputedStyle(grid);
+  // When grouping is enabled, the grid layout is on .group-content, not #image-grid
+  let gridElement: HTMLElement;
+
+  if (state.groupBy !== 'none') {
+    // Find the first .group-content element (all groups use same grid)
+    const firstGroupContent = document.querySelector('.group-content') as HTMLElement;
+    if (!firstGroupContent) {
+      return 4; // Fallback if no groups exist
+    }
+    gridElement = firstGroupContent;
+  } else {
+    // Normal ungrouped view
+    gridElement = document.getElementById('image-grid')!;
+  }
+
+  const gridStyle = window.getComputedStyle(gridElement);
   const gridTemplateColumns = gridStyle.gridTemplateColumns;
 
   // Count the number of column definitions
@@ -2434,61 +2448,104 @@ function getGridColumns(): number {
 function navigateGridByOffset(offset: number) {
   if (state.filteredImages.length === 0) return;
 
-  let currentIndex = state.lastSelectedIndex;
-  if (currentIndex === -1) {
-    if (state.selectedIds.size === 1) {
-      const selectedId = Array.from(state.selectedIds)[0];
-      currentIndex = state.filteredImages.findIndex(img => img.id === selectedId);
-    } else {
-      currentIndex = 0; // Start from beginning
-    }
+  // Get all visible image cards in DOM order
+  const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
+  if (allCards.length === 0) return;
+
+  // Find current card
+  let currentCard: HTMLElement | null = null;
+  if (state.selectedIds.size === 1) {
+    const selectedId = Array.from(state.selectedIds)[0];
+    currentCard = allCards.find(card => card.dataset.id === selectedId) || null;
   }
 
-  const newIndex = currentIndex + offset;
-  const clampedIndex = Math.max(0, Math.min(newIndex, state.filteredImages.length - 1));
-
-  if (clampedIndex !== currentIndex) {
-    const newImage = state.filteredImages[clampedIndex];
-    state.selectedIds.clear();
-    state.selectedIds.add(newImage.id);
-    state.lastSelectedIndex = clampedIndex;
-    state.selectionAnchor = clampedIndex;
-
-    updateAllCheckboxes();
-    updateSelectionCount();
-    updatePreviewPane();
-    scrollToImage(newImage.id);
+  // If no current selection, start from first card
+  if (!currentCard) {
+    currentCard = allCards[0];
   }
+
+  const currentIndex = allCards.indexOf(currentCard);
+
+  // For horizontal navigation (offset = ±1), simple linear navigation
+  if (Math.abs(offset) === 1) {
+    const newIndex = currentIndex + offset;
+    const clampedIndex = Math.max(0, Math.min(newIndex, allCards.length - 1));
+    const newCard = allCards[clampedIndex];
+    selectCard(newCard);
+    return;
+  }
+
+  // For vertical navigation (offset = ±columns), need to handle grid layout
+  const columns = getGridColumns();
+  const targetIndex = currentIndex + offset;
+
+  // Simple bounds checking
+  const clampedIndex = Math.max(0, Math.min(targetIndex, allCards.length - 1));
+  const newCard = allCards[clampedIndex];
+  selectCard(newCard);
+}
+
+function selectCard(card: HTMLElement) {
+  const id = card.dataset.id!;
+  const index = state.filteredImages.findIndex(img => img.id === id);
+
+  state.selectedIds.clear();
+  state.selectedIds.add(id);
+  state.lastSelectedIndex = index;
+  state.selectionAnchor = index;
+
+  updateAllCheckboxes();
+  updateSelectionCount();
+  updatePreviewPane();
+  scrollToImage(id);
 }
 
 function navigateGridByOffsetExpand(offset: number) {
   if (state.filteredImages.length === 0) return;
 
+  // Get all visible image cards in DOM order
+  const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
+  if (allCards.length === 0) return;
+
   // If nothing selected, select first item and set as anchor
   if (state.selectedIds.size === 0 || state.selectionAnchor === -1) {
-    const firstImage = state.filteredImages[0];
+    const firstCard = allCards[0];
+    const firstId = firstCard.dataset.id!;
+    const firstIndex = state.filteredImages.findIndex(img => img.id === firstId);
+
     state.selectedIds.clear();
-    state.selectedIds.add(firstImage.id);
-    state.lastSelectedIndex = 0;
-    state.selectionAnchor = 0;
+    state.selectedIds.add(firstId);
+    state.lastSelectedIndex = firstIndex;
+    state.selectionAnchor = firstIndex;
     updateAllCheckboxes();
     updateSelectionCount();
     updatePreviewPane();
-    scrollToImage(firstImage.id);
+    scrollToImage(firstId);
     return;
   }
 
-  // Move focus by offset
-  const newFocus = state.lastSelectedIndex + offset;
-  const clampedFocus = Math.max(0, Math.min(newFocus, state.filteredImages.length - 1));
+  // Find current card in DOM order
+  const lastSelectedId = state.filteredImages[state.lastSelectedIndex]?.id;
+  if (!lastSelectedId) return;
 
-  if (clampedFocus !== state.lastSelectedIndex) {
-    state.lastSelectedIndex = clampedFocus;
+  const currentCardIndex = allCards.findIndex(card => card.dataset.id === lastSelectedId);
+  if (currentCardIndex === -1) return;
 
-    // Select range from anchor to new focus
+  // Calculate new focus position in DOM order
+  const newFocusIndex = currentCardIndex + offset;
+  const clampedFocusIndex = Math.max(0, Math.min(newFocusIndex, allCards.length - 1));
+
+  if (clampedFocusIndex !== currentCardIndex) {
+    const newFocusCard = allCards[clampedFocusIndex];
+    const newFocusId = newFocusCard.dataset.id!;
+    const newFocusArrayIndex = state.filteredImages.findIndex(img => img.id === newFocusId);
+
+    state.lastSelectedIndex = newFocusArrayIndex;
+
+    // Select range from anchor to new focus (using array indices for consistency)
     state.selectedIds.clear();
-    const start = Math.min(state.selectionAnchor, clampedFocus);
-    const end = Math.max(state.selectionAnchor, clampedFocus);
+    const start = Math.min(state.selectionAnchor, newFocusArrayIndex);
+    const end = Math.max(state.selectionAnchor, newFocusArrayIndex);
     for (let i = start; i <= end; i++) {
       state.selectedIds.add(state.filteredImages[i].id);
     }
@@ -2496,7 +2553,7 @@ function navigateGridByOffsetExpand(offset: number) {
     updateAllCheckboxes();
     updateSelectionCount();
     updatePreviewPane();
-    scrollToImage(state.filteredImages[clampedFocus].id);
+    scrollToImage(newFocusId);
   }
 }
 
