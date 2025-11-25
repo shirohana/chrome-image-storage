@@ -442,7 +442,6 @@ h1 {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
   text-align: center;
   color: #333;
   display: flex;
