@@ -597,14 +597,17 @@ function toggleRatingInSearch(rating: string) {
   applyFilters();
 }
 
-// Update rating pill UI to reflect current search state
+// Update rating pill UI to reflect current search state and counts
 function updateRatingPills() {
   const input = document.getElementById('tag-search-input') as HTMLInputElement;
   if (!input) return;
 
   const parsed = parseTagSearch(input.value.trim());
 
-  // Update each pill's active state
+  // Calculate rating counts based on current filters (excluding rating filter)
+  const ratingCounts = getRatingCounts();
+
+  // Update each pill's active state and count
   const pills = document.querySelectorAll('.rating-filter-pill');
   pills.forEach((pill) => {
     const rating = pill.getAttribute('data-rating');
@@ -619,7 +622,137 @@ function updateRatingPills() {
     } else {
       pill.classList.remove('active');
     }
+
+    // Update count
+    const countSpan = pill.querySelector('.rating-count');
+    if (countSpan) {
+      const count = ratingCounts[rating as keyof typeof ratingCounts] || 0;
+      countSpan.textContent = count.toString();
+    }
   });
+}
+
+// Calculate rating counts for all images matching current filters (excluding rating filter)
+// NOTE: This intentionally duplicates filter logic from applyFilters() but EXCLUDES rating filter.
+// This allows showing counts for each rating based on current search/tag/account filters.
+// If you modify applyFilters(), update this function to match (except for rating filter).
+function getRatingCounts(): { g: number; s: number; q: number; e: number; unrated: number } {
+  let filtered = state.images;
+
+  // 1. Apply view filter (all or trash)
+  if (state.currentView === 'all') {
+    filtered = filtered.filter(img => !img.isDeleted);
+  } else {
+    filtered = filtered.filter(img => img.isDeleted);
+  }
+
+  // 2. Apply URL/page title search filter
+  const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
+  if (urlSearchInput && urlSearchInput.value) {
+    const query = urlSearchInput.value.toLowerCase();
+    filtered = filtered.filter(img =>
+      img.imageUrl.toLowerCase().includes(query) ||
+      img.pageUrl.toLowerCase().includes(query) ||
+      (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
+    );
+  }
+
+  // 3. Apply tag search filter (Danbooru syntax) - BUT SKIP RATING FILTER
+  const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (tagSearchInput && tagSearchInput.value) {
+    const parsed = parseTagSearch(tagSearchInput.value);
+
+    // Skip rating filter - we want counts across all ratings
+
+    // Apply file type filters
+    if (parsed.fileTypes.size > 0) {
+      filtered = filtered.filter(img => parsed.fileTypes.has(img.mimeType));
+    }
+
+    // Apply tag count filter
+    if (parsed.tagCount) {
+      filtered = filtered.filter(img => {
+        const tagCount = img.tags?.length ?? 0;
+        const filter = parsed.tagCount!;
+
+        if (filter.operator === 'list') {
+          return filter.values!.includes(tagCount);
+        } else if (filter.operator === 'range') {
+          return tagCount >= filter.min! && tagCount <= filter.max!;
+        } else if (filter.operator === '=') {
+          return tagCount === filter.value!;
+        } else if (filter.operator === '>') {
+          return tagCount > filter.value!;
+        } else if (filter.operator === '<') {
+          return tagCount < filter.value!;
+        } else if (filter.operator === '>=') {
+          return tagCount >= filter.value!;
+        } else if (filter.operator === '<=') {
+          return tagCount <= filter.value!;
+        }
+        return true;
+      });
+    }
+
+    // Apply account filters (OR logic for included accounts)
+    if (parsed.accounts.size > 0) {
+      filtered = filtered.filter(img => {
+        const account = getXAccountFromUrl(img.pageUrl);
+        return account && parsed.accounts.has(account);
+      });
+    }
+
+    // Apply excluded account filters
+    if (parsed.excludeAccounts.size > 0) {
+      filtered = filtered.filter(img => {
+        const account = getXAccountFromUrl(img.pageUrl);
+        return !account || !parsed.excludeAccounts.has(account);
+      });
+    }
+
+    // Apply include tags (AND logic)
+    if (parsed.includeTags.length > 0) {
+      filtered = filtered.filter(img =>
+        img.tags && parsed.includeTags.every(tag => img.tags!.includes(tag))
+      );
+    }
+
+    // Apply OR groups
+    if (parsed.orGroups.length > 0) {
+      filtered = filtered.filter(img => {
+        if (!img.tags) return false;
+        // Image must match at least one tag from each OR group
+        return parsed.orGroups.every(group =>
+          group.some(tag => img.tags!.includes(tag))
+        );
+      });
+    }
+
+    // Apply exclude tags
+    if (parsed.excludeTags.length > 0) {
+      filtered = filtered.filter(img =>
+        !img.tags || !parsed.excludeTags.some(tag => img.tags!.includes(tag))
+      );
+    }
+  }
+
+  // Count images by rating
+  const counts = { g: 0, s: 0, q: 0, e: 0, unrated: 0 };
+  for (const img of filtered) {
+    if (!img.rating) {
+      counts.unrated++;
+    } else if (img.rating === 'g') {
+      counts.g++;
+    } else if (img.rating === 's') {
+      counts.s++;
+    } else if (img.rating === 'q') {
+      counts.q++;
+    } else if (img.rating === 'e') {
+      counts.e++;
+    }
+  }
+
+  return counts;
 }
 
 // parseTagSearch moved to tag-utils.ts
