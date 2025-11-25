@@ -155,6 +155,10 @@ Chrome extensions run in three separate JavaScript contexts:
    - Duplicate detection: Groups images by `${width}×${height}-${fileSize}`, shows only groups with 2+ images
    - Simple matching (no hash computation) for performance
    - Important: Set `grid.style.display = 'block'` for grouped rendering to prevent outer container from using grid layout
+   - **Visual Order Handling**: Use `getVisualOrder()` helper for all selection/navigation operations when grouping is enabled
+     - Returns images in their actual rendering order (respects grouping)
+     - Ensures shift-click range selection, keyboard navigation, and lightbox navigation work correctly
+     - Single source of truth prevents index mismatches between filtered array and DOM order
 6. **Selection State**: Use `Set<string>` to track selected image IDs, persists across re-renders
 7. **Export Filenames**: Use image IDs instead of sequential numbers for easier metadata matching
 8. **Anti-Hotlinking Bypass**: Two-tier approach:

@@ -1457,7 +1457,8 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   const viewBtn = container.querySelector('.preview-view-btn');
   if (viewBtn) {
     viewBtn.addEventListener('click', () => {
-      const index = state.filteredImages.findIndex(img => img.id === image.id);
+      const visualOrder = getVisualOrder();
+      const index = visualOrder.findIndex(img => img.id === image.id);
       if (index !== -1) openLightbox(index);
     });
   }
@@ -1586,7 +1587,8 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
   thumbElements.forEach(thumb => {
     thumb.addEventListener('click', () => {
       const id = thumb.getAttribute('data-id')!;
-      const index = state.filteredImages.findIndex(img => img.id === id);
+      const visualOrder = getVisualOrder();
+      const index = visualOrder.findIndex(img => img.id === id);
       if (index !== -1) openLightbox(index);
     });
   });
@@ -1748,19 +1750,61 @@ function renderDuplicateGroups(images: ImageMetadata[]) {
   grid.innerHTML = html;
 }
 
+/**
+ * Returns images in their visual rendering order.
+ * This matches the DOM order when grouping is enabled.
+ */
+function getVisualOrder(): ImageMetadata[] {
+  if (state.groupBy === 'none') {
+    // Ungrouped: use filtered images as-is
+    return state.filteredImages;
+  } else if (state.groupBy === 'x-account') {
+    // Group by X account: sort by count (desc) then alphabetically
+    const groups = groupImagesByXAccount(state.filteredImages);
+    const sortedAccounts = Array.from(groups.entries())
+      .sort((a, b) => {
+        const countDiff = b[1].length - a[1].length;
+        if (countDiff !== 0) return countDiff;
+        return a[0].localeCompare(b[0]);
+      })
+      .map(([account]) => account);
+
+    const visualOrder: ImageMetadata[] = [];
+    for (const account of sortedAccounts) {
+      visualOrder.push(...groups.get(account)!);
+    }
+    return visualOrder;
+  } else if (state.groupBy === 'duplicates') {
+    // Group by duplicates: sort by key alphabetically
+    const groups = groupImagesByDuplicates(state.filteredImages);
+    const sortedKeys = Array.from(groups.keys()).sort();
+
+    const visualOrder: ImageMetadata[] = [];
+    for (const key of sortedKeys) {
+      visualOrder.push(...groups.get(key)!);
+    }
+    return visualOrder;
+  }
+
+  // Fallback
+  return state.filteredImages;
+}
+
 function handleImageClick(e: Event) {
   const imageCard = (e.target as HTMLElement).closest('.image-card');
   if (!imageCard) return;
 
   const id = imageCard.getAttribute('data-id')!;
-  const index = state.filteredImages.findIndex(img => img.id === id);
+  const visualOrder = getVisualOrder();
+  const index = visualOrder.findIndex(img => img.id === id);
   if (index !== -1) {
     openLightbox(index);
   }
 }
 
 function openLightbox(index: number) {
-  const image = state.filteredImages[index];
+  const visualOrder = getVisualOrder();
+  const image = visualOrder[index];
   if (!image) return;
 
   state.currentLightboxIndex = index;
@@ -2310,12 +2354,14 @@ function closeLightbox() {
 }
 
 function navigateLightboxByOffset(offset: number) {
+  const visualOrder = getVisualOrder();
+
   // Get all visible image cards in DOM order (respects grouping)
   const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
   if (allCards.length === 0) return;
 
   // Find current lightbox image's card in DOM
-  const currentImage = state.filteredImages[state.currentLightboxIndex];
+  const currentImage = visualOrder[state.currentLightboxIndex];
   if (!currentImage) return;
 
   const currentCardIndex = allCards.findIndex(card => card.dataset.id === currentImage.id);
@@ -2328,12 +2374,12 @@ function navigateLightboxByOffset(offset: number) {
   // Get new image from DOM card
   const newCard = allCards[newCardIndex];
   const newImageId = newCard.dataset.id!;
-  const newArrayIndex = state.filteredImages.findIndex(img => img.id === newImageId);
+  const newArrayIndex = visualOrder.findIndex(img => img.id === newImageId);
   if (newArrayIndex === -1) return;
 
   // Update lightbox with new image
   state.currentLightboxIndex = newArrayIndex;
-  const newImage = state.filteredImages[newArrayIndex];
+  const newImage = visualOrder[newArrayIndex];
   updateLightboxContent(newImage);
 
   // Update selection to match current preview (like macOS)
@@ -2428,7 +2474,8 @@ function navigateGridByOffset(offset: number) {
 
 function selectCard(card: HTMLElement) {
   const id = card.dataset.id!;
-  const index = state.filteredImages.findIndex(img => img.id === id);
+  const visualOrder = getVisualOrder();
+  const index = visualOrder.findIndex(img => img.id === id);
 
   state.selectedIds.clear();
   state.selectedIds.add(id);
@@ -2444,6 +2491,8 @@ function selectCard(card: HTMLElement) {
 function navigateGridByOffsetExpand(offset: number) {
   if (state.filteredImages.length === 0) return;
 
+  const visualOrder = getVisualOrder();
+
   // Get all visible image cards in DOM order
   const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
   if (allCards.length === 0) return;
@@ -2452,7 +2501,7 @@ function navigateGridByOffsetExpand(offset: number) {
   if (state.selectedIds.size === 0 || state.selectionAnchor === -1) {
     const firstCard = allCards[0];
     const firstId = firstCard.dataset.id!;
-    const firstIndex = state.filteredImages.findIndex(img => img.id === firstId);
+    const firstIndex = visualOrder.findIndex(img => img.id === firstId);
 
     state.selectedIds.clear();
     state.selectedIds.add(firstId);
@@ -2466,7 +2515,7 @@ function navigateGridByOffsetExpand(offset: number) {
   }
 
   // Find current card in DOM order
-  const lastSelectedId = state.filteredImages[state.lastSelectedIndex]?.id;
+  const lastSelectedId = visualOrder[state.lastSelectedIndex]?.id;
   if (!lastSelectedId) return;
 
   const currentCardIndex = allCards.findIndex(card => card.dataset.id === lastSelectedId);
@@ -2479,16 +2528,16 @@ function navigateGridByOffsetExpand(offset: number) {
   if (clampedFocusIndex !== currentCardIndex) {
     const newFocusCard = allCards[clampedFocusIndex];
     const newFocusId = newFocusCard.dataset.id!;
-    const newFocusArrayIndex = state.filteredImages.findIndex(img => img.id === newFocusId);
+    const newFocusArrayIndex = visualOrder.findIndex(img => img.id === newFocusId);
 
     state.lastSelectedIndex = newFocusArrayIndex;
 
-    // Select range from anchor to new focus (using array indices for consistency)
+    // Select range from anchor to new focus (using visual order for consistency)
     state.selectedIds.clear();
     const start = Math.min(state.selectionAnchor, newFocusArrayIndex);
     const end = Math.max(state.selectionAnchor, newFocusArrayIndex);
     for (let i = start; i <= end; i++) {
-      state.selectedIds.add(state.filteredImages[i].id);
+      state.selectedIds.add(visualOrder[i].id);
     }
 
     updateAllCheckboxes();
@@ -2643,7 +2692,8 @@ imageGrid.addEventListener('click', (e: Event) => {
   const card = target.closest('.image-card');
   if (card) {
     const id = card.getAttribute('data-id')!;
-    const clickedIndex = state.filteredImages.findIndex(img => img.id === id);
+    const visualOrder = getVisualOrder();
+    const clickedIndex = visualOrder.findIndex(img => img.id === id);
 
     if (mouseEvent.metaKey || mouseEvent.ctrlKey) {
       // Cmd/Ctrl + Click: Toggle item in selection
@@ -2661,7 +2711,7 @@ imageGrid.addEventListener('click', (e: Event) => {
 
       state.selectedIds.clear();
       for (let i = start; i <= end; i++) {
-        state.selectedIds.add(state.filteredImages[i].id);
+        state.selectedIds.add(visualOrder[i].id);
       }
       state.lastSelectedIndex = clickedIndex;
     } else {
@@ -2842,7 +2892,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     e.preventDefault();
     if (state.selectedIds.size === 1) {
       const selectedId = Array.from(state.selectedIds)[0];
-      const index = state.filteredImages.findIndex(img => img.id === selectedId);
+      const visualOrder = getVisualOrder();
+      const index = visualOrder.findIndex(img => img.id === selectedId);
       if (index !== -1) {
         openLightbox(index);
       }
