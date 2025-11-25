@@ -206,3 +206,30 @@ export function parseTagSearch(query: string): ParsedTagSearch {
 
   return result;
 }
+
+/**
+ * Removes a tag from search query string, cleaning up orphaned "or" operators.
+ * Handles: "girl or cat" → remove "cat" → "girl"
+ *          "cat or girl" → remove "cat" → "girl"
+ *          "dog cat girl" → remove "cat" → "dog girl"
+ */
+export function removeTagFromQuery(query: string, tagToRemove: string): string {
+  const tokens = query.split(/\s+/);
+  const newTokens: string[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    if (tokens[i] === tagToRemove) {
+      // Skip this tag
+      // Also skip "or" if it's before or after this tag
+      if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
+        newTokens.pop(); // Remove the "or" we just added
+      } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
+        i++; // Skip the next "or"
+      }
+    } else {
+      newTokens.push(tokens[i]);
+    }
+  }
+
+  return newTokens.join(' ').trim();
+}

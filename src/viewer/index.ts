@@ -1,6 +1,6 @@
 import { getAllImages, getAllImagesMetadata, getImageBlob, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
 import type { SavedImage, ImageMetadata } from '../types';
-import { parseTagSearch, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
+import { parseTagSearch, removeTagFromQuery, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
 
 // Constants
 const SortField = {
@@ -53,6 +53,23 @@ async function loadImages() {
   if (typeof updateTagAutocompleteAvailableTags === 'function') {
     updateTagAutocompleteAvailableTags();
   }
+}
+
+/**
+ * Updates image metadata in local state after database update, then re-renders.
+ * Synchronizes local state with database changes and sets updatedAt timestamp.
+ */
+function syncImageMetadataToState<T extends keyof ImageMetadata>(
+  imageId: string,
+  field: T,
+  value: ImageMetadata[T]
+): void {
+  const imageInState = state.images.find(img => img.id === imageId);
+  if (imageInState) {
+    (imageInState as any)[field] = value;
+    imageInState.updatedAt = Date.now();
+  }
+  applyFilters();
 }
 
 // TagCountFilter moved to tag-utils.ts
@@ -244,25 +261,7 @@ function toggleTagInSearch(tag: string) {
 
   if (isActive) {
     // Remove tag from search
-    // Split by spaces and filter out this tag (and "or" if it becomes orphaned)
-    const tokens = current.split(/\s+/);
-    const newTokens: string[] = [];
-
-    for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i] === tag) {
-        // Skip this tag
-        // Also skip "or" if it's before or after this tag
-        if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
-          newTokens.pop(); // Remove the "or" we just added
-        } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
-          i++; // Skip the next "or"
-        }
-      } else {
-        newTokens.push(tokens[i]);
-      }
-    }
-
-    input.value = newTokens.join(' ').trim();
+    input.value = removeTagFromQuery(current, tag);
   } else {
     // Add tag to search
     if (current) {
@@ -314,23 +313,7 @@ function excludeTagFromSearch(tag: string) {
   let newValue = current;
   if (isIncluded) {
     // Remove the included tag first
-    const tokens = current.split(/\s+/);
-    const newTokens: string[] = [];
-
-    for (let i = 0; i < tokens.length; i++) {
-      if (tokens[i] === tag) {
-        // Skip this tag
-        // Also skip "or" if it's before or after this tag
-        if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
-          newTokens.pop(); // Remove the "or" we just added
-        } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
-          i++; // Skip the next "or"
-        }
-      } else {
-        newTokens.push(tokens[i]);
-      }
-    }
-    newValue = newTokens.join(' ').trim();
+    newValue = removeTagFromQuery(current, tag);
   }
 
   // Add the exclusion
@@ -348,24 +331,7 @@ function removeIncludedTagFromSearch(tag: string) {
   if (!input) return;
 
   const current = input.value.trim();
-  const tokens = current.split(/\s+/);
-  const newTokens: string[] = [];
-
-  for (let i = 0; i < tokens.length; i++) {
-    if (tokens[i] === tag) {
-      // Skip this tag
-      // Also skip "or" if it's before or after this tag
-      if (i > 0 && tokens[i - 1].toLowerCase() === 'or') {
-        newTokens.pop(); // Remove the "or" we just added
-      } else if (i < tokens.length - 1 && tokens[i + 1].toLowerCase() === 'or') {
-        i++; // Skip the next "or"
-      }
-    } else {
-      newTokens.push(tokens[i]);
-    }
-  }
-
-  input.value = newTokens.join(' ').trim();
+  input.value = removeTagFromQuery(current, tag);
   applyFilters();
 }
 
@@ -1375,14 +1341,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const ratingValue = target.value || undefined;
       const { updateImageRating } = await import('../storage/service');
       await updateImageRating(image.id, ratingValue as any);
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.rating = ratingValue as any;
-        imageInState.updatedAt = Date.now();
-      }
-      // Re-render the grid to update badge
-      applyFilters();
+      syncImageMetadataToState(image.id, 'rating', ratingValue as any);
     });
   });
 
@@ -1395,16 +1354,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const newPageTitle = previewPageTitleInput.value.trim() || undefined;
       const { updateImagePageTitle } = await import('../storage/service');
       await updateImagePageTitle(image.id, newPageTitle);
-
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.pageTitle = newPageTitle;
-        imageInState.updatedAt = Date.now();
-      }
-
-      // Re-render the grid to update display
-      applyFilters();
+      syncImageMetadataToState(image.id, 'pageTitle', newPageTitle);
     });
   }
 
@@ -1420,16 +1370,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
       const { updateImagePageUrl } = await import('../storage/service');
       await updateImagePageUrl(image.id, newPageUrl);
-
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.pageUrl = newPageUrl;
-        imageInState.updatedAt = Date.now();
-      }
-
-      // Re-render the grid to update display
-      applyFilters();
+      syncImageMetadataToState(image.id, 'pageUrl', newPageUrl);
     });
   }
 
@@ -1448,16 +1389,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
       const { updateImageTags } = await import('../storage/service');
       await updateImageTags(image.id, uniqueTags);
-
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.tags = uniqueTags;
-        imageInState.updatedAt = Date.now();
-      }
-
-      // Re-render the grid and preview pane
-      applyFilters();
+      syncImageMetadataToState(image.id, 'tags', uniqueTags);
       updatePreviewPane();
     });
 
@@ -1473,16 +1405,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
       const { updateImageTags } = await import('../storage/service');
       await updateImageTags(image.id, uniqueTags);
-
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.tags = uniqueTags;
-        imageInState.updatedAt = Date.now();
-      }
-
-      // Re-render the grid and preview pane
-      applyFilters();
+      syncImageMetadataToState(image.id, 'tags', uniqueTags);
       updatePreviewPane();
     });
   }
