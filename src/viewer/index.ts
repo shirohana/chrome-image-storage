@@ -1377,20 +1377,22 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   // Attach tag input with autocomplete and auto-save on blur
   const previewTagInput = document.getElementById(`preview-tag-input-${image.id}`) as HTMLInputElement;
   if (previewTagInput) {
-    setupTagAutocomplete(previewTagInput, `preview-tag-autocomplete-${image.id}`, undefined, async () => {
-      // Save tags when Enter is pressed with complete token
-      const tagsString = previewTagInput.value.trim();
-      const tags = tagsString
-        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
-        : [];
+    setupTagAutocomplete(previewTagInput, `preview-tag-autocomplete-${image.id}`, {
+      onEnterComplete: async () => {
+        // Save tags when Enter is pressed with complete token
+        const tagsString = previewTagInput.value.trim();
+        const tags = tagsString
+          ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
+          : [];
 
-      // Remove duplicates using Set
-      const uniqueTags = Array.from(new Set(tags));
+        // Remove duplicates using Set
+        const uniqueTags = Array.from(new Set(tags));
 
-      const { updateImageTags } = await import('../storage/service');
-      await updateImageTags(image.id, uniqueTags);
-      syncImageMetadataToState(image.id, 'tags', uniqueTags);
-      updatePreviewPane();
+        const { updateImageTags } = await import('../storage/service');
+        await updateImageTags(image.id, uniqueTags);
+        syncImageMetadataToState(image.id, 'tags', uniqueTags);
+        updatePreviewPane();
+      }
     });
 
     // Auto-save on blur
@@ -1845,30 +1847,32 @@ function updateLightboxMetadata(image: ImageMetadata) {
   // Setup tag autocomplete with save callback
   const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
   if (input) {
-    setupTagAutocomplete(input, 'tag-autocomplete', undefined, async () => {
-      // Save tags when Enter is pressed with complete token
-      const tagsString = input.value.trim();
-      const tags = tagsString
-        ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
-        : [];
+    setupTagAutocomplete(input, 'tag-autocomplete', {
+      onEnterComplete: async () => {
+        // Save tags when Enter is pressed with complete token
+        const tagsString = input.value.trim();
+        const tags = tagsString
+          ? tagsString.split(/\s+/).filter(tag => tag.length > 0)
+          : [];
 
-      // Remove duplicates using Set
-      const uniqueTags = Array.from(new Set(tags));
+        // Remove duplicates using Set
+        const uniqueTags = Array.from(new Set(tags));
 
-      await updateImageTags(image.id, uniqueTags);
+        await updateImageTags(image.id, uniqueTags);
 
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.tags = uniqueTags;
-        imageInState.updatedAt = Date.now();
+        // Update local state
+        const imageInState = state.images.find(img => img.id === image.id);
+        if (imageInState) {
+          imageInState.tags = uniqueTags;
+          imageInState.updatedAt = Date.now();
+        }
+
+        // Update lightbox metadata display
+        updateLightboxMetadata(imageInState || image);
+
+        // Re-render the grid to update tags display
+        applyFilters();
       }
-
-      // Update lightbox metadata display
-      updateLightboxMetadata(imageInState || image);
-
-      // Re-render the grid to update tags display
-      applyFilters();
     });
   }
 }
@@ -1902,199 +1906,28 @@ function completeCurrentToken(input: HTMLInputElement): void {
   input.setSelectionRange(newCursorPos, newCursorPos);
 }
 
-function setupTagAutocomplete(
-  input: HTMLInputElement,
-  autocompleteId?: string,
-  customTags?: string[],
-  onEnterComplete?: () => void | Promise<void>
-) {
-  const divId = autocompleteId || 'tag-autocomplete';
-  const autocompleteDiv = document.getElementById(divId);
-  if (!autocompleteDiv) return;
-
-  // Remove existing event listeners by aborting previous controller
-  const controllerKey = `autocomplete_controller_${divId}`;
-  if ((input as any)[controllerKey]) {
-    (input as any)[controllerKey].abort();
-  }
-  const controller = new AbortController();
-  (input as any)[controllerKey] = controller;
-  const signal = controller.signal;
-
-  // Use custom tags if provided, otherwise collect all unique tags
-  let availableTags: string[];
-  if (customTags) {
-    availableTags = customTags.sort();
-  } else {
-    const allTags = new Set<string>();
-    state.images.forEach(img => {
-      if (img.tags && img.tags.length > 0) {
-        img.tags.forEach(tag => allTags.add(tag));
-      }
-    });
-    availableTags = Array.from(allTags).sort();
-  }
-
-  let selectedIndex = -1;
-  let currentMatches: string[] = [];
-  let blurTimeout: number | null = null;
-
-  function showSuggestions() {
-    const value = input.value;
-    const cursorPos = input.selectionStart || 0;
-
-    // Find the current tag being typed
-    const beforeCursor = value.substring(0, cursorPos);
-    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
-    const currentTag = beforeCursor.substring(lastSpaceIndex + 1).trim();
-
-    // Get already-entered tags to exclude them from suggestions
-    const enteredTags = value
-      .split(/\s+/)
-      .map(t => t.trim().toLowerCase())
-      .filter(t => t.length > 0);
-
-    // Filter matching tags (show all if empty, or filter by prefix)
-    // Also exclude tags that are already entered
-    currentMatches = availableTags.filter(tag => {
-      // Exclude already-entered tags
-      if (enteredTags.includes(tag.toLowerCase())) return false;
-
-      if (currentTag.length === 0) return true;
-      return tag.toLowerCase().startsWith(currentTag.toLowerCase()) &&
-             tag.toLowerCase() !== currentTag.toLowerCase();
-    });
-
-    if (currentMatches.length === 0) {
-      autocompleteDiv.style.display = 'none';
-      return;
-    }
-
-    // Auto-select first item only when actively typing/filtering
-    selectedIndex = currentTag.length > 0 ? 0 : -1;
-    renderSuggestions();
-    autocompleteDiv.style.display = 'block';
-  }
-
-  function renderSuggestions() {
-    autocompleteDiv.innerHTML = currentMatches.slice(0, 8).map((tag, index) =>
-      `<div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}" data-index="${index}">${tag}</div>`
-    ).join('');
-
-    // Attach click handlers
-    autocompleteDiv.querySelectorAll('.tag-suggestion').forEach(suggestionEl => {
-      suggestionEl.addEventListener('click', () => {
-        const selectedTag = suggestionEl.getAttribute('data-tag')!;
-        insertTag(selectedTag);
-      });
-    });
-  }
-
-  function insertTag(tag: string) {
-    // Clear any pending blur timeout
-    if (blurTimeout !== null) {
-      clearTimeout(blurTimeout);
-      blurTimeout = null;
-    }
-
-    const value = input.value;
-    const cursorPos = input.selectionStart || 0;
-    const beforeCursor = value.substring(0, cursorPos);
-    const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
-    const beforeTag = value.substring(0, lastSpaceIndex + 1);
-    const afterCursor = value.substring(cursorPos);
-    const nextSpaceOrEnd = afterCursor.indexOf(' ');
-    const afterTag = nextSpaceOrEnd >= 0 ? afterCursor.substring(nextSpaceOrEnd) : '';
-
-    input.value = beforeTag + tag + ' ';
-    input.focus();
-
-    // Move cursor after the inserted tag
-    const newCursorPos = beforeTag.length + tag.length + 1;
-    input.setSelectionRange(newCursorPos, newCursorPos);
-
-    // Re-show autocomplete with remaining tags
-    showSuggestions();
-  }
-
-  input.addEventListener('input', showSuggestions, { signal });
-  input.addEventListener('focus', showSuggestions, { signal });
-
-  input.addEventListener('keydown', (e: KeyboardEvent) => {
-    const autocompleteVisible = autocompleteDiv.style.display === 'block';
-
-    // Handle Enter key - priority: autocomplete selection > token completion > submit
-    if (e.key === 'Enter') {
-      // Priority 1: If autocomplete has a selection, insert the selected tag
-      if (autocompleteVisible && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
-        e.preventDefault();
-        insertTag(currentMatches[selectedIndex]);
-      }
-      // Priority 2: If token is incomplete, complete it by adding a space
-      else if (isCurrentTokenIncomplete(input)) {
-        e.preventDefault();
-        completeCurrentToken(input);
-        autocompleteDiv.style.display = 'none';
-        selectedIndex = -1;
-      }
-      // Priority 3: Call the callback if provided (submit action)
-      else if (onEnterComplete) {
-        e.preventDefault();
-        onEnterComplete();
-      }
-      // If no callback, let the event bubble (default behavior)
-      return;
-    }
-
-    // Handle Tab key for autocomplete selection
-    if (e.key === 'Tab' && autocompleteVisible && selectedIndex >= 0 && selectedIndex < currentMatches.length) {
-      e.preventDefault();
-      insertTag(currentMatches[selectedIndex]);
-      return;
-    }
-
-    // Handle other keys when autocomplete is visible
-    if (autocompleteVisible) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, Math.min(currentMatches.length, 8) - 1);
-        renderSuggestions();
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, -1);
-        renderSuggestions();
-      } else if (e.key === 'Escape') {
-        autocompleteDiv.style.display = 'none';
-        selectedIndex = -1;
-      }
-    }
-  }, { signal });
-
-  // Hide autocomplete when clicking outside
-  input.addEventListener('blur', () => {
-    blurTimeout = window.setTimeout(() => {
-      autocompleteDiv.style.display = 'none';
-      selectedIndex = -1;
-      blurTimeout = null;
-    }, 200);
-  }, { signal });
-
-  // Clear timeout and keep open when refocusing
-  input.addEventListener('focus', () => {
-    if (blurTimeout !== null) {
-      clearTimeout(blurTimeout);
-      blurTimeout = null;
-    }
-  }, { signal });
+interface AutocompleteOptions {
+  customTags?: string[];
+  onEnterComplete?: () => void | Promise<void>;
+  enableDanbooruSyntax?: boolean;
 }
 
-// Setup autocomplete for tag search input (handles Danbooru syntax)
-function setupTagSearchAutocomplete(input: HTMLInputElement) {
-  const autocompleteDiv = document.getElementById('tag-search-autocomplete');
-  if (!autocompleteDiv) return;
+/**
+ * Sets up tag autocomplete with optional Danbooru syntax support.
+ * Returns updateAvailableTags function if Danbooru syntax is enabled.
+ */
+function setupTagAutocomplete(
+  input: HTMLInputElement,
+  autocompleteId: string,
+  options: AutocompleteOptions = {}
+): { updateAvailableTags?: () => void } {
+  const { customTags, onEnterComplete, enableDanbooruSyntax = false } = options;
+
+  const autocompleteDiv = document.getElementById(autocompleteId);
+  if (!autocompleteDiv) return {};
 
   // Remove existing event listeners by aborting previous controller
-  const controllerKey = 'autocomplete_controller_tag_search';
+  const controllerKey = `autocomplete_controller_${autocompleteId}`;
   if ((input as any)[controllerKey]) {
     (input as any)[controllerKey].abort();
   }
@@ -2102,16 +1935,21 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
   (input as any)[controllerKey] = controller;
   const signal = controller.signal;
 
-  // Collect all unique tags from images
+  // Collect all unique tags
   let availableTags: string[] = [];
+
   function updateAvailableTags() {
-    const allTags = new Set<string>();
-    state.images.forEach(img => {
-      if (img.tags && img.tags.length > 0) {
-        img.tags.forEach(tag => allTags.add(tag));
-      }
-    });
-    availableTags = Array.from(allTags).sort();
+    if (customTags) {
+      availableTags = customTags.sort();
+    } else {
+      const allTags = new Set<string>();
+      state.images.forEach(img => {
+        if (img.tags && img.tags.length > 0) {
+          img.tags.forEach(tag => allTags.add(tag));
+        }
+      });
+      availableTags = Array.from(allTags).sort();
+    }
   }
   updateAvailableTags();
 
@@ -2128,40 +1966,39 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
     const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
     const currentToken = beforeCursor.substring(lastSpaceIndex + 1).trim();
 
-    // Check if we're in a metatag context (rating:, is:, tagcount:)
-    const metatagPattern = /^(rating|is|tagcount):/i;
-    if (metatagPattern.test(currentToken)) {
-      autocompleteDiv.style.display = 'none';
-      return;
+    // Danbooru syntax: Check if we're in a metatag context or "or" operator
+    if (enableDanbooruSyntax) {
+      const metatagPattern = /^(rating|is|tagcount):/i;
+      if (metatagPattern.test(currentToken) || currentToken.toLowerCase() === 'or' || currentToken.toLowerCase() === 'o') {
+        autocompleteDiv.style.display = 'none';
+        return;
+      }
     }
 
-    // Handle exclusion prefix
-    const isExclusion = currentToken.startsWith('-');
+    // Danbooru syntax: Handle exclusion prefix
+    const isExclusion = enableDanbooruSyntax && currentToken.startsWith('-');
     const tagPrefix = isExclusion ? currentToken.substring(1) : currentToken;
 
-    // Don't autocomplete if typing "or" operator
-    if (tagPrefix.toLowerCase() === 'or' || tagPrefix.toLowerCase() === 'o') {
-      autocompleteDiv.style.display = 'none';
-      return;
-    }
-
     // Get already-entered tags to exclude them from suggestions
+    const enteredTagsSet = new Set<string>();
     const tokens = value.split(/\s+/).map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
-    const enteredTags = new Set<string>();
 
     tokens.forEach(token => {
-      // Skip metatags and operators
-      if (metatagPattern.test(token) || token === 'or') return;
-      // Remove exclusion prefix
-      const tag = token.startsWith('-') ? token.substring(1) : token;
-      if (tag) enteredTags.add(tag);
+      if (enableDanbooruSyntax) {
+        // Skip metatags and operators
+        const metatagPattern = /^(rating|is|tagcount):/i;
+        if (metatagPattern.test(token) || token === 'or') return;
+        // Remove exclusion prefix for comparison
+        const cleanToken = token.startsWith('-') ? token.substring(1) : token;
+        if (cleanToken) enteredTagsSet.add(cleanToken);
+      } else {
+        if (token) enteredTagsSet.add(token);
+      }
     });
 
     // Filter matching tags
     currentMatches = availableTags.filter(tag => {
-      // Exclude already-entered tags
-      if (enteredTags.has(tag.toLowerCase())) return false;
-
+      if (enteredTagsSet.has(tag.toLowerCase())) return false;
       if (tagPrefix.length === 0) return true;
       return tag.toLowerCase().startsWith(tagPrefix.toLowerCase()) &&
              tag.toLowerCase() !== tagPrefix.toLowerCase();
@@ -2172,7 +2009,7 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
       return;
     }
 
-    // Auto-select first item only when actively typing/filtering
+    // Auto-select first item only when actively typing (non-empty prefix)
     selectedIndex = tagPrefix.length > 0 ? 0 : -1;
     renderSuggestions();
     autocompleteDiv.style.display = 'block';
@@ -2203,11 +2040,11 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
     const cursorPos = input.selectionStart || 0;
     const beforeCursor = value.substring(0, cursorPos);
     const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
-    const currentToken = beforeCursor.substring(lastSpaceIndex + 1);
 
-    // Preserve exclusion prefix if present
-    const isExclusion = currentToken.startsWith('-');
-    const tagWithPrefix = isExclusion ? '-' + tag : tag;
+    // Danbooru syntax: preserve exclusion prefix if present
+    const currentToken = beforeCursor.substring(lastSpaceIndex + 1);
+    const isExclusion = enableDanbooruSyntax && currentToken.startsWith('-');
+    const tagWithPrefix = isExclusion ? `-${tag}` : tag;
 
     const beforeTag = value.substring(0, lastSpaceIndex + 1);
     const afterCursor = value.substring(cursorPos);
@@ -2221,11 +2058,13 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
     const newCursorPos = beforeTag.length + tagWithPrefix.length + 1;
     input.setSelectionRange(newCursorPos, newCursorPos);
 
-    // Re-show autocomplete with remaining tags
+    // Re-show autocomplete
     showSuggestions();
 
-    // Trigger search
-    input.dispatchEvent(new Event('input'));
+    // Danbooru syntax: trigger input event for filter updates
+    if (enableDanbooruSyntax) {
+      input.dispatchEvent(new Event('input'));
+    }
   }
 
   input.addEventListener('input', showSuggestions, { signal });
@@ -2248,8 +2087,13 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
         autocompleteDiv.style.display = 'none';
         selectedIndex = -1;
       }
-      // Priority 3: Blur to complete the search
-      else {
+      // Priority 3: Call the callback if provided (submit action)
+      else if (onEnterComplete) {
+        e.preventDefault();
+        onEnterComplete();
+      }
+      // Danbooru syntax: blur input if no callback
+      else if (enableDanbooruSyntax) {
         e.preventDefault();
         input.blur();
       }
@@ -2297,8 +2141,8 @@ function setupTagSearchAutocomplete(input: HTMLInputElement) {
     }
   }, { signal });
 
-  // Refresh available tags when images change (e.g., after import)
-  return updateAvailableTags;
+  // Return updateAvailableTags only if Danbooru syntax is enabled
+  return enableDanbooruSyntax ? { updateAvailableTags } : {};
 }
 
 function closeLightbox() {
@@ -2554,7 +2398,10 @@ if (urlSearchInput) {
 
 if (tagSearchInput) {
   tagSearchInput.addEventListener('input', debouncedTagSearch);
-  updateTagAutocompleteAvailableTags = setupTagSearchAutocomplete(tagSearchInput);
+  const { updateAvailableTags } = setupTagAutocomplete(tagSearchInput, 'tag-search-autocomplete', {
+    enableDanbooruSyntax: true
+  });
+  updateTagAutocompleteAvailableTags = updateAvailableTags!;
 }
 
 // Rating filter pill event listeners
@@ -2977,8 +2824,10 @@ function openBulkTagModal() {
   bulkTagModal.classList.add('active');
 
   // Setup autocomplete for add input (all tags) - Enter focuses next input
-  setupTagAutocomplete(bulkAddTagsInput, 'bulk-add-autocomplete', undefined, () => {
-    bulkRemoveTagsInput.focus();
+  setupTagAutocomplete(bulkAddTagsInput, 'bulk-add-autocomplete', {
+    onEnterComplete: () => {
+      bulkRemoveTagsInput.focus();
+    }
   });
 
   // Setup autocomplete for remove input (only tags from selected images) - Enter blurs
@@ -2990,8 +2839,11 @@ function openBulkTagModal() {
     }
   });
   const selectedImageTagsArray = Array.from(selectedImageTags);
-  setupTagAutocomplete(bulkRemoveTagsInput, 'bulk-remove-autocomplete', selectedImageTagsArray, () => {
-    bulkRemoveTagsInput.blur();
+  setupTagAutocomplete(bulkRemoveTagsInput, 'bulk-remove-autocomplete', {
+    customTags: selectedImageTagsArray,
+    onEnterComplete: () => {
+      bulkRemoveTagsInput.blur();
+    }
   });
 
   // Focus the first input
