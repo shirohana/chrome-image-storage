@@ -2386,26 +2386,43 @@ function closeLightbox() {
 }
 
 function navigateLightboxByOffset(offset: number) {
-  const newIndex = state.currentLightboxIndex + offset;
-  if (newIndex >= 0 && newIndex < state.filteredImages.length) {
-    state.currentLightboxIndex = newIndex;
-    const currentImage = state.filteredImages[state.currentLightboxIndex];
+  // Get all visible image cards in DOM order (respects grouping)
+  const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
+  if (allCards.length === 0) return;
 
-    // Update lightbox
-    updateLightboxContent(currentImage);
+  // Find current lightbox image's card in DOM
+  const currentImage = state.filteredImages[state.currentLightboxIndex];
+  if (!currentImage) return;
 
-    // Update selection to match current preview (like macOS)
-    state.selectedIds.clear();
-    state.selectedIds.add(currentImage.id);
-    state.lastSelectedIndex = state.currentLightboxIndex;
-    state.selectionAnchor = state.currentLightboxIndex;
+  const currentCardIndex = allCards.findIndex(card => card.dataset.id === currentImage.id);
+  if (currentCardIndex === -1) return;
 
-    // Sync grid UI
-    updateAllCheckboxes();
-    updateSelectionCount();
-    updatePreviewPane();
-    scrollToImage(currentImage.id);
-  }
+  // Calculate new position in DOM order
+  const newCardIndex = currentCardIndex + offset;
+  if (newCardIndex < 0 || newCardIndex >= allCards.length) return;
+
+  // Get new image from DOM card
+  const newCard = allCards[newCardIndex];
+  const newImageId = newCard.dataset.id!;
+  const newArrayIndex = state.filteredImages.findIndex(img => img.id === newImageId);
+  if (newArrayIndex === -1) return;
+
+  // Update lightbox with new image
+  state.currentLightboxIndex = newArrayIndex;
+  const newImage = state.filteredImages[newArrayIndex];
+  updateLightboxContent(newImage);
+
+  // Update selection to match current preview (like macOS)
+  state.selectedIds.clear();
+  state.selectedIds.add(newImageId);
+  state.lastSelectedIndex = newArrayIndex;
+  state.selectionAnchor = newArrayIndex;
+
+  // Sync grid UI
+  updateAllCheckboxes();
+  updateSelectionCount();
+  updatePreviewPane();
+  scrollToImage(newImageId);
 }
 
 function navigateNext() {

@@ -6,6 +6,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Early prototype with core features completed. All planned "Quick Wins" and "Useful Features" from roadmap are implemented. Keep it simple and make it work first.
 
+## Anti-Duplication Rules (CRITICAL)
+
+**Lessons from production bugs:**
+- Navigation logic was duplicated (`navigateGridByOffset` + `navigateLightboxByOffset`)
+- Bug fix applied to grid navigation only
+- Lightbox navigation broke when grouping enabled
+- User discovered bug, not tests
+
+**Before adding/changing features:**
+1. **Search for similar logic**: Use Grep to find similar function names and patterns
+2. **Check these high-risk areas** where duplication has occurred:
+   - Navigation logic (grid vs lightbox)
+   - Filter logic (various filter types)
+   - State update patterns (selection, tags, ratings)
+   - Event handlers (grid cards vs lightbox)
+3. **After fixing any bug**: Grep for similar code that might have the same bug
+4. **Extract shared logic** when:
+   - Same behavior in 2+ places (navigation, filtering, state updates)
+   - Complex logic >20 lines
+   - Bug-prone user interactions
+
+**Specific patterns to watch:**
+- `function navigateXByOffset` / `function navigateYByOffset` → Likely duplicates
+- `function updateX` / `function updateY` with similar bodies → Consider extracting
+- Event handlers with similar `addEventListener` patterns → Extract handler logic
+- Filter/sort logic appearing in multiple functions → Extract to shared function
+
+**The rule**: ONE TRUTH, ZERO COPIES. Fix once, works everywhere.
+
 ## Build Commands
 
 - `pnpm build` - Build extension to `dist/`
