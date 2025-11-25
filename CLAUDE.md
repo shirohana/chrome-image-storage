@@ -285,6 +285,17 @@ All tag inputs support two-step completion flow for better UX:
 - `completeCurrentToken()`: Adds space to complete token
 - AbortController used to clean up event listeners when inputs are re-rendered
 
+**Focus Behavior for Preview/Lightbox Tag Inputs**:
+- Automatically appends space when focusing input (if not already present)
+- Cursor moves to end after space → autocomplete naturally appends new tags
+- Prevents replacement of existing tags when adding new ones
+- Example: Focus on `cat girl` → becomes `cat girl |` → type/select tag → appends
+
+**Autocomplete Interaction**:
+- Uses `mousedown` event instead of `click` for suggestion selection
+- `preventDefault()` on mousedown prevents input blur before tag insertion
+- Ensures smooth tag completion without triggering save prematurely
+
 ### Auto-Tagging Rules System
 
 **Location**: `src/storage/tag-rules.ts`

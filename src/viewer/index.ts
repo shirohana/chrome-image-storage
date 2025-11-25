@@ -1528,6 +1528,16 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       }
     });
 
+    // Append space on focus for easier tag appending
+    previewTagInput.addEventListener('focus', () => {
+      const value = previewTagInput.value;
+      if (value.length > 0 && !value.endsWith(' ')) {
+        previewTagInput.value = value + ' ';
+        // Move cursor to end
+        previewTagInput.setSelectionRange(previewTagInput.value.length, previewTagInput.value.length);
+      }
+    });
+
     // Auto-save on blur
     previewTagInput.addEventListener('blur', async () => {
       const tagsString = previewTagInput.value.trim();
@@ -2007,6 +2017,16 @@ function updateLightboxMetadata(image: ImageMetadata) {
         applyFilters();
       }
     });
+
+    // Append space on focus for easier tag appending
+    input.addEventListener('focus', () => {
+      const value = input.value;
+      if (value.length > 0 && !value.endsWith(' ')) {
+        input.value = value + ' ';
+        // Move cursor to end
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    });
   }
 }
 
@@ -2153,9 +2173,10 @@ function setupTagAutocomplete(
       `<div class="tag-suggestion ${index === selectedIndex ? 'selected' : ''}" data-tag="${tag}" data-index="${index}">${tag}</div>`
     ).join('');
 
-    // Attach click handlers
+    // Attach mousedown handlers (fires before blur, allows preventDefault)
     autocompleteDiv.querySelectorAll('.tag-suggestion').forEach(suggestionEl => {
-      suggestionEl.addEventListener('click', () => {
+      suggestionEl.addEventListener('mousedown', (e: Event) => {
+        e.preventDefault(); // Prevent input blur when clicking autocomplete
         const selectedTag = suggestionEl.getAttribute('data-tag')!;
         insertTag(selectedTag);
       });
@@ -2172,23 +2193,26 @@ function setupTagAutocomplete(
     const value = input.value;
     const cursorPos = input.selectionStart || 0;
     const beforeCursor = value.substring(0, cursorPos);
+    const afterCursor = value.substring(cursorPos);
     const lastSpaceIndex = beforeCursor.lastIndexOf(' ');
+    const currentToken = beforeCursor.substring(lastSpaceIndex + 1);
 
     // Danbooru syntax: preserve exclusion prefix if present
-    const currentToken = beforeCursor.substring(lastSpaceIndex + 1);
     const isExclusion = enableDanbooruSyntax && currentToken.startsWith('-');
     const tagWithPrefix = isExclusion ? `-${tag}` : tag;
 
     const beforeTag = value.substring(0, lastSpaceIndex + 1);
-    const afterCursor = value.substring(cursorPos);
     const nextSpaceOrEnd = afterCursor.indexOf(' ');
     const afterTag = nextSpaceOrEnd >= 0 ? afterCursor.substring(nextSpaceOrEnd) : '';
 
-    input.value = beforeTag + tagWithPrefix + ' ' + afterTag;
+    // Add space only if afterTag doesn't already start with one
+    const needsSpace = !afterTag.startsWith(' ') && afterTag.length > 0;
+    input.value = beforeTag + tagWithPrefix + (needsSpace || afterTag.length === 0 ? ' ' : '') + afterTag;
     input.focus();
 
-    // Move cursor after the inserted tag
-    const newCursorPos = beforeTag.length + tagWithPrefix.length + 1;
+    // Move cursor after the inserted tag (and space if added)
+    const addedSpace = needsSpace || afterTag.length === 0 ? 1 : 0;
+    const newCursorPos = beforeTag.length + tagWithPrefix.length + addedSpace;
     input.setSelectionRange(newCursorPos, newCursorPos);
 
     // Re-show autocomplete
