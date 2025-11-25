@@ -39,6 +39,27 @@ Tests the Danbooru-style tag search parser (`parseTagSearch`).
 - User-facing search functionality
 - Hard to manually verify all combinations
 
+### `tag-query.test.ts` (49 tests)
+Tests tag removal utility function (`removeTagFromQuery`).
+
+**Coverage:**
+- Tag removal with following "or" operator
+- Tag removal with preceding "or" operator
+- Tag removal without affecting other tags
+- Tag at beginning/middle/end positions
+- Only tag removal (results in empty string)
+- Preserving "or" between remaining tags
+- Case-insensitive "or" operator handling
+- Multiple spaces handling
+- Tag appearing multiple times
+- Tag not present scenarios
+
+**Why critical:**
+- Used by tag sidebar and clickable tags for search manipulation
+- Complex "or" operator cleanup logic prevents orphaned operators
+- Extracted from duplicated code to prevent bugs (production bug history)
+- Tag removal bugs directly affect UX - users can't properly filter images
+
 ### `auto-tagging.test.ts` (26 tests)
 Tests auto-tagging rule matching logic (`matchesRule`, `getAutoTags`).
 
@@ -76,8 +97,9 @@ Tests rating tag extraction logic (`extractRatingFromTags`).
 
 ## Test Performance
 
-All 101 tests run in ~11ms total:
+All 150 tests run in ~11ms total:
 - `tag-parser.test.ts`: 5ms (50 tests)
+- `tag-query.test.ts`: ~1ms (49 tests)
 - `auto-tagging.test.ts`: 3ms (26 tests)
 - `rating-extraction.test.ts`: 3ms (25 tests)
 
@@ -97,7 +119,9 @@ Fast execution enables TDD workflow and pre-commit hooks.
 - ✅ Pure functions separated from UI code
 
 **Extracted files:**
-- `src/viewer/tag-utils.ts`: Tag search parser and types
+- `src/viewer/tag-utils.ts`: Tag search parser, tag query manipulation, and types
+  - `parseTagSearch()`: Danbooru-style search parser
+  - `removeTagFromQuery()`: Tag removal with "or" operator cleanup
 
 **Exported for testing:**
 - `extractRatingFromTags` in `src/storage/service.ts`

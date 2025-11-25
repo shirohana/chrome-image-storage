@@ -46,16 +46,18 @@ Load `dist/` as unpacked extension in Chrome.
 
 ## Testing
 
-Comprehensive test suite (101 tests, ~11ms execution time):
+Comprehensive test suite (150 tests, ~11ms execution time):
 
 **Test Files** (`tests/` directory):
 - `tag-parser.test.ts`: 50 tests for `parseTagSearch()` - Danbooru-style syntax parsing
+- `tag-query.test.ts`: 49 tests for `removeTagFromQuery()` - Tag removal with "or" operator cleanup
 - `auto-tagging.test.ts`: 26 tests for `matchesRule()` and `getAutoTags()` - Rule matching logic
 - `rating-extraction.test.ts`: 25 tests for `extractRatingFromTags()` - Tag-to-rating conversion
 
 **Extracted for Testing**:
 - `src/viewer/tag-utils.ts`: Pure tag parsing functions (no DOM dependencies)
   - `parseTagSearch(query: string): ParsedTagSearch` - Main parser function
+  - `removeTagFromQuery(query: string, tag: string): string` - Tag removal utility
   - `TagCountFilter` interface - Tag count filter types
   - `ParsedTagSearch` interface - Parser result type
 - `src/storage/service.ts`: Exported `extractRatingFromTags()` for testing
@@ -94,7 +96,8 @@ Chrome extensions run in three separate JavaScript contexts:
        - Unrated filter: `is:unrated`
        - Combine all: `girl cat -dog rating:s is:png account:artist123`
      - Quick rating filter pills above tag sidebar
-       - 5 horizontal pills: G/S/Q/E/Unrated
+       - 5 horizontal pills: G/S/Q/E/Unrated with image counts (e.g., "G 42", "S 15")
+       - Counts update based on current filters (excluding rating filter)
        - Click to toggle rating filters (multi-select)
        - Active pills show colored backgrounds matching rating badge colors
        - Syncs bidirectionally with tag search input (`rating:` syntax)
@@ -253,8 +256,9 @@ Chrome extensions run in three separate JavaScript contexts:
 - **Key Functions**:
   - `addTagToSearch(tag)`: Appends tag to search input (checks for duplicates)
   - `excludeTagFromSearch(tag)`: Removes from include first, then adds `-tag` exclusion
-  - `removeIncludedTagFromSearch(tag)`: Removes tag and cleans up orphaned "or" operators
+  - `removeIncludedTagFromSearch(tag)`: Removes tag and cleans up orphaned "or" operators (uses `removeTagFromQuery()`)
   - `removeExcludedTagFromSearch(tag)`: Removes `-tag` from search
+  - `removeTagFromQuery(query, tag)`: Utility to remove tag from query string, cleaning up orphaned "or" operators (exported from tag-utils.ts, covered by 49 tests)
 
 **Clickable Tags on Image Cards**:
 - Click tags on image cards to toggle them in/out of search
@@ -284,7 +288,11 @@ All tag inputs support two-step completion flow for better UX:
    - Remove Tags input → Enter blurs input (user can adjust rating options, then click Save)
 
 **Implementation**:
-- `setupTagAutocomplete()` accepts optional `onEnterComplete` callback
+- `setupTagAutocomplete(input, autocompleteId, options)`: Unified autocomplete setup
+  - `options.customTags`: Optional array of available tags (defaults to all image tags)
+  - `options.onEnterComplete`: Optional callback when Enter pressed with complete token
+  - `options.enableDanbooruSyntax`: Enable Danbooru metatag filtering (for main search)
+  - Returns `{ updateAvailableTags?: () => void }` for refreshing tag list
 - `isCurrentTokenIncomplete()`: Checks if current token has trailing space
 - `completeCurrentToken()`: Adds space to complete token
 - AbortController used to clean up event listeners when inputs are re-rendered
@@ -389,11 +397,16 @@ interface TagRule {
 
 **UI Components**:
 
-1. **Rating Filter** (Toolbar):
-   - Multi-select dropdown (G/S/Q/E/Unrated)
-   - Selected ratings shown as removable pills
+1. **Rating Filter Pills** (Toolbar):
+   - 5 horizontal pills: G/S/Q/E/Unrated (positioned above tag sidebar)
+   - Pills display image counts based on current filters (e.g., "G 42", "S 15")
+   - `getRatingCounts()`: Duplicates filter logic from `applyFilters()` but excludes rating filter
+     - **Intentional duplication**: Allows showing counts for all ratings regardless of which are selected
+     - Must be kept in sync with filter logic if `applyFilters()` changes
+   - Click pills to toggle rating filters (multi-select)
+   - Active pills show colored backgrounds matching rating badge colors
+   - Syncs bidirectionally with tag search input (`rating:` syntax)
    - OR logic: Shows images with ANY selected rating
-   - Integrates with existing type/tag/search filters
 
 2. **Color-Coded Badges** (Image Cards):
    - Top-right corner badge on each card

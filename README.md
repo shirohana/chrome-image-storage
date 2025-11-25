@@ -54,6 +54,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Bulk rating operations**: Set rating for multiple images at once
 - **Rating tags**: Apply `rating:g`, `rating:s`, `rating:q`, or `rating:e` tags to automatically set rating
 - **Quick rating filter**: Click rating pills above tag sidebar for fast multi-select filtering
+  - Pills show image counts for each rating based on current filters (e.g., "G 42", "S 15")
 - **Color-coded badges**: Visual indicators on image cards (Green/Yellow/Orange/Red)
 - **Danbooru integration**: Ratings automatically pre-fill when uploading to Danbooru
 
@@ -295,6 +296,7 @@ Images can have content ratings to help organize and filter them:
 
 **Filter by rating**:
 - Use the rating filter pills above the tag sidebar (G/S/Q/E/Unrated)
+- Pills display image counts for each rating based on current filters (e.g., "G 42" shows 42 General-rated images)
 - Click rating pills to toggle filters on/off (multi-select supported)
 - Active pills show with colored backgrounds
 - Alternatively, use tag search syntax: `rating:g,s` or `rating:g or s`
@@ -496,10 +498,10 @@ interface SavedImage {
 
 The project includes comprehensive unit tests for core logic functions:
 
-- **101 tests** covering tag search parsing, auto-tagging rules, and rating extraction
+- **150 tests** covering tag search parsing, tag query manipulation, auto-tagging rules, and rating extraction
 - **Fast execution**: All tests run in ~11ms
 - **Test files**: Located in `tests/` directory
-- **Coverage**: Tag parser (50 tests), auto-tagging (26 tests), rating extraction (25 tests)
+- **Coverage**: Tag parser (50 tests), tag query manipulation (49 tests), auto-tagging (26 tests), rating extraction (25 tests)
 
 See `tests/README.md` for detailed documentation.
 
