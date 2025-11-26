@@ -3,14 +3,23 @@ import webExtension from 'vite-plugin-web-extension';
 import { copyFileSync, existsSync, renameSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   publicDir: 'public',
   plugins: [
     webExtension({
       manifest: './src/manifest.json',
-      watchFilePaths: ['src/**/*'],
       additionalInputs: ['src/viewer/index.html'],
+      disableAutoLaunch: mode === 'development',
     }),
+    {
+      name: 'watch-viewer-files',
+      buildStart() {
+        // Make Rollup watch all viewer files explicitly
+        this.addWatchFile(resolve(__dirname, 'src/viewer/index.html'));
+        this.addWatchFile(resolve(__dirname, 'src/viewer/style.css'));
+        this.addWatchFile(resolve(__dirname, 'src/viewer/index.ts'));
+      }
+    },
     {
       name: 'copy-sql-wasm',
       writeBundle() {
@@ -78,7 +87,7 @@ export default defineConfig({
   ],
   build: {
     outDir: 'dist',
-    emptyOutDir: true,
+    emptyOutDir: mode !== 'development',
     rollupOptions: {
       output: {
         chunkFileNames: 'chunks/[name]-[hash].js',
@@ -86,4 +95,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));
