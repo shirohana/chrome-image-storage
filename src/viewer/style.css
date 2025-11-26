@@ -15,7 +15,7 @@ body {
   padding: 20px;
 }
 
-header {
+.page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -29,12 +29,12 @@ header {
   margin-top: -20px;
 }
 
-h1 {
+.page-header__title {
   font-size: 32px;
   font-weight: 600;
 }
 
-.header-actions {
+.page-header__actions {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -215,7 +215,7 @@ h1 {
   overflow: hidden;
 }
 
-.tag-sidebar h3 {
+.tag-sidebar__heading {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
@@ -335,7 +335,7 @@ h1 {
   top: 100px;
 }
 
-.account-sidebar h3 {
+.account-sidebar__heading {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
@@ -459,7 +459,7 @@ h1 {
   align-items: center;
 }
 
-.notes-header h3 {
+.notes-header__title {
   font-size: 16px;
   font-weight: 600;
   color: #333;
@@ -594,7 +594,7 @@ h1 {
   overflow: hidden;
 }
 
-.tag-filter-section h3 {
+.tag-filter-section__heading {
   flex-shrink: 0;
   margin-bottom: 12px;
 }
@@ -851,7 +851,7 @@ h1 {
   scrollbar-gutter: stable;
 }
 
-.lightbox-metadata h3 {
+.lightbox-metadata__heading {
   margin: 0 0 16px 0;
   font-size: 18px;
   font-weight: 600;
@@ -919,7 +919,7 @@ h1 {
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.settings-panel h3 {
+.settings-panel__heading {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
@@ -978,7 +978,7 @@ body.preview-pane-open .container {
   align-items: center;
 }
 
-.preview-pane-header h3 {
+.preview-pane-header__title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
@@ -1577,7 +1577,7 @@ body.preview-pane-open .container {
   align-items: center;
 }
 
-.bulk-tag-header h3 {
+.bulk-tag-header__title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -1616,7 +1616,7 @@ body.preview-pane-open .container {
   gap: 12px;
 }
 
-.bulk-tag-section h4 {
+.bulk-tag-section__title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
@@ -1696,7 +1696,7 @@ body.preview-pane-open .container {
   border-top: 1px solid #ddd;
 }
 
-.settings-section h4 {
+.settings-section__title {
   margin: 0 0 8px 0;
   font-size: 16px;
   font-weight: 600;
@@ -1758,7 +1758,7 @@ body.preview-pane-open .container {
   border-bottom: 1px solid #e0e0e0;
 }
 
-.export-progress-header h3 {
+.export-progress-header__title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -1845,7 +1845,7 @@ body.preview-pane-open .container {
   align-items: center;
 }
 
-.import-conflict-header h3 {
+.import-conflict-header__title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -1956,7 +1956,7 @@ body.preview-pane-open .container {
   align-items: center;
 }
 
-.import-review-header h3 {
+.import-review-header__title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
@@ -2004,7 +2004,7 @@ body.preview-pane-open .container {
   gap: 12px;
 }
 
-.import-review-column h4 {
+.import-review-column__title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
@@ -2138,7 +2138,7 @@ body.preview-pane-open .container {
   align-items: center;
 }
 
-.danbooru-upload-header h3 {
+.danbooru-upload-header__title {
   margin: 0;
   font-size: 20px;
   font-weight: 600;

@@ -499,6 +499,19 @@ interface SavedImage {
 - `pnpm test:coverage` - Run tests with coverage report
 - `node scripts/generate-icons.js` - Regenerate icons from SVG
 
+### CSS Convention
+
+This project uses **BEM (Block Element Modifier)** naming convention for CSS classes:
+
+- **Block**: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`
+- **Element**: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`
+- **Modifier**: `.tag-sidebar-item--included`, `.rating-filter-pill--active`
+
+**Rules**:
+- All new CSS classes must follow BEM naming
+- Never use tag selectors (header, h1, button, etc.) - always use explicit classes
+- Benefits: Prevents class name conflicts, self-documenting code, clear parent-child relationships
+
 ### Testing
 
 The project includes comprehensive unit tests for core logic functions:

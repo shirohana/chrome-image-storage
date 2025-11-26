@@ -67,12 +67,18 @@ Always wrap in `.catch()` since viewer may not be open.
 ## Key Patterns & Gotchas
 
 1. **CSS**: Use `grid.style.display = ''` to clear inline styles, let CSS control display
-2. **Service Worker**: Use `createImageBitmap()` for dimensions, not `new Image()`
-3. **Grouping**: Set `grid.style.display = 'block'` for grouped rendering
-4. **Visual Order**: Use `getVisualOrder()` helper for selection/navigation when grouping enabled (prevents index mismatches)
-5. **Selection State**: Use `Set<string>` for selected IDs, persists across re-renders
-6. **Anti-Hotlinking**: Canvas capture first, declarativeNetRequest as fallback
-7. **Event Delegation**: Single listener on `#image-grid` for all card interactions
+2. **BEM CSS Convention**: All new CSS classes MUST follow BEM naming (Block__Element--Modifier)
+   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`
+   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`
+   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`
+   - **Never use tag selectors** (header, h1, h3, button, etc.) - always use explicit classes
+   - **Why BEM**: Prevents class name conflicts, self-documenting, AI-friendly explicit relationships
+3. **Service Worker**: Use `createImageBitmap()` for dimensions, not `new Image()`
+4. **Grouping**: Set `grid.style.display = 'block'` for grouped rendering
+5. **Visual Order**: Use `getVisualOrder()` helper for selection/navigation when grouping enabled (prevents index mismatches)
+6. **Selection State**: Use `Set<string>` for selected IDs, persists across re-renders
+7. **Anti-Hotlinking**: Canvas capture first, declarativeNetRequest as fallback
+8. **Event Delegation**: Single listener on `#image-grid` for all card interactions
 
 ## Critical Systems
 

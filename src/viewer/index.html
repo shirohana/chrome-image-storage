@@ -1,453 +1,634 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image Storage</title>
-  <link rel="stylesheet" href="./style.css">
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1>Image Storage</h1>
-      <div class="header-actions">
-        <span class="image-count">0 images</span>
-        <span id="selection-count" style="display: none;">0 selected</span>
-        <button id="import-local-files-btn" class="btn btn-primary">Upload</button>
-        <button id="select-all-btn" class="btn btn-secondary">Select All</button>
-        <button id="deselect-all-btn" class="btn btn-secondary">Deselect All</button>
-        <button id="restore-selected-btn" class="btn btn-primary" style="display: none;">Restore Selected</button>
-        <button id="tag-selected-btn" class="btn btn-primary">Tag Selected</button>
-        <button id="delete-selected-btn" class="btn btn-danger">Delete Selected</button>
-        <button id="dump-selected-btn" class="btn btn-primary">Dump Selected</button>
-        <button id="empty-trash-btn" class="btn btn-danger" style="display: none;">Empty Trash</button>
-        <button id="settings-btn" class="btn btn-secondary">⚙</button>
-      </div>
-    </header>
-
-    <div id="settings-panel" class="settings-panel" style="display: none;">
-      <h3>Settings</h3>
-      <label class="settings-option">
-        <input type="checkbox" id="show-notifications-toggle">
-        <span>Show system notifications when saving images</span>
-      </label>
-
-      <div class="settings-section">
-        <h4>Database Backup & Restore</h4>
-        <p class="settings-hint">
-          Export database as SQLite file for backup. Import to restore or merge databases.
-        </p>
-        <div class="settings-buttons">
-          <button id="export-database-btn" class="btn btn-primary">
-            Export Database (.db)
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Storage</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header class="page-header">
+        <h1 class="page-header__title">Image Storage</h1>
+        <div class="page-header__actions">
+          <span class="image-count">0 images</span>
+          <span id="selection-count" style="display: none">0 selected</span>
+          <button id="import-local-files-btn" class="btn btn-primary">
+            Upload
           </button>
-          <button id="import-database-btn" class="btn btn-primary">
-            Import Database (.db)
+          <button id="select-all-btn" class="btn btn-secondary">
+            Select All
           </button>
+          <button id="deselect-all-btn" class="btn btn-secondary">
+            Deselect All
+          </button>
+          <button
+            id="restore-selected-btn"
+            class="btn btn-primary"
+            style="display: none"
+          >
+            Restore Selected
+          </button>
+          <button id="tag-selected-btn" class="btn btn-primary">
+            Tag Selected
+          </button>
+          <button id="delete-selected-btn" class="btn btn-danger">
+            Delete Selected
+          </button>
+          <button id="dump-selected-btn" class="btn btn-primary">
+            Dump Selected
+          </button>
+          <button
+            id="empty-trash-btn"
+            class="btn btn-danger"
+            style="display: none"
+          >
+            Empty Trash
+          </button>
+          <button id="settings-btn" class="btn btn-secondary">⚙</button>
         </div>
-      </div>
+      </header>
 
-      <div class="settings-section">
-        <h4>Danbooru Upload</h4>
-        <p class="settings-hint">
-          Configure your self-hosted Danbooru instance for uploading images with metadata.
-        </p>
-        <div class="settings-form">
-          <label>
-            <span>Danbooru URL</span>
-            <input type="text" id="danbooru-url-input" placeholder="https://your-danbooru.com">
-          </label>
-          <label>
-            <span>Username</span>
-            <input type="text" id="danbooru-username-input" placeholder="Your username">
-          </label>
-          <label>
-            <span>API Key</span>
-            <div class="password-input-group">
-              <input type="password" id="danbooru-apikey-input" placeholder="Your API key">
-              <button type="button" id="danbooru-apikey-toggle" class="btn-icon" title="Show/Hide API Key">👁</button>
-            </div>
-          </label>
-        </div>
-      </div>
+      <div id="settings-panel" class="settings-panel" style="display: none">
+        <h3 class="settings-panel__heading">Settings</h3>
+        <label class="settings-option">
+          <input type="checkbox" id="show-notifications-toggle" />
+          <span>Show system notifications when saving images</span>
+        </label>
 
-      <div class="settings-section">
-        <h4>Auto-Tagging Rules</h4>
-        <p class="settings-hint">
-          Automatically apply tags to new images based on page title. Supports plain text and regex patterns.
-        </p>
-
-        <div id="tag-rules-list" class="tag-rules-list"></div>
-
-        <div class="tag-rules-actions" style="margin: 12px 0; display: flex; gap: 8px;">
-          <button id="export-rules-btn" class="btn btn-secondary btn-sm">Export Rules</button>
-          <button id="import-rules-btn" class="btn btn-secondary btn-sm">Import Rules</button>
-          <input type="file" id="import-rules-input" accept=".json" style="display: none;">
+        <div class="settings-section">
+          <h4 class="settings-section__title">Database Backup & Restore</h4>
+          <p class="settings-hint">
+            Export database as SQLite file for backup. Import to restore or
+            merge databases.
+          </p>
+          <div class="settings-buttons">
+            <button id="export-database-btn" class="btn btn-primary">
+              Export Database (.db)
+            </button>
+            <button id="import-database-btn" class="btn btn-primary">
+              Import Database (.db)
+            </button>
+          </div>
         </div>
 
-        <div class="tag-rule-form" id="tag-rule-form">
-          <div class="form-group">
+        <div class="settings-section">
+          <h4 class="settings-section__title">Danbooru Upload</h4>
+          <p class="settings-hint">
+            Configure your self-hosted Danbooru instance for uploading images
+            with metadata.
+          </p>
+          <div class="settings-form">
             <label>
-              <span>Rule Name</span>
-              <input type="text" id="rule-name-input" class="form-input" placeholder="e.g., Pixiv Images">
+              <span>Danbooru URL</span>
+              <input
+                type="text"
+                id="danbooru-url-input"
+                placeholder="https://your-danbooru.com"
+              />
             </label>
-          </div>
-          <div class="form-group">
             <label>
-              <span>Pattern</span>
-              <input type="text" id="rule-pattern-input" class="form-input" placeholder="e.g., pixiv (leave empty to match all)">
+              <span>Username</span>
+              <input
+                type="text"
+                id="danbooru-username-input"
+                placeholder="Your username"
+              />
             </label>
-            <label class="pattern-type-toggle">
-              <input type="checkbox" id="rule-regex-toggle">
-              <span>Use Regex</span>
-            </label>
-          </div>
-          <div class="form-group">
             <label>
-              <span>Tags (space-separated)</span>
-              <input type="text" id="rule-tags-input" class="form-input" placeholder="e.g., pixiv illustration">
-            </label>
-          </div>
-          <div class="form-buttons">
-            <button id="add-rule-btn" class="btn btn-primary">Add Rule</button>
-            <button id="cancel-rule-btn" class="btn btn-secondary" style="display: none;">Cancel</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="toolbar">
-      <div class="view-toggle">
-        <button id="all-images-btn" class="view-toggle-btn active">
-          All Images
-          <span class="view-badge" id="all-images-badge">0</span>
-        </button>
-        <button id="trash-btn" class="view-toggle-btn">
-          Trash
-          <span class="view-badge" id="trash-badge">0</span>
-        </button>
-      </div>
-      <div class="search-bars">
-        <input type="text" id="url-search-input" class="search-input" placeholder="Search by URL or page title...">
-        <div style="position: relative;">
-          <input type="text" id="tag-search-input" class="search-input" placeholder="Tag search (girl cat, girl or cat, -cat, rating:s, is:png, tagcount:2, etc.)...">
-          <div id="tag-search-autocomplete" class="tag-autocomplete"></div>
-        </div>
-      </div>
-      <div class="view-controls">
-        <select id="group-by" class="group-by">
-          <option value="none">No Grouping</option>
-          <option value="x-account">Group by X Account</option>
-          <option value="duplicates">Show Duplicates</option>
-        </select>
-        <select id="sort-select" class="sort-select">
-          <option value="savedAt-desc">Newest first</option>
-          <option value="savedAt-asc">Oldest first</option>
-          <option value="updatedAt-desc">Recently updated</option>
-          <option value="updatedAt-asc">Least recently updated</option>
-          <option value="fileSize-desc">Largest first</option>
-          <option value="fileSize-asc">Smallest first</option>
-          <option value="dimensions-desc">Biggest dimensions</option>
-          <option value="dimensions-asc">Smallest dimensions</option>
-          <option value="url-asc">URL (A-Z)</option>
-          <option value="url-desc">URL (Z-A)</option>
-        </select>
-        <button id="preview-pane-toggle" class="btn btn-secondary" title="Toggle preview pane">
-          Preview
-        </button>
-      </div>
-    </div>
-
-    <div class="main-container">
-      <div class="left-sidebar-container">
-        <aside id="tag-sidebar" class="tag-sidebar">
-          <div class="rating-filter-section">
-            <h3>Rating</h3>
-            <div class="rating-filter-list">
-              <button class="rating-filter-pill" data-rating="g">
-                <span class="rating-label">G</span>
-                <span class="rating-count">0</span>
-              </button>
-              <button class="rating-filter-pill" data-rating="s">
-                <span class="rating-label">S</span>
-                <span class="rating-count">0</span>
-              </button>
-              <button class="rating-filter-pill" data-rating="q">
-                <span class="rating-label">Q</span>
-                <span class="rating-count">0</span>
-              </button>
-              <button class="rating-filter-pill" data-rating="e">
-                <span class="rating-label">E</span>
-                <span class="rating-count">0</span>
-              </button>
-              <button class="rating-filter-pill" data-rating="unrated">
-                <span class="rating-label">—</span>
-                <span class="rating-count">0</span>
-              </button>
-            </div>
-          </div>
-          <div class="tag-filter-section">
-            <h3>Tags</h3>
-            <div id="tag-sidebar-list" class="tag-sidebar-list"></div>
-          </div>
-        </aside>
-
-        <aside id="notes-panel" class="notes-panel">
-          <div class="notes-header">
-            <h3>Notes</h3>
-            <button id="notes-toggle" class="btn-icon" title="Collapse/Expand">−</button>
-          </div>
-          <div id="notes-content" class="notes-content">
-            <textarea id="notes-textarea" class="notes-textarea" placeholder="Your temporary notes..."></textarea>
-          </div>
-        </aside>
-      </div>
-
-      <div class="content-area">
-        <div id="empty-state" class="empty-state">
-          <p>No images saved yet</p>
-          <p class="hint">Right-click on any image and select "Save to Image Storage"</p>
-        </div>
-
-        <div id="image-grid" class="image-grid"></div>
-      </div>
-
-      <aside id="account-sidebar" class="account-sidebar" style="display: none;">
-        <div class="account-filter-section">
-          <h3>Accounts</h3>
-          <div id="account-sidebar-list" class="account-sidebar-list"></div>
-        </div>
-      </aside>
-    </div>
-  </div>
-
-  <div id="preview-pane" class="preview-pane">
-    <div class="preview-pane-header">
-      <h3>Preview</h3>
-      <button id="preview-pane-close" class="btn-icon">&times;</button>
-    </div>
-    <div id="preview-pane-content" class="preview-pane-content">
-      <div class="preview-empty">No items selected</div>
-    </div>
-  </div>
-
-  <div id="lightbox" class="lightbox">
-    <div class="lightbox-overlay"></div>
-    <div class="lightbox-content">
-      <button class="lightbox-close">&times;</button>
-      <img id="lightbox-image" src="" alt="Full size image">
-      <div class="lightbox-metadata">
-        <h3>Image Details</h3>
-      </div>
-    </div>
-  </div>
-
-  <div id="bulk-tag-modal" class="bulk-tag-modal">
-    <div class="bulk-tag-overlay"></div>
-    <div class="bulk-tag-content">
-      <div class="bulk-tag-header">
-        <h3>Tag Multiple Images</h3>
-        <button class="bulk-tag-close">&times;</button>
-      </div>
-      <div class="bulk-tag-body">
-        <div class="bulk-tag-section">
-          <h4>Add Tags</h4>
-          <p class="bulk-tag-hint">These tags will be added to all selected images</p>
-          <div class="tag-input-container">
-            <input type="text" id="bulk-add-tags-input" class="tag-input" placeholder="Add tags (space-separated)...">
-            <div id="bulk-add-autocomplete" class="tag-autocomplete"></div>
-          </div>
-        </div>
-        <div class="bulk-tag-section">
-          <h4>Remove Tags</h4>
-          <p class="bulk-tag-hint">These tags will be removed from all selected images</p>
-          <div class="tag-input-container">
-            <input type="text" id="bulk-remove-tags-input" class="tag-input" placeholder="Remove tags (space-separated)...">
-            <div id="bulk-remove-autocomplete" class="tag-autocomplete"></div>
-          </div>
-        </div>
-        <div class="bulk-tag-section">
-          <h4>Set Rating</h4>
-          <p class="bulk-tag-hint">Set the rating for all selected images (leave unselected to keep current ratings)</p>
-          <div class="bulk-rating-selector">
-            <label class="bulk-rating-radio">
-              <input type="radio" name="bulk-rating" value="g">
-              <span>General</span>
-            </label>
-            <label class="bulk-rating-radio">
-              <input type="radio" name="bulk-rating" value="s">
-              <span>Sensitive</span>
-            </label>
-            <label class="bulk-rating-radio">
-              <input type="radio" name="bulk-rating" value="q">
-              <span>Questionable</span>
-            </label>
-            <label class="bulk-rating-radio">
-              <input type="radio" name="bulk-rating" value="e">
-              <span>Explicit</span>
-            </label>
-            <label class="bulk-rating-radio">
-              <input type="radio" name="bulk-rating" value="unrated">
-              <span>Unrated</span>
-            </label>
-            <label class="bulk-rating-radio">
-              <input type="radio" name="bulk-rating" value="" checked>
-              <span>No Change</span>
+              <span>API Key</span>
+              <div class="password-input-group">
+                <input
+                  type="password"
+                  id="danbooru-apikey-input"
+                  placeholder="Your API key"
+                />
+                <button
+                  type="button"
+                  id="danbooru-apikey-toggle"
+                  class="btn-icon"
+                  title="Show/Hide API Key"
+                >
+                  👁
+                </button>
+              </div>
             </label>
           </div>
         </div>
-      </div>
-      <div class="bulk-tag-footer">
-        <button id="bulk-tag-cancel-btn" class="btn btn-secondary">Cancel</button>
-        <button id="bulk-tag-save-btn" class="btn btn-primary">Save</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Export Progress Modal -->
-  <div id="export-progress-modal" class="export-progress-modal">
-    <div class="export-progress-overlay"></div>
-    <div class="export-progress-content">
-      <div class="export-progress-header">
-        <h3>Exporting Database</h3>
-      </div>
-      <div class="export-progress-body">
-        <p id="export-progress-text">Preparing export...</p>
-        <div class="progress-bar">
-          <div id="export-progress-fill" class="progress-fill"></div>
-        </div>
-        <p id="export-progress-detail"></p>
-      </div>
-    </div>
-  </div>
+        <div class="settings-section">
+          <h4 class="settings-section__title">Auto-Tagging Rules</h4>
+          <p class="settings-hint">
+            Automatically apply tags to new images based on page title. Supports
+            plain text and regex patterns.
+          </p>
 
-  <!-- Import Conflict Resolution Modal -->
-  <div id="import-conflict-modal" class="import-conflict-modal">
-    <div class="import-conflict-overlay"></div>
-    <div class="import-conflict-content">
-      <div class="import-conflict-header">
-        <h3>Import Database - Conflicts Detected</h3>
-        <button class="import-conflict-close">&times;</button>
-      </div>
-      <div class="import-conflict-body">
-        <p id="import-conflict-summary"></p>
-        <div class="import-conflict-options">
-          <button id="import-skip-all-btn" class="btn btn-secondary">
-            Skip Conflicts (Keep Existing)
-          </button>
-          <button id="import-override-all-btn" class="btn btn-danger">
-            Override All Conflicts
-          </button>
-          <button id="import-review-btn" class="btn btn-primary">
-            Review Each Conflict
-          </button>
-        </div>
-      </div>
-      <div class="import-conflict-footer">
-        <button id="import-cancel-btn" class="btn btn-secondary">Cancel Import</button>
-      </div>
-    </div>
-  </div>
+          <div id="tag-rules-list" class="tag-rules-list"></div>
 
-  <!-- Import Review Modal (granular control) -->
-  <div id="import-review-modal" class="import-review-modal">
-    <div class="import-review-overlay"></div>
-    <div class="import-review-content">
-      <div class="import-review-header">
-        <h3>Review Conflicts</h3>
-        <span id="import-review-progress"></span>
-        <button class="import-review-close">&times;</button>
-      </div>
-      <div class="import-review-body">
-        <div class="import-review-comparison">
-          <div class="import-review-column">
-            <h4>Existing Image</h4>
-            <div id="import-existing-preview"></div>
+          <div
+            class="tag-rules-actions"
+            style="margin: 12px 0; display: flex; gap: 8px"
+          >
+            <button id="export-rules-btn" class="btn btn-secondary btn-sm">
+              Export Rules
+            </button>
+            <button id="import-rules-btn" class="btn btn-secondary btn-sm">
+              Import Rules
+            </button>
+            <input
+              type="file"
+              id="import-rules-input"
+              accept=".json"
+              style="display: none"
+            />
           </div>
-          <div class="import-review-column">
-            <h4>Imported Image</h4>
-            <div id="import-imported-preview"></div>
-          </div>
-        </div>
-      </div>
-      <div class="import-review-footer">
-        <button id="import-keep-btn" class="btn btn-secondary">Keep Existing</button>
-        <button id="import-override-btn" class="btn btn-danger">Override with Imported</button>
-        <button id="import-review-cancel-btn" class="btn btn-secondary">Cancel Import</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- Danbooru Upload Modal -->
-  <div id="danbooru-upload-modal" class="danbooru-upload-modal">
-    <div class="danbooru-upload-overlay"></div>
-    <div class="danbooru-upload-content">
-      <div class="danbooru-upload-header">
-        <h3>Upload to Danbooru</h3>
-        <button class="danbooru-upload-close">&times;</button>
-      </div>
-      <div class="danbooru-upload-body">
-        <div class="danbooru-upload-preview">
-          <img id="danbooru-preview-image" src="" alt="Preview">
-        </div>
-        <div class="danbooru-upload-form">
-          <div class="form-group">
-            <label for="danbooru-tags-input">Tags (General)</label>
-            <input type="text" id="danbooru-tags-input" class="form-input" placeholder="tag1 tag2 tag3...">
-            <div class="form-hint">Space-separated tags</div>
-          </div>
-          <div class="form-row">
+          <div class="tag-rule-form" id="tag-rule-form">
             <div class="form-group">
-              <label for="danbooru-artist-input">Artist</label>
-              <input type="text" id="danbooru-artist-input" class="form-input" placeholder="artist_name">
+              <label>
+                <span>Rule Name</span>
+                <input
+                  type="text"
+                  id="rule-name-input"
+                  class="form-input"
+                  placeholder="e.g., Pixiv Images"
+                />
+              </label>
             </div>
             <div class="form-group">
-              <label for="danbooru-copyright-input">Copyright</label>
-              <input type="text" id="danbooru-copyright-input" class="form-input" placeholder="series_name">
+              <label>
+                <span>Pattern</span>
+                <input
+                  type="text"
+                  id="rule-pattern-input"
+                  class="form-input"
+                  placeholder="e.g., pixiv (leave empty to match all)"
+                />
+              </label>
+              <label class="pattern-type-toggle">
+                <input type="checkbox" id="rule-regex-toggle" />
+                <span>Use Regex</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>
+                <span>Tags (space-separated)</span>
+                <input
+                  type="text"
+                  id="rule-tags-input"
+                  class="form-input"
+                  placeholder="e.g., pixiv illustration"
+                />
+              </label>
+            </div>
+            <div class="form-buttons">
+              <button id="add-rule-btn" class="btn btn-primary">
+                Add Rule
+              </button>
+              <button
+                id="cancel-rule-btn"
+                class="btn btn-secondary"
+                style="display: none"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-          <div class="form-group">
-            <label for="danbooru-character-input">Character</label>
-            <input type="text" id="danbooru-character-input" class="form-input" placeholder="character_name">
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="view-toggle">
+          <button id="all-images-btn" class="view-toggle-btn active">
+            All Images
+            <span class="view-badge" id="all-images-badge">0</span>
+          </button>
+          <button id="trash-btn" class="view-toggle-btn">
+            Trash
+            <span class="view-badge" id="trash-badge">0</span>
+          </button>
+        </div>
+        <div class="search-bars">
+          <input
+            type="text"
+            id="url-search-input"
+            class="search-input"
+            placeholder="Search by URL or page title..."
+          />
+          <div style="position: relative">
+            <input
+              type="text"
+              id="tag-search-input"
+              class="search-input"
+              placeholder="Tag search (girl cat, girl or cat, -cat, rating:s, is:png, tagcount:2, etc.)..."
+            />
+            <div id="tag-search-autocomplete" class="tag-autocomplete"></div>
           </div>
-          <div class="form-group">
-            <label>Rating</label>
-            <div class="rating-options">
-              <label class="rating-option">
-                <input type="radio" name="danbooru-rating" value="g" checked>
+        </div>
+        <div class="view-controls">
+          <select id="group-by" class="group-by">
+            <option value="none">No Grouping</option>
+            <option value="x-account">Group by X Account</option>
+            <option value="duplicates">Show Duplicates</option>
+          </select>
+          <select id="sort-select" class="sort-select">
+            <option value="savedAt-desc">Newest first</option>
+            <option value="savedAt-asc">Oldest first</option>
+            <option value="updatedAt-desc">Recently updated</option>
+            <option value="updatedAt-asc">Least recently updated</option>
+            <option value="fileSize-desc">Largest first</option>
+            <option value="fileSize-asc">Smallest first</option>
+            <option value="dimensions-desc">Biggest dimensions</option>
+            <option value="dimensions-asc">Smallest dimensions</option>
+            <option value="url-asc">URL (A-Z)</option>
+            <option value="url-desc">URL (Z-A)</option>
+          </select>
+          <button
+            id="preview-pane-toggle"
+            class="btn btn-secondary"
+            title="Toggle preview pane"
+          >
+            Preview
+          </button>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <div class="left-sidebar-container">
+          <aside id="tag-sidebar" class="tag-sidebar">
+            <div class="rating-filter-section">
+              <h3 class="tag-sidebar__heading">Rating</h3>
+              <div class="rating-filter-list">
+                <button class="rating-filter-pill" data-rating="g">
+                  <span class="rating-label">G</span>
+                  <span class="rating-count">0</span>
+                </button>
+                <button class="rating-filter-pill" data-rating="s">
+                  <span class="rating-label">S</span>
+                  <span class="rating-count">0</span>
+                </button>
+                <button class="rating-filter-pill" data-rating="q">
+                  <span class="rating-label">Q</span>
+                  <span class="rating-count">0</span>
+                </button>
+                <button class="rating-filter-pill" data-rating="e">
+                  <span class="rating-label">E</span>
+                  <span class="rating-count">0</span>
+                </button>
+                <button class="rating-filter-pill" data-rating="unrated">
+                  <span class="rating-label">—</span>
+                  <span class="rating-count">0</span>
+                </button>
+              </div>
+            </div>
+            <div class="tag-filter-section">
+              <h3 class="tag-filter-section__heading">Tags</h3>
+              <div id="tag-sidebar-list" class="tag-sidebar-list"></div>
+            </div>
+          </aside>
+
+          <aside id="notes-panel" class="notes-panel">
+            <div class="notes-header">
+              <h3 class="notes-header__title">Notes</h3>
+              <button
+                id="notes-toggle"
+                class="btn-icon"
+                title="Collapse/Expand"
+              >
+                −
+              </button>
+            </div>
+            <div id="notes-content" class="notes-content">
+              <textarea
+                id="notes-textarea"
+                class="notes-textarea"
+                placeholder="Your temporary notes..."
+              ></textarea>
+            </div>
+          </aside>
+        </div>
+
+        <div class="content-area">
+          <div id="empty-state" class="empty-state">
+            <p>No images saved yet</p>
+            <p class="hint">
+              Right-click on any image and select "Save to Image Storage"
+            </p>
+          </div>
+
+          <div id="image-grid" class="image-grid"></div>
+        </div>
+
+        <aside
+          id="account-sidebar"
+          class="account-sidebar"
+          style="display: none"
+        >
+          <div class="account-filter-section">
+            <h3 class="account-sidebar__heading">Accounts</h3>
+            <div id="account-sidebar-list" class="account-sidebar-list"></div>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <div id="preview-pane" class="preview-pane">
+      <div class="preview-pane-header">
+        <h3 class="preview-pane-header__title">Preview</h3>
+        <button id="preview-pane-close" class="btn-icon">&times;</button>
+      </div>
+      <div id="preview-pane-content" class="preview-pane-content">
+        <div class="preview-empty">No items selected</div>
+      </div>
+    </div>
+
+    <div id="lightbox" class="lightbox">
+      <div class="lightbox-overlay"></div>
+      <div class="lightbox-content">
+        <button class="lightbox-close">&times;</button>
+        <img id="lightbox-image" src="" alt="Full size image" />
+        <div class="lightbox-metadata">
+          <h3 class="lightbox-metadata__heading">Image Details</h3>
+        </div>
+      </div>
+    </div>
+
+    <div id="bulk-tag-modal" class="bulk-tag-modal">
+      <div class="bulk-tag-overlay"></div>
+      <div class="bulk-tag-content">
+        <div class="bulk-tag-header">
+          <h3 class="bulk-tag-header__title">Tag Multiple Images</h3>
+          <button class="bulk-tag-close">&times;</button>
+        </div>
+        <div class="bulk-tag-body">
+          <div class="bulk-tag-section">
+            <h4 class="bulk-tag-section__title">Add Tags</h4>
+            <p class="bulk-tag-hint">
+              These tags will be added to all selected images
+            </p>
+            <div class="tag-input-container">
+              <input
+                type="text"
+                id="bulk-add-tags-input"
+                class="tag-input"
+                placeholder="Add tags (space-separated)..."
+              />
+              <div id="bulk-add-autocomplete" class="tag-autocomplete"></div>
+            </div>
+          </div>
+          <div class="bulk-tag-section">
+            <h4 class="bulk-tag-section__title">Remove Tags</h4>
+            <p class="bulk-tag-hint">
+              These tags will be removed from all selected images
+            </p>
+            <div class="tag-input-container">
+              <input
+                type="text"
+                id="bulk-remove-tags-input"
+                class="tag-input"
+                placeholder="Remove tags (space-separated)..."
+              />
+              <div id="bulk-remove-autocomplete" class="tag-autocomplete"></div>
+            </div>
+          </div>
+          <div class="bulk-tag-section">
+            <h4 class="bulk-tag-section__title">Set Rating</h4>
+            <p class="bulk-tag-hint">
+              Set the rating for all selected images (leave unselected to keep
+              current ratings)
+            </p>
+            <div class="bulk-rating-selector">
+              <label class="bulk-rating-radio">
+                <input type="radio" name="bulk-rating" value="g" />
                 <span>General</span>
               </label>
-              <label class="rating-option">
-                <input type="radio" name="danbooru-rating" value="s">
+              <label class="bulk-rating-radio">
+                <input type="radio" name="bulk-rating" value="s" />
                 <span>Sensitive</span>
               </label>
-              <label class="rating-option">
-                <input type="radio" name="danbooru-rating" value="q">
+              <label class="bulk-rating-radio">
+                <input type="radio" name="bulk-rating" value="q" />
                 <span>Questionable</span>
               </label>
-              <label class="rating-option">
-                <input type="radio" name="danbooru-rating" value="e">
+              <label class="bulk-rating-radio">
+                <input type="radio" name="bulk-rating" value="e" />
                 <span>Explicit</span>
+              </label>
+              <label class="bulk-rating-radio">
+                <input type="radio" name="bulk-rating" value="unrated" />
+                <span>Unrated</span>
+              </label>
+              <label class="bulk-rating-radio">
+                <input type="radio" name="bulk-rating" value="" checked />
+                <span>No Change</span>
               </label>
             </div>
           </div>
-          <div class="form-group">
-            <label for="danbooru-source-input">Source URL</label>
-            <input type="text" id="danbooru-source-input" class="form-input" placeholder="https://...">
-          </div>
-          <div class="form-group">
-            <label for="danbooru-description-input">Description / Notes</label>
-            <textarea id="danbooru-description-input" class="form-textarea" rows="3" placeholder="Optional description..."></textarea>
-          </div>
+        </div>
+        <div class="bulk-tag-footer">
+          <button id="bulk-tag-cancel-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button id="bulk-tag-save-btn" class="btn btn-primary">Save</button>
         </div>
       </div>
-      <div class="danbooru-upload-footer">
-        <button id="danbooru-upload-cancel-btn" class="btn btn-secondary">Cancel</button>
-        <button id="danbooru-upload-submit-btn" class="btn btn-primary">Upload to Danbooru</button>
+    </div>
+
+    <!-- Export Progress Modal -->
+    <div id="export-progress-modal" class="export-progress-modal">
+      <div class="export-progress-overlay"></div>
+      <div class="export-progress-content">
+        <div class="export-progress-header">
+          <h3 class="export-progress-header__title">Exporting Database</h3>
+        </div>
+        <div class="export-progress-body">
+          <p id="export-progress-text">Preparing export...</p>
+          <div class="progress-bar">
+            <div id="export-progress-fill" class="progress-fill"></div>
+          </div>
+          <p id="export-progress-detail"></p>
+        </div>
       </div>
     </div>
-  </div>
 
-  <script type="module" src="./index.ts"></script>
-</body>
+    <!-- Import Conflict Resolution Modal -->
+    <div id="import-conflict-modal" class="import-conflict-modal">
+      <div class="import-conflict-overlay"></div>
+      <div class="import-conflict-content">
+        <div class="import-conflict-header">
+          <h3 class="import-conflict-header__title">
+            Import Database - Conflicts Detected
+          </h3>
+          <button class="import-conflict-close">&times;</button>
+        </div>
+        <div class="import-conflict-body">
+          <p id="import-conflict-summary"></p>
+          <div class="import-conflict-options">
+            <button id="import-skip-all-btn" class="btn btn-secondary">
+              Skip Conflicts (Keep Existing)
+            </button>
+            <button id="import-override-all-btn" class="btn btn-danger">
+              Override All Conflicts
+            </button>
+            <button id="import-review-btn" class="btn btn-primary">
+              Review Each Conflict
+            </button>
+          </div>
+        </div>
+        <div class="import-conflict-footer">
+          <button id="import-cancel-btn" class="btn btn-secondary">
+            Cancel Import
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Review Modal (granular control) -->
+    <div id="import-review-modal" class="import-review-modal">
+      <div class="import-review-overlay"></div>
+      <div class="import-review-content">
+        <div class="import-review-header">
+          <h3 class="import-review-header__title">Review Conflicts</h3>
+          <span id="import-review-progress"></span>
+          <button class="import-review-close">&times;</button>
+        </div>
+        <div class="import-review-body">
+          <div class="import-review-comparison">
+            <div class="import-review-column">
+              <h4 class="import-review-column__title">Existing Image</h4>
+              <div id="import-existing-preview"></div>
+            </div>
+            <div class="import-review-column">
+              <h4 class="import-review-column__title">Imported Image</h4>
+              <div id="import-imported-preview"></div>
+            </div>
+          </div>
+        </div>
+        <div class="import-review-footer">
+          <button id="import-keep-btn" class="btn btn-secondary">
+            Keep Existing
+          </button>
+          <button id="import-override-btn" class="btn btn-danger">
+            Override with Imported
+          </button>
+          <button id="import-review-cancel-btn" class="btn btn-secondary">
+            Cancel Import
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Danbooru Upload Modal -->
+    <div id="danbooru-upload-modal" class="danbooru-upload-modal">
+      <div class="danbooru-upload-overlay"></div>
+      <div class="danbooru-upload-content">
+        <div class="danbooru-upload-header">
+          <h3 class="danbooru-upload-header__title">Upload to Danbooru</h3>
+          <button class="danbooru-upload-close">&times;</button>
+        </div>
+        <div class="danbooru-upload-body">
+          <div class="danbooru-upload-preview">
+            <img id="danbooru-preview-image" src="" alt="Preview" />
+          </div>
+          <div class="danbooru-upload-form">
+            <div class="form-group">
+              <label for="danbooru-tags-input">Tags (General)</label>
+              <input
+                type="text"
+                id="danbooru-tags-input"
+                class="form-input"
+                placeholder="tag1 tag2 tag3..."
+              />
+              <div class="form-hint">Space-separated tags</div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="danbooru-artist-input">Artist</label>
+                <input
+                  type="text"
+                  id="danbooru-artist-input"
+                  class="form-input"
+                  placeholder="artist_name"
+                />
+              </div>
+              <div class="form-group">
+                <label for="danbooru-copyright-input">Copyright</label>
+                <input
+                  type="text"
+                  id="danbooru-copyright-input"
+                  class="form-input"
+                  placeholder="series_name"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="danbooru-character-input">Character</label>
+              <input
+                type="text"
+                id="danbooru-character-input"
+                class="form-input"
+                placeholder="character_name"
+              />
+            </div>
+            <div class="form-group">
+              <label>Rating</label>
+              <div class="rating-options">
+                <label class="rating-option">
+                  <input
+                    type="radio"
+                    name="danbooru-rating"
+                    value="g"
+                    checked
+                  />
+                  <span>General</span>
+                </label>
+                <label class="rating-option">
+                  <input type="radio" name="danbooru-rating" value="s" />
+                  <span>Sensitive</span>
+                </label>
+                <label class="rating-option">
+                  <input type="radio" name="danbooru-rating" value="q" />
+                  <span>Questionable</span>
+                </label>
+                <label class="rating-option">
+                  <input type="radio" name="danbooru-rating" value="e" />
+                  <span>Explicit</span>
+                </label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="danbooru-source-input">Source URL</label>
+              <input
+                type="text"
+                id="danbooru-source-input"
+                class="form-input"
+                placeholder="https://..."
+              />
+            </div>
+            <div class="form-group">
+              <label for="danbooru-description-input"
+                >Description / Notes</label
+              >
+              <textarea
+                id="danbooru-description-input"
+                class="form-textarea"
+                rows="3"
+                placeholder="Optional description..."
+              ></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="danbooru-upload-footer">
+          <button id="danbooru-upload-cancel-btn" class="btn btn-secondary">
+            Cancel
+          </button>
+          <button id="danbooru-upload-submit-btn" class="btn btn-primary">
+            Upload to Danbooru
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
 </html>
