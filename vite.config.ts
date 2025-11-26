@@ -12,75 +12,66 @@ export default defineConfig({
       additionalInputs: ['src/viewer/index.html'],
     }),
     {
-      name: 'copy-sql-wasm-and-fix-underscore-files',
+      name: 'copy-sql-wasm',
       writeBundle() {
         const distDir = resolve(__dirname, 'dist');
-
-        // Copy WASM file
         const wasmSrc = resolve(__dirname, 'node_modules/sql.js/dist/sql-wasm.wasm');
         const wasmDest = resolve(distDir, 'sql-wasm.wasm');
 
-        if (existsSync(wasmSrc)) {
+        if (!existsSync(wasmDest) && existsSync(wasmSrc)) {
           copyFileSync(wasmSrc, wasmDest);
           console.log('Copied sql-wasm.wasm to dist/');
-        } else {
+        } else if (!existsSync(wasmSrc)) {
           console.warn('Warning: sql-wasm.wasm not found in node_modules/sql.js/dist/');
         }
+      }
+    },
+    {
+      name: 'fix-underscore-files',
+      writeBundle() {
+        const distDir = resolve(__dirname, 'dist');
 
-        // Fix underscore-prefixed files (Chrome extension restriction)
-        const files = readdirSync(distDir);
-        const renamedFiles: Record<string, string> = {};
-
-        for (const file of files) {
-          if (file.startsWith('_')) {
-            const oldPath = join(distDir, file);
-            const newName = file.substring(1); // Remove leading underscore
-            const newPath = join(distDir, newName);
-            renameSync(oldPath, newPath);
-            renamedFiles[file] = newName;
-            console.log(`Renamed ${file} -> ${newName}`);
-          }
+        const renamedFiles = renameUnderscoreFiles(distDir);
+        if (Object.keys(renamedFiles).length > 0) {
+          updateJsFilesRecursively(distDir, renamedFiles);
         }
 
-        // Update references to renamed files in all JS files
-        if (Object.keys(renamedFiles).length > 0) {
-          function updateReferencesInDir(dir: string) {
-            const entries = readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-              const fullPath = join(dir, entry.name);
-              if (entry.isDirectory()) {
-                updateReferencesInDir(fullPath);
-              } else if (entry.name.endsWith('.js')) {
-                let content = readFileSync(fullPath, 'utf-8');
-                let modified = false;
+        function renameUnderscoreFiles(dir: string) {
+          const renamed: Record<string, string> = {};
+          for (const file of readdirSync(dir)) {
+            if (file.startsWith('_')) {
+              const withoutUnderscore = file.substring(1);
+              renameSync(join(dir, file), join(dir, withoutUnderscore));
+              renamed[file] = withoutUnderscore;
+              console.log(`Renamed ${file} -> ${withoutUnderscore}`);
+            }
+          }
+          return renamed;
+        }
 
-                for (const [oldName, newName] of Object.entries(renamedFiles)) {
-                  // Handle import statements: ./_commonjsHelpers.js
-                  const oldRef = `./${oldName}`;
-                  const newRef = `./${newName}`;
-                  if (content.includes(oldRef)) {
-                    content = content.replaceAll(oldRef, newRef);
-                    modified = true;
-                  }
+        function replaceImportPaths(content: string, oldName: string, newName: string) {
+          return content
+            .replaceAll(`./${oldName}`, `./${newName}`)
+            .replaceAll(`"${oldName}"`, `"${newName}"`);
+        }
 
-                  // Handle string literals in arrays: "_commonjsHelpers.js"
-                  const oldQuoted = `"${oldName}"`;
-                  const newQuoted = `"${newName}"`;
-                  if (content.includes(oldQuoted)) {
-                    content = content.replaceAll(oldQuoted, newQuoted);
-                    modified = true;
-                  }
-                }
-
-                if (modified) {
-                  writeFileSync(fullPath, content, 'utf-8');
-                  console.log(`Updated references in ${entry.name}`);
-                }
+        function updateJsFilesRecursively(dir: string, fileMapping: Record<string, string>) {
+          for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            const fullPath = join(dir, entry.name);
+            if (entry.isDirectory()) {
+              updateJsFilesRecursively(fullPath, fileMapping);
+            } else if (entry.name.endsWith('.js')) {
+              let content = readFileSync(fullPath, 'utf-8');
+              const original = content;
+              for (const [oldName, newName] of Object.entries(fileMapping)) {
+                content = replaceImportPaths(content, oldName, newName);
+              }
+              if (content !== original) {
+                writeFileSync(fullPath, content, 'utf-8');
+                console.log(`Updated references in ${entry.name}`);
               }
             }
           }
-
-          updateReferencesInDir(distDir);
         }
       }
     }
