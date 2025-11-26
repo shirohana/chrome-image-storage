@@ -492,6 +492,25 @@ interface TagCountFilter {
 - **State**: `previewPaneVisible` persisted in localStorage
 - **Updates**: Synced on selection change via `updatePreviewPane()`
 
+### Notes Panel
+
+- **Location**: Left sidebar, below tag sidebar (Section B in two-section layout)
+- **Layout**: Auto-height textarea (120px default, user-resizable)
+- **Storage**: Persisted to `chrome.storage.local` with 500ms debounce on input
+- **State**: Collapsed state also persisted (`notesCollapsed` boolean)
+- **Toggle**: Click `−/+` button to collapse/expand, starts expanded by default
+- **HTML**: `#notes-panel` container with `#notes-textarea` input
+- **CSS Structure**:
+  - `.left-sidebar-container`: Fixed height (`calc(100vh - 200px)`), sticky from `top: 180px`
+  - `.tag-sidebar`: Section A with `flex: 1` (takes remaining space), has overflow scrolling
+  - `.notes-panel`: Section B with `flex-shrink: 0` (auto-height, doesn't grow/shrink)
+  - Tag sidebar's `.tag-sidebar-list` has its own scrollbar (`overflow-y: auto`)
+- **Key Functions**:
+  - `loadNotes()`: Returns `{ content: string, collapsed: boolean }` from storage
+  - `saveNotesContent(content)`: Saves textarea content to storage
+  - `saveNotesCollapsed(collapsed)`: Saves toggle state to storage
+  - Debounce timer (`notesDebounceTimer`) prevents excessive storage writes
+
 ### Keyboard Navigation
 
 Grid navigation (respects grid columns for up/down):

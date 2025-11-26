@@ -78,6 +78,11 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Lightbox**: Click images to view full-size with keyboard navigation
 - **Preview pane**: Collapsible side panel showing selected image details and metadata
 - **View page button**: Open the original source page in a new tab
+- **Notes panel**: Persistent textarea for temporary notes, positioned below tag sidebar
+  - Auto-saves content to local storage with 500ms debounce
+  - Collapsible with toggle button (expanded by default)
+  - Content persists across page refreshes
+  - Perfect for temporary URLs, tag planning, or quick reminders
 
 ### Metadata Management
 - **Local file upload**: Import images from your computer via "Upload" button in header

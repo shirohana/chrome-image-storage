@@ -19,7 +19,6 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 2px solid #ddd;
   position: sticky;
@@ -96,11 +95,17 @@ h1 {
 }
 
 .toolbar {
-  margin-bottom: 30px;
   display: flex;
   gap: 20px;
   align-items: center;
   flex-wrap: wrap;
+  position: sticky;
+  top: 80px;
+  background: #f5f5f5;
+  z-index: 90;
+  padding-bottom: 10px;
+  margin-top: -10px;
+  padding-top: 10px;
 }
 
 .view-toggle {
@@ -183,19 +188,31 @@ h1 {
   gap: 20px;
 }
 
-/* Tag sidebar */
-.tag-sidebar {
+/* Left sidebar container (stacks tag sidebar + notes panel vertically) */
+.left-sidebar-container {
   width: 250px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-self: flex-start;
+  position: sticky;
+  top: 180px;
+  height: calc(100vh - 200px);
+}
+
+/* Tag sidebar (Section A: Rating + Tags) */
+.tag-sidebar {
+  width: 100%;
   background: white;
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  height: fit-content;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  position: sticky;
-  top: 100px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .tag-sidebar h3 {
@@ -420,8 +437,66 @@ h1 {
   font-weight: 500;
 }
 
+/* Notes panel (Section B: auto height) */
+.notes-panel {
+  width: 100%;
+  background: white;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.notes-panel.collapsed .notes-content {
+  display: none;
+}
+
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notes-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.notes-content {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+
+.notes-textarea {
+  width: 100%;
+  height: 120px;
+  min-height: 60px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+.notes-textarea::placeholder {
+  color: #999;
+}
+
 /* Rating filter section */
 .rating-filter-section {
+  flex-shrink: 0;
   margin-bottom: 20px;
   padding-bottom: 20px;
   border-bottom: 1px solid #eee;
@@ -511,7 +586,23 @@ h1 {
 }
 
 .tag-filter-section {
-  /* Spacing for tags section below rating filter */
+  /* Tags section with scrollbar, takes remaining space */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tag-filter-section h3 {
+  flex-shrink: 0;
+  margin-bottom: 12px;
+}
+
+.tag-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* Content area */

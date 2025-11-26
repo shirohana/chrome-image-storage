@@ -159,37 +159,49 @@
     </div>
 
     <div class="main-container">
-      <aside id="tag-sidebar" class="tag-sidebar">
-        <div class="rating-filter-section">
-          <h3>Rating</h3>
-          <div class="rating-filter-list">
-            <button class="rating-filter-pill" data-rating="g">
-              <span class="rating-label">G</span>
-              <span class="rating-count">0</span>
-            </button>
-            <button class="rating-filter-pill" data-rating="s">
-              <span class="rating-label">S</span>
-              <span class="rating-count">0</span>
-            </button>
-            <button class="rating-filter-pill" data-rating="q">
-              <span class="rating-label">Q</span>
-              <span class="rating-count">0</span>
-            </button>
-            <button class="rating-filter-pill" data-rating="e">
-              <span class="rating-label">E</span>
-              <span class="rating-count">0</span>
-            </button>
-            <button class="rating-filter-pill" data-rating="unrated">
-              <span class="rating-label">—</span>
-              <span class="rating-count">0</span>
-            </button>
+      <div class="left-sidebar-container">
+        <aside id="tag-sidebar" class="tag-sidebar">
+          <div class="rating-filter-section">
+            <h3>Rating</h3>
+            <div class="rating-filter-list">
+              <button class="rating-filter-pill" data-rating="g">
+                <span class="rating-label">G</span>
+                <span class="rating-count">0</span>
+              </button>
+              <button class="rating-filter-pill" data-rating="s">
+                <span class="rating-label">S</span>
+                <span class="rating-count">0</span>
+              </button>
+              <button class="rating-filter-pill" data-rating="q">
+                <span class="rating-label">Q</span>
+                <span class="rating-count">0</span>
+              </button>
+              <button class="rating-filter-pill" data-rating="e">
+                <span class="rating-label">E</span>
+                <span class="rating-count">0</span>
+              </button>
+              <button class="rating-filter-pill" data-rating="unrated">
+                <span class="rating-label">—</span>
+                <span class="rating-count">0</span>
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="tag-filter-section">
-          <h3>Tags</h3>
-          <div id="tag-sidebar-list" class="tag-sidebar-list"></div>
-        </div>
-      </aside>
+          <div class="tag-filter-section">
+            <h3>Tags</h3>
+            <div id="tag-sidebar-list" class="tag-sidebar-list"></div>
+          </div>
+        </aside>
+
+        <aside id="notes-panel" class="notes-panel">
+          <div class="notes-header">
+            <h3>Notes</h3>
+            <button id="notes-toggle" class="btn-icon" title="Collapse/Expand">−</button>
+          </div>
+          <div id="notes-content" class="notes-content">
+            <textarea id="notes-textarea" class="notes-textarea" placeholder="Your temporary notes..."></textarea>
+          </div>
+        </aside>
+      </div>
 
       <div class="content-area">
         <div id="empty-state" class="empty-state">
