@@ -972,16 +972,14 @@ body {
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
-  transition: transform 0.3s ease;
 }
 
 .preview-pane.visible {
   transform: translateX(0);
 }
 
-body.preview-pane-open .container {
+body.preview-pane-open .page-container {
   margin-right: 350px;
-  transition: margin-right 0.3s ease;
 }
 
 .preview-pane-header {
