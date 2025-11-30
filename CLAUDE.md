@@ -95,6 +95,18 @@ Always wrap in `.catch()` since viewer may not be open.
 
 No state properties - all filter state derived from search input value.
 
+### Clickable Image Card Elements
+
+**Tags**: Click `.image-tags__tag` to toggle tag in search
+- `toggleTagInSearch(tag)`: Checks if tag active, adds or removes from search
+- Active tags highlighted green (`.image-tags__tag--active`)
+
+**Account Button**: Click `.image-account-btn` to toggle account filter (X/Twitter only)
+- `toggleAccountInSearch(account)`: Checks if account active, adds/removes `account:xxx` from search
+- Button only shown when `getXAccountFromUrl()` extracts account from pageUrl
+- Active state highlighted green (`.image-account-btn--active`)
+- Appears below tags on image cards
+
 ### Tag Sidebar
 
 Functions that modify search input:
@@ -103,6 +115,9 @@ Functions that modify search input:
 - `removeIncludedTagFromSearch(tag)`: Uses `removeTagFromQuery()` to clean up orphaned "or" operators
 - `removeExcludedTagFromSearch(tag)`: Removes `-tag`
 - `toggleTagInSearch(tag)`: For clickable tags on cards
+- `toggleAccountInSearch(account)`: For clickable account button on cards
+- `addAccountToSearch(account)`: For account sidebar
+- `removeAccountFromSearch(account)`: Removes `account:xxx` pattern
 
 ### Auto-Tagging Rules (`src/storage/tag-rules.ts`)
 

@@ -1174,6 +1174,37 @@ body.preview-pane-open .container {
   user-select: none;
 }
 
+/* X account filter button */
+.image-account-btn {
+  display: inline-block;
+  padding: 2px 8px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 4px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  user-select: none;
+  width: fit-content;
+}
+
+.image-account-btn:hover {
+  background: #5a6268;
+}
+
+.image-account-btn--active {
+  background: #28a745;
+  font-weight: 600;
+}
+
+.image-account-btn--active:hover {
+  background: #218838;
+}
+
 .image-tags {
   display: flex;
   flex-wrap: wrap;

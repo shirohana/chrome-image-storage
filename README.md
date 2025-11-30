@@ -236,8 +236,12 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
    - **Set Rating**: Choose a rating to apply to all selected images (or "No Change")
 4. Click "Save" to apply changes
 
-**Filter by tags**:
+**Filter by tags and accounts**:
 - **Click tags on image cards** to toggle them in the tag search (click again to remove)
+- **Click account button** (e.g., `@username`) on X/Twitter images to toggle account filter
+  - Button appears below tags on image cards
+  - Gray when inactive, green when filtering by that account
+  - Click to add `account:username` filter, click again to remove
 - **Use tag sidebar** for quick filtering:
   - Click any tag name to include it in search
   - Click + button to include tag
@@ -249,6 +253,7 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
   - `-dog` - Exclude specific tags
   - Combine: `girl cat or boy -dog`
 - Active filtered tags are highlighted in green on image cards
+- Active account buttons are highlighted in green on image cards
 - Selected tags in sidebar are highlighted (green = included, red = excluded)
 
 **Auto-tagging rules**:

@@ -466,6 +466,27 @@ function updateAccountSidebar(images: ImageMetadata[] = state.filteredImages) {
   });
 }
 
+function toggleAccountInSearch(account: string) {
+  const input = document.getElementById('tag-search-input') as HTMLInputElement;
+  if (!input) return;
+
+  const current = input.value.trim();
+  const parsed = parseTagSearch(current);
+
+  // Check if account is currently active
+  const isActive = parsed.accounts.has(account);
+
+  if (isActive) {
+    // Remove account from search
+    removeAccountFromSearch(account);
+  } else {
+    // Add account to search
+    input.value = current ? `${current} account:${account}` : `account:${account}`;
+  }
+
+  applyFilters();
+}
+
 function addAccountToSearch(account: string) {
   const input = document.getElementById('tag-search-input') as HTMLInputElement;
   if (!input) return;
@@ -993,14 +1014,22 @@ function createImageCardHTML(image: ImageMetadata): string {
       <button class="button button--sm button--danger image-actions__button delete-btn" data-id="${image.id}">Delete</button>
     `;
 
-  // Parse current tag search to highlight active tags
+  // Parse current tag search to highlight active tags and account
   const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
   const activeTags = new Set<string>();
-  if (tagSearchInput && tagSearchInput.value) {
-    const parsed = parseTagSearch(tagSearchInput.value);
+  const parsed = tagSearchInput && tagSearchInput.value ? parseTagSearch(tagSearchInput.value) : null;
+
+  if (parsed) {
     parsed.includeTags.forEach(tag => activeTags.add(tag));
     parsed.orGroups.forEach(group => group.forEach(tag => activeTags.add(tag)));
   }
+
+  // X account filter button
+  const xAccount = getXAccountFromUrl(image.pageUrl);
+  const isAccountActive = xAccount && parsed && parsed.accounts.has(xAccount);
+  const accountButtonHTML = xAccount
+    ? `<button class="image-account-btn${isAccountActive ? ' image-account-btn--active' : ''}" data-account="${xAccount}" title="Filter by @${xAccount}">@${xAccount}</button>`
+    : '';
 
   const tagsHTML = image.tags && image.tags.length > 0
     ? `<div class="image-tags">
@@ -1036,6 +1065,7 @@ function createImageCardHTML(image: ImageMetadata): string {
           <div class="image-meta__row"><strong>Type:</strong> ${image.mimeType}</div>
         </div>
         ${tagsHTML}
+        ${accountButtonHTML}
         <div class="image-url" title="${image.pageUrl}">
           <strong>From:</strong> <a href="${image.pageUrl}" target="_blank" rel="noopener noreferrer" class="page-link">${image.pageTitle || image.pageUrl}</a>
         </div>
@@ -2665,8 +2695,18 @@ imageGrid.addEventListener('click', (e: Event) => {
     return;
   }
 
-  // 2. Tag clicks - toggle tag in search input
-  if (target.matches('.image-tags .tag')) {
+  // 2. Account button - toggle account filter
+  if (target.matches('.image-account-btn')) {
+    const account = target.getAttribute('data-account');
+    if (account) {
+      e.stopPropagation(); // Prevent card selection
+      toggleAccountInSearch(account);
+    }
+    return;
+  }
+
+  // 3. Tag clicks - toggle tag in search input
+  if (target.matches('.image-tags__tag')) {
     const tag = target.getAttribute('data-tag');
     if (tag) {
       e.stopPropagation(); // Prevent card selection
@@ -2675,18 +2715,18 @@ imageGrid.addEventListener('click', (e: Event) => {
     return;
   }
 
-  // 3. Image preview (opens lightbox)
+  // 4. Image preview (opens lightbox)
   if (target.matches('.image-preview')) {
     handleImageClick(e);
     return;
   }
 
-  // 4. Checkbox (let the change event handle it)
+  // 5. Checkbox (let the change event handle it)
   if (target.matches('.image-checkbox')) {
     return;
   }
 
-  // 5. Anywhere else on the card → handle selection based on modifier keys
+  // 6. Anywhere else on the card → handle selection based on modifier keys
   const card = target.closest('.image-card');
   if (card) {
     const id = card.getAttribute('data-id')!;
