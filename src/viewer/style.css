@@ -1468,15 +1468,95 @@ body.preview-pane-open .container {
   cursor: pointer;
   font-size: 13px;
   color: #333;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  transition: all 0.2s;
+}
+
+.rating-radio:hover {
+  background: #e0e0e0;
 }
 
 .rating-radio__input {
   cursor: pointer;
   margin: 0;
+  display: none;
 }
 
 .rating-radio__label {
   user-select: none;
+}
+
+/* Preview sidebar rating colors */
+.preview-rating-selector .rating-radio:has(input[value="g"]) {
+  background: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="g"]):hover {
+  background: rgba(40, 167, 69, 0.25);
+}
+
+.preview-rating-selector .rating-radio:has(input[value="g"]:checked) {
+  background: #28a745;
+  color: white;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="s"]) {
+  background: rgba(255, 193, 7, 0.15);
+  color: #e0a800;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="s"]):hover {
+  background: rgba(255, 193, 7, 0.25);
+}
+
+.preview-rating-selector .rating-radio:has(input[value="s"]:checked) {
+  background: #ffc107;
+  color: #333;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="q"]) {
+  background: rgba(253, 126, 20, 0.15);
+  color: #fd7e14;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="q"]):hover {
+  background: rgba(253, 126, 20, 0.25);
+}
+
+.preview-rating-selector .rating-radio:has(input[value="q"]:checked) {
+  background: #fd7e14;
+  color: white;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="e"]) {
+  background: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+.preview-rating-selector .rating-radio:has(input[value="e"]):hover {
+  background: rgba(220, 53, 69, 0.25);
+}
+
+.preview-rating-selector .rating-radio:has(input[value="e"]:checked) {
+  background: #dc3545;
+  color: white;
+}
+
+.preview-rating-selector .rating-radio:has(input[value=""]) {
+  background: rgba(108, 117, 125, 0.15);
+  color: #6c757d;
+}
+
+.preview-rating-selector .rating-radio:has(input[value=""]):hover {
+  background: rgba(108, 117, 125, 0.25);
+}
+
+.preview-rating-selector .rating-radio:has(input[value=""]:checked) {
+  background: #6c757d;
+  color: white;
 }
 
 .lightbox-rating-selector {
@@ -1487,10 +1567,81 @@ body.preview-pane-open .container {
 }
 
 .lightbox-rating-selector .rating-radio {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.lightbox-rating-selector .rating-radio:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Lightbox rating colors (dark theme) */
+.lightbox-rating-selector .rating-radio:has(input[value="g"]) {
+  background: rgba(40, 167, 69, 0.2);
+  color: #4ade80;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="g"]):hover {
+  background: rgba(40, 167, 69, 0.3);
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="g"]:checked) {
+  background: #28a745;
   color: white;
 }
 
-.lightbox-rating-selector .rating-radio span {
+.lightbox-rating-selector .rating-radio:has(input[value="s"]) {
+  background: rgba(255, 193, 7, 0.2);
+  color: #fbbf24;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="s"]):hover {
+  background: rgba(255, 193, 7, 0.3);
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="s"]:checked) {
+  background: #ffc107;
+  color: #333;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="q"]) {
+  background: rgba(253, 126, 20, 0.2);
+  color: #fb923c;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="q"]):hover {
+  background: rgba(253, 126, 20, 0.3);
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="q"]:checked) {
+  background: #fd7e14;
+  color: white;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="e"]) {
+  background: rgba(220, 53, 69, 0.2);
+  color: #f87171;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="e"]):hover {
+  background: rgba(220, 53, 69, 0.3);
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value="e"]:checked) {
+  background: #dc3545;
+  color: white;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value=""]) {
+  background: rgba(108, 117, 125, 0.2);
+  color: #9ca3af;
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value=""]):hover {
+  background: rgba(108, 117, 125, 0.3);
+}
+
+.lightbox-rating-selector .rating-radio:has(input[value=""]:checked) {
+  background: #6c757d;
   color: white;
 }
 
@@ -1904,15 +2055,95 @@ body.preview-pane-open .container {
   cursor: pointer;
   font-size: 14px;
   color: #333;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: #f0f0f0;
+  transition: all 0.2s;
+}
+
+.bulk-rating-radio:hover {
+  background: #e0e0e0;
 }
 
 .bulk-rating-radio__input {
   cursor: pointer;
   margin: 0;
+  display: none;
 }
 
 .bulk-rating-radio__label {
   user-select: none;
+}
+
+/* Bulk rating colors */
+.bulk-rating-radio:has(input[value="g"]) {
+  background: rgba(40, 167, 69, 0.15);
+  color: #28a745;
+}
+
+.bulk-rating-radio:has(input[value="g"]):hover {
+  background: rgba(40, 167, 69, 0.25);
+}
+
+.bulk-rating-radio:has(input[value="g"]:checked) {
+  background: #28a745;
+  color: white;
+}
+
+.bulk-rating-radio:has(input[value="s"]) {
+  background: rgba(255, 193, 7, 0.15);
+  color: #e0a800;
+}
+
+.bulk-rating-radio:has(input[value="s"]):hover {
+  background: rgba(255, 193, 7, 0.25);
+}
+
+.bulk-rating-radio:has(input[value="s"]:checked) {
+  background: #ffc107;
+  color: #333;
+}
+
+.bulk-rating-radio:has(input[value="q"]) {
+  background: rgba(253, 126, 20, 0.15);
+  color: #fd7e14;
+}
+
+.bulk-rating-radio:has(input[value="q"]):hover {
+  background: rgba(253, 126, 20, 0.25);
+}
+
+.bulk-rating-radio:has(input[value="q"]:checked) {
+  background: #fd7e14;
+  color: white;
+}
+
+.bulk-rating-radio:has(input[value="e"]) {
+  background: rgba(220, 53, 69, 0.15);
+  color: #dc3545;
+}
+
+.bulk-rating-radio:has(input[value="e"]):hover {
+  background: rgba(220, 53, 69, 0.25);
+}
+
+.bulk-rating-radio:has(input[value="e"]:checked) {
+  background: #dc3545;
+  color: white;
+}
+
+.bulk-rating-radio:has(input[value="unrated"]) {
+  background: rgba(108, 117, 125, 0.15);
+  color: #6c757d;
+}
+
+.bulk-rating-radio:has(input[value="unrated"]):hover {
+  background: rgba(108, 117, 125, 0.25);
+}
+
+.bulk-rating-radio:has(input[value="unrated"]:checked) {
+  background: #6c757d;
+  color: white;
 }
 
 .bulk-tag-footer {
