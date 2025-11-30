@@ -68,9 +68,9 @@ Always wrap in `.catch()` since viewer may not be open.
 
 1. **CSS**: Use `grid.style.display = ''` to clear inline styles, let CSS control display
 2. **BEM CSS Convention**: All new CSS classes MUST follow BEM naming (Block__Element--Modifier)
-   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`
-   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`
-   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`
+   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`, `.preview-bulk-tag`
+   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`, `.preview-bulk-tag__input`
+   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`, `.preview-bulk-tag__button--primary`
    - **Never use tag selectors** (header, h1, h3, button, etc.) - always use explicit classes
    - **Why BEM**: Prevents class name conflicts, self-documenting, AI-friendly explicit relationships
 3. **Service Worker**: Use `createImageBitmap()` for dimensions, not `new Image()`

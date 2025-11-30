@@ -217,7 +217,7 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
 
 **Lightbox**: Click any image to view it in full size. Use arrow keys to navigate between images. Close with Space, Escape, × button, or by clicking outside.
 
-**Preview Pane**: Toggle the preview pane to see details about selected images. Shows full preview + metadata for single selection, or a thumbnail grid for multiple selections.
+**Preview Pane**: Toggle the preview pane to see details about selected images. Shows full preview + metadata for single selection, or a thumbnail grid with bulk tagging tool for multiple selections.
 
 ### Tagging Images
 
@@ -229,12 +229,14 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
 
 **Bulk tag operations**:
 1. Select multiple images using checkboxes
-2. Click "Tag Selected" button
-3. In the modal:
+2. Use either:
+   - **Preview Pane**: Bulk tagging tool appears below thumbnails in the preview pane
+   - **Tag Selected Button**: Opens a modal with bulk tagging options
+3. In both interfaces:
    - **Add Tags**: Enter tags to add to all selected images
    - **Remove Tags**: Enter tags to remove from all selected images
    - **Set Rating**: Choose a rating to apply to all selected images (or "No Change")
-4. Click "Save" to apply changes
+4. Click "Apply Changes" (preview pane) or "Save" (modal) to apply changes
 
 **Filter by tags and accounts**:
 - **Click tags on image cards** to toggle them in the tag search (click again to remove)

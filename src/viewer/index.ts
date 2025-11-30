@@ -1607,6 +1607,50 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
       <div class="preview-thumbnails">
         ${thumbnails}
       </div>
+      <div class="preview-bulk-tag">
+        <div class="preview-bulk-tag__section">
+          <label class="preview-bulk-tag__label">Add tags</label>
+          <input type="text" class="preview-bulk-tag__input" id="preview-add-tags-input" placeholder="Enter tags to add">
+          <div id="preview-add-autocomplete" class="tag-autocomplete"></div>
+        </div>
+        <div class="preview-bulk-tag__section">
+          <label class="preview-bulk-tag__label">Remove tags</label>
+          <input type="text" class="preview-bulk-tag__input" id="preview-remove-tags-input" placeholder="Enter tags to remove">
+          <div id="preview-remove-autocomplete" class="tag-autocomplete"></div>
+        </div>
+        <div class="preview-bulk-tag__section">
+          <label class="preview-bulk-tag__label">Set rating</label>
+          <div class="preview-bulk-tag__ratings">
+            <label class="preview-bulk-tag__rating">
+              <input type="radio" name="preview-bulk-rating" value="g">
+              <span>G</span>
+            </label>
+            <label class="preview-bulk-tag__rating">
+              <input type="radio" name="preview-bulk-rating" value="s">
+              <span>S</span>
+            </label>
+            <label class="preview-bulk-tag__rating">
+              <input type="radio" name="preview-bulk-rating" value="q">
+              <span>Q</span>
+            </label>
+            <label class="preview-bulk-tag__rating">
+              <input type="radio" name="preview-bulk-rating" value="e">
+              <span>E</span>
+            </label>
+            <label class="preview-bulk-tag__rating">
+              <input type="radio" name="preview-bulk-rating" value="unrated">
+              <span>-</span>
+            </label>
+            <label class="preview-bulk-tag__rating">
+              <input type="radio" name="preview-bulk-rating" value="" checked>
+              <span>×</span>
+            </label>
+          </div>
+        </div>
+        <button class="preview-bulk-tag__button preview-bulk-tag__button--primary" id="preview-bulk-save-btn">
+          Apply Changes
+        </button>
+      </div>
     </div>
   `;
 
@@ -1620,6 +1664,96 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
       if (index !== -1) openLightbox(index);
     });
   });
+
+  // Setup bulk tagging
+  setupPreviewBulkTagging(images);
+}
+
+function setupPreviewBulkTagging(images: ImageMetadata[]) {
+  const addInput = document.getElementById('preview-add-tags-input') as HTMLInputElement;
+  const removeInput = document.getElementById('preview-remove-tags-input') as HTMLInputElement;
+  const saveBtn = document.getElementById('preview-bulk-save-btn') as HTMLButtonElement;
+
+  if (!addInput || !removeInput || !saveBtn) return;
+
+  // Setup autocomplete for add input (all tags)
+  setupTagAutocomplete(addInput, 'preview-add-autocomplete', {
+    onEnterComplete: () => {
+      removeInput.focus();
+    }
+  });
+
+  // Setup autocomplete for remove input (only tags from selected images)
+  const selectedImageTags = new Set<string>();
+  images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => selectedImageTags.add(tag));
+    }
+  });
+  const selectedImageTagsArray = Array.from(selectedImageTags);
+  setupTagAutocomplete(removeInput, 'preview-remove-autocomplete', {
+    customTags: selectedImageTagsArray,
+    onEnterComplete: () => {
+      removeInput.blur();
+    }
+  });
+
+  // Save button click handler
+  saveBtn.addEventListener('click', applyPreviewBulkTags);
+}
+
+async function applyPreviewBulkTags() {
+  const addInput = document.getElementById('preview-add-tags-input') as HTMLInputElement;
+  const removeInput = document.getElementById('preview-remove-tags-input') as HTMLInputElement;
+
+  if (!addInput || !removeInput || state.selectedIds.size === 0) return;
+
+  const selectedImageIds = Array.from(state.selectedIds);
+
+  // Parse add tags
+  const addTagsString = addInput.value.trim();
+  const tagsToAdd = addTagsString
+    ? addTagsString.split(/\s+/).filter(tag => tag.length > 0)
+    : [];
+
+  // Parse remove tags
+  const removeTagsString = removeInput.value.trim();
+  const tagsToRemove = removeTagsString
+    ? removeTagsString.split(/\s+/).filter(tag => tag.length > 0)
+    : [];
+
+  // Remove duplicates
+  const uniqueTagsToAdd = Array.from(new Set(tagsToAdd));
+  const uniqueTagsToRemove = Array.from(new Set(tagsToRemove));
+
+  // Apply operations
+  if (uniqueTagsToAdd.length > 0) {
+    await addTagsToImages(selectedImageIds, uniqueTagsToAdd);
+  }
+
+  if (uniqueTagsToRemove.length > 0) {
+    await removeTagsFromImages(selectedImageIds, uniqueTagsToRemove);
+  }
+
+  // Apply rating if selected
+  const selectedRating = document.querySelector('input[name="preview-bulk-rating"]:checked') as HTMLInputElement;
+  if (selectedRating && selectedRating.value !== '') {
+    const { updateImagesRating } = await import('../storage/service');
+    const ratingValue = selectedRating.value === 'unrated' ? undefined : selectedRating.value as ('g' | 's' | 'q' | 'e');
+    await updateImagesRating(selectedImageIds, ratingValue);
+  }
+
+  // Clear inputs
+  addInput.value = '';
+  removeInput.value = '';
+
+  // Reset rating to "No Change"
+  const noChangeRating = document.querySelector('input[name="preview-bulk-rating"][value=""]') as HTMLInputElement;
+  if (noChangeRating) noChangeRating.checked = true;
+
+  // Reload images and update preview
+  await loadImages();
+  updatePreviewPane();
 }
 
 function formatFileSize(bytes: number): string {
