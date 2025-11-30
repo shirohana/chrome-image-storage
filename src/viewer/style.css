@@ -328,20 +328,34 @@ body {
   border-radius: 8px;
   padding: 16px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  height: fit-content;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
   position: sticky;
-  top: 100px;
+  top: 180px;
+  height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.account-filter-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .account-sidebar__heading {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
+  flex-shrink: 0;
 }
 
 .account-sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
