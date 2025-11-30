@@ -200,23 +200,23 @@ function updateTagSidebar(images: ImageMetadata[] = state.filteredImages) {
     .map(([tag, count]) => {
       const isIncluded = includedTags.has(tag);
       const isExcluded = excludedTags.has(tag);
-      const itemClass = isIncluded ? 'tag-sidebar-item tag-sidebar-item-included' :
-                        isExcluded ? 'tag-sidebar-item tag-sidebar-item-excluded' :
+      const itemClass = isIncluded ? 'tag-sidebar-item tag-sidebar-item--included' :
+                        isExcluded ? 'tag-sidebar-item tag-sidebar-item--excluded' :
                         'tag-sidebar-item';
 
       return `
         <div class="${itemClass}">
-          <button class="tag-add-btn" data-tag="${tag}" title="Include this tag">+</button>
-          <button class="tag-exclude-btn" data-tag="${tag}" title="Exclude this tag">−</button>
-          <span class="tag-name" data-tag="${tag}">${tag}</span>
-          <span class="tag-count">${count}</span>
+          <button class="tag-sidebar-item__action-btn tag-sidebar-item__add-btn" data-tag="${tag}" title="Include this tag">+</button>
+          <button class="tag-sidebar-item__action-btn tag-sidebar-item__exclude-btn" data-tag="${tag}" title="Exclude this tag">−</button>
+          <span class="tag-sidebar-item__name" data-tag="${tag}">${tag}</span>
+          <span class="tag-sidebar-item__count">${count}</span>
         </div>
       `;
     })
     .join('');
 
   // Attach click handlers for + buttons
-  sidebar.querySelectorAll('.tag-add-btn').forEach(btn => {
+  sidebar.querySelectorAll('.tag-sidebar-item__add-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tag = btn.getAttribute('data-tag')!;
       addTagToSearch(tag);
@@ -224,7 +224,7 @@ function updateTagSidebar(images: ImageMetadata[] = state.filteredImages) {
   });
 
   // Attach click handlers for - buttons
-  sidebar.querySelectorAll('.tag-exclude-btn').forEach(btn => {
+  sidebar.querySelectorAll('.tag-sidebar-item__exclude-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const tag = btn.getAttribute('data-tag')!;
       excludeTagFromSearch(tag);
@@ -232,7 +232,7 @@ function updateTagSidebar(images: ImageMetadata[] = state.filteredImages) {
   });
 
   // Attach click handlers for tag names (to toggle tags)
-  sidebar.querySelectorAll('.tag-name').forEach(span => {
+  sidebar.querySelectorAll('.tag-sidebar-item__name').forEach(span => {
     span.addEventListener('click', () => {
       const tag = span.getAttribute('data-tag')!;
       if (includedTags.has(tag)) {
@@ -419,23 +419,23 @@ function updateAccountSidebar(images: ImageMetadata[] = state.filteredImages) {
     .map(([account, count]) => {
       const isIncluded = includedAccounts.has(account);
       const isExcluded = excludedAccounts.has(account);
-      const itemClass = isIncluded ? 'account-sidebar-item account-sidebar-item-included' :
-                        isExcluded ? 'account-sidebar-item account-sidebar-item-excluded' :
+      const itemClass = isIncluded ? 'account-sidebar-item account-sidebar-item--included' :
+                        isExcluded ? 'account-sidebar-item account-sidebar-item--excluded' :
                         'account-sidebar-item';
 
       return `
         <div class="${itemClass}">
-          <button class="account-add-btn" data-account="${account}" title="Include this account">+</button>
-          <button class="account-exclude-btn" data-account="${account}" title="Exclude this account">−</button>
-          <span class="account-name" data-account="${account}">@${account}</span>
-          <span class="account-count">${count}</span>
+          <button class="account-sidebar-item__action-btn account-sidebar-item__add-btn" data-account="${account}" title="Include this account">+</button>
+          <button class="account-sidebar-item__action-btn account-sidebar-item__exclude-btn" data-account="${account}" title="Exclude this account">−</button>
+          <span class="account-sidebar-item__name" data-account="${account}">@${account}</span>
+          <span class="account-sidebar-item__count">${count}</span>
         </div>
       `;
     })
     .join('');
 
   // Attach click handlers for + buttons
-  sidebar.querySelectorAll('.account-add-btn').forEach(btn => {
+  sidebar.querySelectorAll('.account-sidebar-item__add-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const account = btn.getAttribute('data-account')!;
       addAccountToSearch(account);
@@ -443,7 +443,7 @@ function updateAccountSidebar(images: ImageMetadata[] = state.filteredImages) {
   });
 
   // Attach click handlers for - buttons
-  sidebar.querySelectorAll('.account-exclude-btn').forEach(btn => {
+  sidebar.querySelectorAll('.account-sidebar-item__exclude-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const account = btn.getAttribute('data-account')!;
       excludeAccountFromSearch(account);
@@ -451,7 +451,7 @@ function updateAccountSidebar(images: ImageMetadata[] = state.filteredImages) {
   });
 
   // Attach click handlers for account names (to toggle accounts)
-  sidebar.querySelectorAll('.account-name').forEach(span => {
+  sidebar.querySelectorAll('.account-sidebar-item__name').forEach(span => {
     span.addEventListener('click', () => {
       const account = span.getAttribute('data-account')!;
       if (includedAccounts.has(account)) {
@@ -985,12 +985,12 @@ function createImageCardHTML(image: ImageMetadata): string {
 
   const actions = state.currentView === 'trash'
     ? `
-      <button class="btn btn-sm btn-primary restore-btn" data-id="${image.id}">Restore</button>
-      <button class="btn btn-sm btn-danger permanent-delete-btn" data-id="${image.id}">Delete Forever</button>
+      <button class="button button--sm button--primary image-actions__button restore-btn" data-id="${image.id}">Restore</button>
+      <button class="button button--sm button--danger image-actions__button permanent-delete-btn" data-id="${image.id}">Delete Forever</button>
     `
     : `
-      <button class="btn btn-sm btn-secondary download-btn" data-id="${image.id}">Save</button>
-      <button class="btn btn-sm btn-danger delete-btn" data-id="${image.id}">Delete</button>
+      <button class="button button--sm button--secondary image-actions__button download-btn" data-id="${image.id}">Save</button>
+      <button class="button button--sm button--danger image-actions__button delete-btn" data-id="${image.id}">Delete</button>
     `;
 
   // Parse current tag search to highlight active tags
@@ -1006,7 +1006,7 @@ function createImageCardHTML(image: ImageMetadata): string {
     ? `<div class="image-tags">
         ${image.tags.map(tag => {
           const isActive = activeTags.has(tag);
-          return `<span class="tag${isActive ? ' tag-active' : ''}" data-tag="${tag}">${tag}</span>`;
+          return `<span class="image-tags__tag${isActive ? ' image-tags__tag--active' : ''}" data-tag="${tag}">${tag}</span>`;
         }).join('')}
       </div>`
     : '';
@@ -1030,10 +1030,10 @@ function createImageCardHTML(image: ImageMetadata): string {
       <img src="${url}" alt="Saved image" class="image-preview" data-image-id="${image.id}">
       <div class="image-info">
         <div class="image-meta">
-          <div><strong>Saved:</strong> ${date}</div>
-          <div><strong>Size:</strong> ${fileSize}</div>
-          <div><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
-          <div><strong>Type:</strong> ${image.mimeType}</div>
+          <div class="image-meta__row"><strong>Saved:</strong> ${date}</div>
+          <div class="image-meta__row"><strong>Size:</strong> ${fileSize}</div>
+          <div class="image-meta__row"><strong>Dimensions:</strong> ${image.width} × ${image.height}</div>
+          <div class="image-meta__row"><strong>Type:</strong> ${image.mimeType}</div>
         </div>
         ${tagsHTML}
         <div class="image-url" title="${image.pageUrl}">
@@ -1288,7 +1288,7 @@ function updateImageCard(id: string) {
 }
 
 function updateImageCount() {
-  const countEl = document.querySelector('.image-count')!;
+  const countEl = document.querySelector('.header__image-count')!;
   const totalCount = state.images.filter(img => !img.isDeleted).length;
   const filteredCount = state.filteredImages.length;
 
@@ -1361,7 +1361,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   };
 
   const tagsHTML = image.tags && image.tags.length > 0
-    ? image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+    ? image.tags.map(tag => `<span class="preview-meta-tags__tag">${tag}</span>`).join('')
     : '<span class="no-tags">No tags</span>';
 
   container.innerHTML = `
@@ -1412,33 +1412,33 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
           <span class="preview-meta-label">Rating</span>
           <div class="preview-rating-selector">
             <label class="rating-radio">
-              <input type="radio" name="preview-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
-              <span>G</span>
+              <input class="rating-radio__input" type="radio" name="preview-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
+              <span class="rating-radio__label">G</span>
             </label>
             <label class="rating-radio">
-              <input type="radio" name="preview-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
-              <span>S</span>
+              <input class="rating-radio__input" type="radio" name="preview-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
+              <span class="rating-radio__label">S</span>
             </label>
             <label class="rating-radio">
-              <input type="radio" name="preview-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
-              <span>Q</span>
+              <input class="rating-radio__input" type="radio" name="preview-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
+              <span class="rating-radio__label">Q</span>
             </label>
             <label class="rating-radio">
-              <input type="radio" name="preview-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
-              <span>E</span>
+              <input class="rating-radio__input" type="radio" name="preview-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
+              <span class="rating-radio__label">E</span>
             </label>
             <label class="rating-radio">
-              <input type="radio" name="preview-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
-              <span>-</span>
+              <input class="rating-radio__input" type="radio" name="preview-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
+              <span class="rating-radio__label">-</span>
             </label>
           </div>
         </div>
       </div>
       <div class="preview-actions">
-        <button class="btn btn-sm btn-secondary view-page-btn preview-view-page-btn" data-id="${image.id}">Source</button>
-        <button class="btn btn-sm btn-secondary preview-view-btn" data-id="${image.id}">View</button>
-        <button class="btn btn-sm btn-secondary download-btn preview-download-btn" data-id="${image.id}">Save</button>
-        <button class="btn btn-sm btn-primary preview-danbooru-btn" data-id="${image.id}">Danbooru</button>
+        <button class="button button--sm button--secondary preview-actions__button view-page-btn preview-view-page-btn" data-id="${image.id}">Source</button>
+        <button class="button button--sm button--secondary preview-actions__button preview-view-btn" data-id="${image.id}">View</button>
+        <button class="button button--sm button--secondary preview-actions__button download-btn preview-download-btn" data-id="${image.id}">Save</button>
+        <button class="button button--sm button--primary preview-actions__button preview-danbooru-btn" data-id="${image.id}">Danbooru</button>
       </div>
     </div>
   `;
@@ -1564,7 +1564,7 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
     const url = getOrCreateObjectURL(image.id);
     return `
       <div class="preview-thumbnail" data-id="${image.id}">
-        <img src="${url}" alt="Thumbnail">
+        <img class="preview-thumbnail__image" src="${url}" alt="Thumbnail">
       </div>
     `;
   }).join('');
@@ -1831,7 +1831,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
   const fileSize = formatFileSize(image.fileSize);
 
   const tagsValue = image.tags && image.tags.length > 0
-    ? image.tags.map(tag => `<span class="tag">${tag}</span>`).join('')
+    ? image.tags.map(tag => `<span class="metadata-tags__tag">${tag}</span>`).join('')
     : '<span class="no-tags">No tags</span>';
 
   // Get rating display info
@@ -1851,10 +1851,10 @@ function updateLightboxMetadata(image: ImageMetadata) {
     <h3>Image Details</h3>
     <div class="metadata-row">
       <div class="lightbox-actions">
-        <button class="btn btn-sm btn-secondary view-page-btn lightbox-view-page-btn" data-id="${image.id}">Source</button>
-        <button class="btn btn-sm btn-secondary view-btn lightbox-view-original-btn" data-id="${image.id}">Raw</button>
-        <button class="btn btn-sm btn-secondary download-btn lightbox-download-btn" data-id="${image.id}">Save</button>
-        <button class="btn btn-sm btn-primary lightbox-edit-metadata-btn" data-id="${image.id}">Edit</button>
+        <button class="button button--sm button--secondary view-page-btn lightbox-view-page-btn" data-id="${image.id}">Source</button>
+        <button class="button button--sm button--secondary view-btn lightbox-view-original-btn" data-id="${image.id}">Raw</button>
+        <button class="button button--sm button--secondary download-btn lightbox-download-btn" data-id="${image.id}">Save</button>
+        <button class="button button--sm button--primary lightbox-edit-metadata-btn" data-id="${image.id}">Edit</button>
       </div>
     </div>
     <div class="metadata-row">
@@ -1896,24 +1896,24 @@ function updateLightboxMetadata(image: ImageMetadata) {
       <span class="metadata-label">Change Rating:</span>
       <div class="lightbox-rating-selector">
         <label class="rating-radio">
-          <input type="radio" name="lightbox-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
-          <span>G</span>
+          <input class="rating-radio__input" type="radio" name="lightbox-rating-${image.id}" value="g" ${image.rating === 'g' ? 'checked' : ''}>
+          <span class="rating-radio__label">G</span>
         </label>
         <label class="rating-radio">
-          <input type="radio" name="lightbox-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
-          <span>S</span>
+          <input class="rating-radio__input" type="radio" name="lightbox-rating-${image.id}" value="s" ${image.rating === 's' ? 'checked' : ''}>
+          <span class="rating-radio__label">S</span>
         </label>
         <label class="rating-radio">
-          <input type="radio" name="lightbox-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
-          <span>Q</span>
+          <input class="rating-radio__input" type="radio" name="lightbox-rating-${image.id}" value="q" ${image.rating === 'q' ? 'checked' : ''}>
+          <span class="rating-radio__label">Q</span>
         </label>
         <label class="rating-radio">
-          <input type="radio" name="lightbox-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
-          <span>E</span>
+          <input class="rating-radio__input" type="radio" name="lightbox-rating-${image.id}" value="e" ${image.rating === 'e' ? 'checked' : ''}>
+          <span class="rating-radio__label">E</span>
         </label>
         <label class="rating-radio">
-          <input type="radio" name="lightbox-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
-          <span>-</span>
+          <input class="rating-radio__input" type="radio" name="lightbox-rating-${image.id}" value="" ${!image.rating ? 'checked' : ''}>
+          <span class="rating-radio__label">-</span>
         </label>
       </div>
     </div>
@@ -1965,8 +1965,8 @@ function updateLightboxMetadata(image: ImageMetadata) {
           `;
 
           editMetadataBtn.textContent = 'Save Metadata';
-          editMetadataBtn.classList.remove('btn-secondary');
-          editMetadataBtn.classList.add('btn-primary');
+          editMetadataBtn.classList.remove('button--secondary');
+          editMetadataBtn.classList.add('button--primary');
           isEditMode = true;
         }
       } else {
@@ -4132,8 +4132,8 @@ async function renderTagRules() {
             <input type="checkbox" class="rule-enabled-toggle" ${rule.enabled ? 'checked' : ''}>
             <span class="toggle-slider"></span>
           </label>
-          <button class="btn-icon edit-rule-btn" title="Edit rule">✎</button>
-          <button class="btn-icon delete-rule-btn" title="Delete rule">×</button>
+          <button class="icon-button edit-rule-btn" title="Edit rule">✎</button>
+          <button class="icon-button delete-rule-btn" title="Delete rule">×</button>
         </div>
       </div>
       <div class="tag-rule-tags">

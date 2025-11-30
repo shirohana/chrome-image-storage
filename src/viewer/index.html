@@ -7,53 +7,53 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <div class="container">
+    <div class="page-container">
       <header class="page-header">
         <h1 class="page-header__title">Image Storage</h1>
         <div class="page-header__actions">
-          <span class="image-count">0 images</span>
+          <span class="header__image-count">0 images</span>
           <span id="selection-count" style="display: none">0 selected</span>
-          <button id="import-local-files-btn" class="btn btn-primary">
+          <button id="import-local-files-btn" class="button button--primary">
             Upload
           </button>
-          <button id="select-all-btn" class="btn btn-secondary">
+          <button id="select-all-btn" class="button button--secondary">
             Select All
           </button>
-          <button id="deselect-all-btn" class="btn btn-secondary">
+          <button id="deselect-all-btn" class="button button--secondary">
             Deselect All
           </button>
           <button
             id="restore-selected-btn"
-            class="btn btn-primary"
+            class="button button--primary"
             style="display: none"
           >
             Restore Selected
           </button>
-          <button id="tag-selected-btn" class="btn btn-primary">
+          <button id="tag-selected-btn" class="button button--primary">
             Tag Selected
           </button>
-          <button id="delete-selected-btn" class="btn btn-danger">
+          <button id="delete-selected-btn" class="button button--danger">
             Delete Selected
           </button>
-          <button id="dump-selected-btn" class="btn btn-primary">
+          <button id="dump-selected-btn" class="button button--primary">
             Dump Selected
           </button>
           <button
             id="empty-trash-btn"
-            class="btn btn-danger"
+            class="button button--danger"
             style="display: none"
           >
             Empty Trash
           </button>
-          <button id="settings-btn" class="btn btn-secondary">⚙</button>
+          <button id="settings-btn" class="button button--secondary">⚙</button>
         </div>
       </header>
 
       <div id="settings-panel" class="settings-panel" style="display: none">
         <h3 class="settings-panel__heading">Settings</h3>
         <label class="settings-option">
-          <input type="checkbox" id="show-notifications-toggle" />
-          <span>Show system notifications when saving images</span>
+          <input class="settings-option__checkbox" type="checkbox" id="show-notifications-toggle" />
+          <span class="settings-option__label">Show system notifications when saving images</span>
         </label>
 
         <div class="settings-section">
@@ -63,10 +63,10 @@
             merge databases.
           </p>
           <div class="settings-buttons">
-            <button id="export-database-btn" class="btn btn-primary">
+            <button id="export-database-btn" class="button button--primary">
               Export Database (.db)
             </button>
-            <button id="import-database-btn" class="btn btn-primary">
+            <button id="import-database-btn" class="button button--primary">
               Import Database (.db)
             </button>
           </div>
@@ -79,26 +79,29 @@
             with metadata.
           </p>
           <div class="settings-form">
-            <label>
+            <label class="settings-form__label">
               <span>Danbooru URL</span>
               <input
+                class="settings-form__input"
                 type="text"
                 id="danbooru-url-input"
                 placeholder="https://your-danbooru.com"
               />
             </label>
-            <label>
+            <label class="settings-form__label">
               <span>Username</span>
               <input
+                class="settings-form__input"
                 type="text"
                 id="danbooru-username-input"
                 placeholder="Your username"
               />
             </label>
-            <label>
+            <label class="settings-form__label">
               <span>API Key</span>
               <div class="password-input-group">
                 <input
+                  class="password-input-group__input"
                   type="password"
                   id="danbooru-apikey-input"
                   placeholder="Your API key"
@@ -106,7 +109,7 @@
                 <button
                   type="button"
                   id="danbooru-apikey-toggle"
-                  class="btn-icon"
+                  class="icon-button password-input-group__toggle"
                   title="Show/Hide API Key"
                 >
                   👁
@@ -129,10 +132,10 @@
             class="tag-rules-actions"
             style="margin: 12px 0; display: flex; gap: 8px"
           >
-            <button id="export-rules-btn" class="btn btn-secondary btn-sm">
+            <button id="export-rules-btn" class="button button--secondary button--sm">
               Export Rules
             </button>
-            <button id="import-rules-btn" class="btn btn-secondary btn-sm">
+            <button id="import-rules-btn" class="button button--secondary button--sm">
               Import Rules
             </button>
             <input
@@ -182,12 +185,12 @@
               </label>
             </div>
             <div class="form-buttons">
-              <button id="add-rule-btn" class="btn btn-primary">
+              <button id="add-rule-btn" class="button button--primary">
                 Add Rule
               </button>
               <button
                 id="cancel-rule-btn"
-                class="btn btn-secondary"
+                class="button button--secondary"
                 style="display: none"
               >
                 Cancel
@@ -245,7 +248,7 @@
           </select>
           <button
             id="preview-pane-toggle"
-            class="btn btn-secondary"
+            class="button button--secondary"
             title="Toggle preview pane"
           >
             Preview
@@ -292,7 +295,7 @@
               <h3 class="notes-header__title">Notes</h3>
               <button
                 id="notes-toggle"
-                class="btn-icon"
+                class="icon-button"
                 title="Collapse/Expand"
               >
                 −
@@ -310,8 +313,8 @@
 
         <div class="content-area">
           <div id="empty-state" class="empty-state">
-            <p>No images saved yet</p>
-            <p class="hint">
+            <p class="empty-state__text">No images saved yet</p>
+            <p class="empty-state__text text-hint">
               Right-click on any image and select "Save to Image Storage"
             </p>
           </div>
@@ -335,7 +338,7 @@
     <div id="preview-pane" class="preview-pane">
       <div class="preview-pane-header">
         <h3 class="preview-pane-header__title">Preview</h3>
-        <button id="preview-pane-close" class="btn-icon">&times;</button>
+        <button id="preview-pane-close" class="icon-button">&times;</button>
       </div>
       <div id="preview-pane-content" class="preview-pane-content">
         <div class="preview-empty">No items selected</div>
@@ -370,10 +373,10 @@
               <input
                 type="text"
                 id="bulk-add-tags-input"
-                class="tag-input"
+                class="bulk-tag-section__input"
                 placeholder="Add tags (space-separated)..."
               />
-              <div id="bulk-add-autocomplete" class="tag-autocomplete"></div>
+              <div id="bulk-add-autocomplete" class="bulk-tag-section__autocomplete"></div>
             </div>
           </div>
           <div class="bulk-tag-section">
@@ -385,10 +388,10 @@
               <input
                 type="text"
                 id="bulk-remove-tags-input"
-                class="tag-input"
+                class="bulk-tag-section__input"
                 placeholder="Remove tags (space-separated)..."
               />
-              <div id="bulk-remove-autocomplete" class="tag-autocomplete"></div>
+              <div id="bulk-remove-autocomplete" class="bulk-tag-section__autocomplete"></div>
             </div>
           </div>
           <div class="bulk-tag-section">
@@ -399,37 +402,37 @@
             </p>
             <div class="bulk-rating-selector">
               <label class="bulk-rating-radio">
-                <input type="radio" name="bulk-rating" value="g" />
-                <span>General</span>
+                <input class="bulk-rating-radio__input" type="radio" name="bulk-rating" value="g" />
+                <span class="bulk-rating-radio__label">General</span>
               </label>
               <label class="bulk-rating-radio">
-                <input type="radio" name="bulk-rating" value="s" />
-                <span>Sensitive</span>
+                <input class="bulk-rating-radio__input" type="radio" name="bulk-rating" value="s" />
+                <span class="bulk-rating-radio__label">Sensitive</span>
               </label>
               <label class="bulk-rating-radio">
-                <input type="radio" name="bulk-rating" value="q" />
-                <span>Questionable</span>
+                <input class="bulk-rating-radio__input" type="radio" name="bulk-rating" value="q" />
+                <span class="bulk-rating-radio__label">Questionable</span>
               </label>
               <label class="bulk-rating-radio">
-                <input type="radio" name="bulk-rating" value="e" />
-                <span>Explicit</span>
+                <input class="bulk-rating-radio__input" type="radio" name="bulk-rating" value="e" />
+                <span class="bulk-rating-radio__label">Explicit</span>
               </label>
               <label class="bulk-rating-radio">
-                <input type="radio" name="bulk-rating" value="unrated" />
-                <span>Unrated</span>
+                <input class="bulk-rating-radio__input" type="radio" name="bulk-rating" value="unrated" />
+                <span class="bulk-rating-radio__label">Unrated</span>
               </label>
               <label class="bulk-rating-radio">
-                <input type="radio" name="bulk-rating" value="" checked />
-                <span>No Change</span>
+                <input class="bulk-rating-radio__input" type="radio" name="bulk-rating" value="" checked />
+                <span class="bulk-rating-radio__label">No Change</span>
               </label>
             </div>
           </div>
         </div>
         <div class="bulk-tag-footer">
-          <button id="bulk-tag-cancel-btn" class="btn btn-secondary">
+          <button id="bulk-tag-cancel-btn" class="button button--secondary">
             Cancel
           </button>
-          <button id="bulk-tag-save-btn" class="btn btn-primary">Save</button>
+          <button id="bulk-tag-save-btn" class="button button--primary">Save</button>
         </div>
       </div>
     </div>
@@ -464,19 +467,19 @@
         <div class="import-conflict-body">
           <p id="import-conflict-summary"></p>
           <div class="import-conflict-options">
-            <button id="import-skip-all-btn" class="btn btn-secondary">
+            <button id="import-skip-all-btn" class="button button--secondary">
               Skip Conflicts (Keep Existing)
             </button>
-            <button id="import-override-all-btn" class="btn btn-danger">
+            <button id="import-override-all-btn" class="button button--danger">
               Override All Conflicts
             </button>
-            <button id="import-review-btn" class="btn btn-primary">
+            <button id="import-review-btn" class="button button--primary">
               Review Each Conflict
             </button>
           </div>
         </div>
         <div class="import-conflict-footer">
-          <button id="import-cancel-btn" class="btn btn-secondary">
+          <button id="import-cancel-btn" class="button button--secondary">
             Cancel Import
           </button>
         </div>
@@ -505,13 +508,13 @@
           </div>
         </div>
         <div class="import-review-footer">
-          <button id="import-keep-btn" class="btn btn-secondary">
+          <button id="import-keep-btn" class="button button--secondary">
             Keep Existing
           </button>
-          <button id="import-override-btn" class="btn btn-danger">
+          <button id="import-override-btn" class="button button--danger">
             Override with Imported
           </button>
-          <button id="import-review-cancel-btn" class="btn btn-secondary">
+          <button id="import-review-cancel-btn" class="button button--secondary">
             Cancel Import
           </button>
         </div>
@@ -619,10 +622,10 @@
           </div>
         </div>
         <div class="danbooru-upload-footer">
-          <button id="danbooru-upload-cancel-btn" class="btn btn-secondary">
+          <button id="danbooru-upload-cancel-btn" class="button button--secondary">
             Cancel
           </button>
-          <button id="danbooru-upload-submit-btn" class="btn btn-primary">
+          <button id="danbooru-upload-submit-btn" class="button button--primary">
             Upload to Danbooru
           </button>
         </div>
