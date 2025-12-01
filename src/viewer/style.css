@@ -2039,8 +2039,10 @@ body.preview-pane-open .page-container {
 }
 
 .bulk-tag-section__input:focus {
+  outline: none;
   border-color: #007bff;
   background: white;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
 }
 
 .bulk-tag-section__input::placeholder {
@@ -2553,6 +2555,17 @@ body.preview-pane-open .page-container {
 
 .password-input-group__input {
   flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.password-input-group__input:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
 }
 
 .password-input-group__toggle {
