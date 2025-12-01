@@ -43,6 +43,10 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Individual tagging**: Add tags to images with autocomplete
 - **Bulk tag operations**: Add or remove tags from multiple images at once
 - **Auto-tagging rules**: Automatically apply tags to new images based on page title patterns
+- **Alphabetical sorting**: Tags are automatically sorted alphabetically (case-insensitive)
+  - "cat girl" and "girl cat" both result in ["cat", "girl"]
+  - Ensures consistent tag order across all images
+  - Applies to both new saves and display rendering
 - **Clickable tags**: Click tags on image cards to toggle them in/out of search
 - **Tag sidebar**: Interactive sidebar for quick tag filtering
   - Shows tags from currently filtered results

@@ -1,6 +1,7 @@
 import { imageDB } from './db';
 import type { SavedImage } from '../types';
 import { loadTagRules, getAutoTags } from './tag-rules';
+import { sortTags } from '../viewer/tag-utils';
 
 /**
  * Extracts rating from tags array and returns cleaned tags without rating tags.
@@ -61,6 +62,7 @@ export async function saveImage(
 
   // Extract rating from tags and get cleaned tags
   const { rating, cleanedTags } = extractRatingFromTags(autoTags);
+  const sortedTags = sortTags(cleanedTags);
 
   const image: SavedImage = {
     id: crypto.randomUUID(),
@@ -73,7 +75,7 @@ export async function saveImage(
     width: dimensions.width,
     height: dimensions.height,
     savedAt: Date.now(),
-    tags: cleanedTags.length > 0 ? cleanedTags : undefined,
+    tags: sortedTags.length > 0 ? sortedTags : undefined,
     rating,
   };
 
@@ -153,7 +155,8 @@ export async function updateImageTags(id: string, tags: string[]): Promise<void>
   if (image) {
     // Extract rating from tags and get cleaned tags
     const { rating, cleanedTags } = extractRatingFromTags(tags);
-    image.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
+    const sortedTags = sortTags(cleanedTags);
+    image.tags = sortedTags.length > 0 ? sortedTags : undefined;
     // Only update rating if a rating tag was found
     if (rating !== undefined) {
       image.rating = rating;
@@ -171,7 +174,8 @@ export async function addTagsToImages(imageIds: string[], tagsToAdd: string[]): 
       const uniqueTags = Array.from(new Set([...existingTags, ...tagsToAdd]));
       // Extract rating from combined tags and get cleaned tags
       const { rating, cleanedTags } = extractRatingFromTags(uniqueTags);
-      image.tags = cleanedTags.length > 0 ? cleanedTags : undefined;
+      const sortedTags = sortTags(cleanedTags);
+      image.tags = sortedTags.length > 0 ? sortedTags : undefined;
       // Only update rating if a rating tag was found
       if (rating !== undefined) {
         image.rating = rating;
@@ -257,6 +261,7 @@ export async function importLocalFiles(files: File[]): Promise<SavedImage[]> {
     const rules = await loadTagRules();
     const autoTags = getAutoTags(pageTitle, rules);
     const { rating, cleanedTags } = extractRatingFromTags(autoTags);
+    const sortedTags = sortTags(cleanedTags);
 
     const image: SavedImage = {
       id: crypto.randomUUID(),
@@ -269,7 +274,7 @@ export async function importLocalFiles(files: File[]): Promise<SavedImage[]> {
       width: dimensions.width,
       height: dimensions.height,
       savedAt: Date.now(),
-      tags: cleanedTags.length > 0 ? cleanedTags : undefined,
+      tags: sortedTags.length > 0 ? sortedTags : undefined,
       rating,
     };
 

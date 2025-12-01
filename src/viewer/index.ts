@@ -1,6 +1,6 @@
 import { getAllImages, getAllImagesMetadata, getImageBlob, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
 import type { SavedImage, ImageMetadata } from '../types';
-import { parseTagSearch, removeTagFromQuery, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
+import { parseTagSearch, removeTagFromQuery, sortTags, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
 
 // Constants
 const SortField = {
@@ -1033,7 +1033,7 @@ function createImageCardHTML(image: ImageMetadata): string {
 
   const tagsHTML = image.tags && image.tags.length > 0
     ? `<div class="image-tags">
-        ${image.tags.map(tag => {
+        ${sortTags(image.tags).map(tag => {
           const isActive = activeTags.has(tag);
           return `<span class="image-tags__tag${isActive ? ' image-tags__tag--active' : ''}" data-tag="${tag}">${tag}</span>`;
         }).join('')}
@@ -1391,7 +1391,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   };
 
   const tagsHTML = image.tags && image.tags.length > 0
-    ? image.tags.map(tag => `<span class="preview-meta-tags__tag">${tag}</span>`).join('')
+    ? sortTags(image.tags).map(tag => `<span class="preview-meta-tags__tag">${tag}</span>`).join('')
     : '<span class="no-tags">No tags</span>';
 
   container.innerHTML = `
@@ -1434,7 +1434,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
         </div>
         <div class="preview-meta-row">
           <div class="tag-input-container">
-            <input type="text" id="preview-tag-input-${image.id}" class="preview-tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? image.tags.join(' ') : ''}">
+            <input type="text" id="preview-tag-input-${image.id}" class="preview-tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? sortTags(image.tags).join(' ') : ''}">
             <div id="preview-tag-autocomplete-${image.id}" class="tag-autocomplete"></div>
           </div>
         </div>
@@ -1995,7 +1995,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
   const fileSize = formatFileSize(image.fileSize);
 
   const tagsValue = image.tags && image.tags.length > 0
-    ? image.tags.map(tag => `<span class="metadata-tags__tag">${tag}</span>`).join('')
+    ? sortTags(image.tags).map(tag => `<span class="metadata-tags__tag">${tag}</span>`).join('')
     : '<span class="no-tags">No tags</span>';
 
   // Get rating display info
@@ -2087,7 +2087,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
     </div>
     <div class="metadata-row">
       <div class="tag-input-container">
-        <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? image.tags.join(' ') : ''}">
+        <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? sortTags(image.tags).join(' ') : ''}">
         <div id="tag-autocomplete" class="tag-autocomplete"></div>
       </div>
     </div>
@@ -3977,7 +3977,7 @@ async function openDanbooruUploadModal(imageId: string) {
   const descriptionInput = document.getElementById('danbooru-description-input') as HTMLTextAreaElement;
 
   // Auto-fill tags from existing tags
-  tagsInput.value = image.tags?.join(', ') || '';
+  tagsInput.value = image.tags ? sortTags(image.tags).join(', ') : '';
 
   // Extract artist from URL
   const extracted = extractArtistFromUrl(image.pageUrl);

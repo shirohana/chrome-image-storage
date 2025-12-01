@@ -1,3 +1,10 @@
+/**
+ * Sorts tags alphabetically (case-insensitive).
+ */
+export function sortTags(tags: string[]): string[] {
+  return [...tags].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
 // Parse tagcount metatag from search query
 // Supports: tagcount:2 (exact), tagcount:1,3 (list), tagcount:>5 (gt), tagcount:<3 (lt), tagcount:1..10 (range)
 export interface TagCountFilter {

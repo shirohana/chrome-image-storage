@@ -82,6 +82,15 @@ Always wrap in `.catch()` since viewer may not be open.
 
 ## Critical Systems
 
+### Tag Sorting (`src/viewer/tag-utils.ts`)
+
+`sortTags(tags: string[])` sorts tags alphabetically (case-insensitive):
+- Applied on save in `service.ts`: `saveImage()`, `updateImageTags()`, `addTagsToImages()`, `importLocalFiles()`
+- Applied on render in `viewer/index.ts`: All tag display locations (cards, preview, lightbox, Danbooru)
+- Ensures "cat girl" and "girl cat" both result in `["cat", "girl"]`
+- No migration needed: Old data sorted on render, new data sorted on save
+- DB naturally normalizes over time as users edit images
+
 ### Tag Search Parser (`src/viewer/tag-utils.ts`)
 
 `parseTagSearch(query)` extracts metatags and returns `ParsedTagSearch`:
