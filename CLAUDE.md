@@ -190,6 +190,15 @@ Use `mousedown` (not `click`) for autocomplete suggestions to prevent premature 
 **Lightbox**: Read-only by default, click "Edit" to enable editing
 Both update `updatedAt` timestamp on save.
 
+**Performance optimization**:
+- `syncImageMetadataToState()`: Updates state and intelligently re-renders
+  - Non-filtering fields (pageTitle): Only updates preview pane
+  - Filtering fields (tags, rating, pageUrl): Checks if image position changed
+  - Same position: Surgical single-card update via `updateSingleImageCardInDOM()`
+  - Position changed: Full grid re-render (necessary for correct sort order)
+- `applyFiltersWithoutRender()`: Runs filter logic without rendering (for position checks)
+- `updateSingleImageCardInDOM()`: Replaces single card HTML without rebuilding entire grid
+
 ### SQLite Import/Export (`src/storage/sqlite-import-export.ts`)
 
 **Export**:

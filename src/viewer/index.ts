@@ -56,8 +56,33 @@ async function loadImages() {
 }
 
 /**
+ * Updates a single image card in the DOM without re-rendering the entire grid.
+ */
+function updateSingleImageCardInDOM(imageId: string): void {
+  const existingCard = document.querySelector(`.image-card[data-id="${imageId}"]`);
+  if (!existingCard) return;
+
+  const image = state.images.find(img => img.id === imageId);
+  if (!image) return;
+
+  const newCardHTML = createImageCardHTML(image);
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = newCardHTML;
+  const newCard = tempDiv.firstElementChild as HTMLElement;
+
+  existingCard.replaceWith(newCard);
+
+  // Re-observe the new image for lazy loading
+  const img = newCard.querySelector('.image-preview[data-image-id]');
+  if (img && imageObserver) {
+    imageObserver.observe(img);
+  }
+}
+
+/**
  * Updates image metadata in local state after database update, then re-renders.
  * Synchronizes local state with database changes and sets updatedAt timestamp.
+ * Only triggers filtering if the field affects filter results.
  */
 function syncImageMetadataToState<T extends keyof ImageMetadata>(
   imageId: string,
@@ -69,7 +94,43 @@ function syncImageMetadataToState<T extends keyof ImageMetadata>(
     (imageInState as any)[field] = value;
     imageInState.updatedAt = Date.now();
   }
-  applyFilters();
+
+  // Only re-filter if the field affects filtering
+  const filteringFields: (keyof ImageMetadata)[] = ['tags', 'rating', 'pageUrl', 'isDeleted'];
+  if (filteringFields.includes(field)) {
+    // Check image's position before filtering
+    const oldIndex = state.filteredImages.findIndex(img => img.id === imageId);
+    const wasVisible = oldIndex !== -1;
+
+    // Re-run filter logic
+    applyFiltersWithoutRender();
+
+    // Check image's position after filtering
+    const newIndex = state.filteredImages.findIndex(img => img.id === imageId);
+    const isVisible = newIndex !== -1;
+
+    // Only do surgical update if image stayed at same position
+    if (wasVisible && isVisible && oldIndex === newIndex) {
+      // Image still visible at same position: just update this one card
+      updateSingleImageCardInDOM(imageId);
+      updateImageCount();
+      updateViewBadges();
+      updateSelectionCount();
+      updatePreviewPane();
+      updateRatingPills();
+    } else {
+      // Filter membership or position changed: do full re-render
+      renderImages(state.filteredImages);
+      updateImageCount();
+      updateViewBadges();
+      updateSelectionCount();
+      updatePreviewPane();
+      updateRatingPills();
+    }
+  } else {
+    // Non-filtering fields: just update preview pane
+    updatePreviewPane();
+  }
 }
 
 // TagCountFilter moved to tag-utils.ts
@@ -778,7 +839,10 @@ function getRatingCounts(): { g: number; s: number; q: number; e: number; unrate
 
 // parseTagSearch moved to tag-utils.ts
 
-function applyFilters() {
+/**
+ * Runs filter logic and updates state.filteredImages without rendering.
+ */
+function applyFiltersWithoutRender(): void {
   // Re-sort first so updated images move to correct position
   applySorting();
 
@@ -914,8 +978,11 @@ function applyFilters() {
     updateTagSidebar(filtered);
     if (accountSidebar) accountSidebar.style.display = 'none';
   }
+}
 
-  renderImages(filtered);
+function applyFilters() {
+  applyFiltersWithoutRender();
+  renderImages(state.filteredImages);
   updateImageCount();
   updateViewBadges();
   updateSelectionCount();
@@ -1053,8 +1120,8 @@ function createImageCardHTML(image: ImageMetadata): string {
     : '<div class="rating-badge rating-badge-unrated">—</div>';
 
   return `
-    <div class="image-card ${isSelected ? 'selected' : ''}" data-id="${image.id}">
-      <input type="checkbox" class="image-checkbox" data-id="${image.id}" ${isSelected ? 'checked' : ''}>
+    <div class="image-card${isSelected ? ' selected' : ''}" data-id="${image.id}">
+      <input type="checkbox" class="image-checkbox" data-id="${image.id}"${isSelected ? ' checked' : ''}>
       ${ratingHTML}
       <img src="${url}" alt="Saved image" class="image-preview" data-image-id="${image.id}">
       <div class="image-info">
@@ -1567,7 +1634,6 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
         const { updateImageTags } = await import('../storage/service');
         await updateImageTags(image.id, uniqueTags);
         syncImageMetadataToState(image.id, 'tags', uniqueTags);
-        updatePreviewPane();
       }
     });
 
@@ -1594,7 +1660,6 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const { updateImageTags } = await import('../storage/service');
       await updateImageTags(image.id, uniqueTags);
       syncImageMetadataToState(image.id, 'tags', uniqueTags);
-      updatePreviewPane();
     });
   }
 }
@@ -2165,18 +2230,11 @@ function updateLightboxMetadata(image: ImageMetadata) {
           await updateImagePageTitle(image.id, newPageTitle);
           await updateImagePageUrl(image.id, newPageUrl);
 
-          // Update local state
-          const imageInState = state.images.find(img => img.id === image.id);
-          if (imageInState) {
-            imageInState.pageTitle = newPageTitle;
-            imageInState.pageUrl = newPageUrl;
-            imageInState.updatedAt = Date.now();
-          }
-
-          // Re-render the grid to update display
-          applyFilters();
+          syncImageMetadataToState(image.id, 'pageTitle', newPageTitle);
+          syncImageMetadataToState(image.id, 'pageUrl', newPageUrl);
 
           // Update lightbox metadata display
+          const imageInState = state.images.find(img => img.id === image.id);
           updateLightboxMetadata(imageInState || image);
         }
       }
@@ -2192,18 +2250,11 @@ function updateLightboxMetadata(image: ImageMetadata) {
       const { updateImageRating } = await import('../storage/service');
       await updateImageRating(image.id, ratingValue as any);
 
-      // Update local state
-      const imageInState = state.images.find(img => img.id === image.id);
-      if (imageInState) {
-        imageInState.rating = ratingValue as any;
-        imageInState.updatedAt = Date.now();
-      }
+      syncImageMetadataToState(image.id, 'rating', ratingValue as any);
 
       // Update lightbox metadata display
+      const imageInState = state.images.find(img => img.id === image.id);
       updateLightboxMetadata(imageInState || image);
-
-      // Re-render the grid to update badge
-      applyFilters();
     });
   });
 
@@ -2223,18 +2274,11 @@ function updateLightboxMetadata(image: ImageMetadata) {
 
         await updateImageTags(image.id, uniqueTags);
 
-        // Update local state
-        const imageInState = state.images.find(img => img.id === image.id);
-        if (imageInState) {
-          imageInState.tags = uniqueTags;
-          imageInState.updatedAt = Date.now();
-        }
+        syncImageMetadataToState(image.id, 'tags', uniqueTags);
 
         // Update lightbox metadata display
+        const imageInState = state.images.find(img => img.id === image.id);
         updateLightboxMetadata(imageInState || image);
-
-        // Re-render the grid to update tags display
-        applyFilters();
       }
     });
 
