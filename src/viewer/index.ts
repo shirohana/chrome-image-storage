@@ -4288,6 +4288,8 @@ async function renderTagRules() {
     return;
   }
 
+  rules.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+
   tagRulesList.innerHTML = rules.map(rule => `
     <div class="tag-rule-card ${!rule.enabled ? 'disabled' : ''} ${newlyImportedRuleIds.has(rule.id) ? 'newly-imported' : ''}" data-rule-id="${rule.id}">
       <div class="tag-rule-header">

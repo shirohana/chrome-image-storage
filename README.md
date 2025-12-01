@@ -271,7 +271,7 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
    - **Use Regex**: Check to enable regex pattern matching
    - **Tags**: Space-separated tags to apply (e.g., "pixiv illustration")
 4. Click "Add Rule" to save
-5. Manage existing rules:
+5. Manage existing rules (displayed in alphabetical order by name):
    - **Toggle**: Enable/disable rules without deleting
    - **Edit**: Click ✎ to modify a rule
    - **Delete**: Click × to remove a rule
