@@ -1351,6 +1351,20 @@ function updateSelectionCount() {
       selectionCountEl.style.display = 'none';
     }
   }
+  updateButtonStates();
+}
+
+function updateButtonStates() {
+  const hasSelection = state.selectedIds.size > 0;
+  const tagSelectedBtn = document.getElementById('tag-selected-btn') as HTMLButtonElement;
+  const deleteSelectedBtn = document.getElementById('delete-selected-btn') as HTMLButtonElement;
+  const dumpSelectedBtn = document.getElementById('dump-selected-btn') as HTMLButtonElement;
+  const restoreSelectedBtn = document.getElementById('restore-selected-btn') as HTMLButtonElement;
+
+  if (tagSelectedBtn) tagSelectedBtn.disabled = !hasSelection;
+  if (deleteSelectedBtn) deleteSelectedBtn.disabled = !hasSelection;
+  if (dumpSelectedBtn) dumpSelectedBtn.disabled = !hasSelection;
+  if (restoreSelectedBtn) restoreSelectedBtn.disabled = !hasSelection;
 }
 
 function togglePreviewPane() {
@@ -2887,9 +2901,15 @@ imageGrid.addEventListener('click', (e: Event) => {
       }
       state.lastSelectedIndex = clickedIndex;
     } else {
-      // Normal click: Single-select (clear others, select this one)
-      state.selectedIds.clear();
-      state.selectedIds.add(id);
+      // Normal click: Toggle if single-selected, otherwise single-select
+      if (state.selectedIds.has(id) && state.selectedIds.size === 1) {
+        // If this is the only selected item, deselect it
+        state.selectedIds.delete(id);
+      } else {
+        // Single-select this item (clear others, select this one)
+        state.selectedIds.clear();
+        state.selectedIds.add(id);
+      }
       state.lastSelectedIndex = clickedIndex;
       state.selectionAnchor = clickedIndex;
     }

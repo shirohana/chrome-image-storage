@@ -79,6 +79,8 @@ Always wrap in `.catch()` since viewer may not be open.
 6. **Selection State**: Use `Set<string>` for selected IDs, persists across re-renders
 7. **Anti-Hotlinking**: Canvas capture first, declarativeNetRequest as fallback
 8. **Event Delegation**: Single listener on `#image-grid` for all card interactions
+9. **Button States**: Selection-dependent buttons disabled when `state.selectedIds.size === 0`
+10. **Card Selection**: Click card to toggle selection (deselects if single-selected, otherwise single-selects)
 
 ## Critical Systems
 
@@ -153,6 +155,19 @@ Export/import with duplicate detection by content fingerprint (not ID).
 - `state.objectUrls`: Cached blob URLs
 - **Pattern**: Call `revokeObjectURLs()` before re-rendering to prevent memory leaks
 - Performance: ~20-50MB initial load vs ~6GB (>90% reduction for 2000 images)
+
+### Selection & Button States
+
+**Card click behavior**:
+- Click card area (not image/tags/buttons) to handle selection
+- Normal click: Toggle if single-selected, otherwise single-select
+- Cmd/Ctrl + Click: Toggle individual item
+- Shift + Click: Select range from anchor
+
+**Button state management**:
+- `updateButtonStates()` called from `updateSelectionCount()`
+- Disables "Tag Selected", "Delete Selected", "Dump Selected", "Restore Selected" when no selection
+- Buttons use `:disabled` CSS with 50% opacity and `cursor: not-allowed`
 
 ### Keyboard Navigation
 

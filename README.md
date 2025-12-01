@@ -63,9 +63,11 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 - **Danbooru integration**: Ratings automatically pre-fill when uploading to Danbooru
 
 ### Selection & Bulk Operations
-- **Multi-select**: Select multiple images with checkboxes
+- **Multi-select**: Select multiple images with checkboxes or by clicking card area
+- **Click to select/deselect**: Click on image card (outside image/tags/buttons) to toggle selection
 - **Select all**: Quickly select or deselect all visible images
 - **Keyboard navigation**: Arrow keys to navigate, Shift+Arrow for range selection
+- **Disabled buttons**: Selection-dependent buttons (Tag/Delete/Dump Selected) disabled when nothing selected
 - **Bulk delete**: Delete selected images
 - **Bulk export**: Export selected images as a ZIP
 - **Bulk tagging**: Add or remove tags from selected images
@@ -328,14 +330,17 @@ Images can have content ratings to help organize and filter them:
 
 ### Multi-Select and Bulk Operations
 
-1. Click checkboxes on image cards to select multiple images
-2. Use "Select All" or "Deselect All" for quick selection
-3. Use keyboard shortcuts:
+1. Select images using:
+   - **Checkboxes**: Click checkbox on image cards
+   - **Card click**: Click anywhere on card (outside image/tags/buttons) to select
+   - **Click to deselect**: Click a single selected card to deselect it
+   - **Select All** / **Deselect All**: Quick selection buttons
+2. Use keyboard shortcuts:
    - **Arrow keys**: Navigate and select items
    - **Shift + Arrow keys**: Extend selection range
-   - **Cmd/Ctrl + Click**: Toggle individual item selection
-   - **Shift + Click**: Select range from last selected item
-4. Bulk actions available:
+   - **Cmd/Ctrl + Click card**: Toggle individual item selection
+   - **Shift + Click card**: Select range from last selected item
+3. Bulk actions available (disabled when nothing selected):
    - **Tag Selected**: Add/remove tags or set rating for selected images
    - **Delete Selected**: Move selected images to trash
    - **Dump Selected**: Export selected images as a ZIP file

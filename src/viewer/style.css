@@ -94,6 +94,17 @@ body {
   background: #c82333;
 }
 
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button--primary:disabled:hover,
+.button--secondary:disabled:hover,
+.button--danger:disabled:hover {
+  background: inherit;
+}
+
 .toolbar {
   display: flex;
   gap: 20px;
