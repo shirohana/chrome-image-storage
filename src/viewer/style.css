@@ -99,10 +99,16 @@ body {
   cursor: not-allowed;
 }
 
-.button--primary:disabled:hover,
-.button--secondary:disabled:hover,
+.button--primary:disabled:hover {
+  background: #007bff;
+}
+
+.button--secondary:disabled:hover {
+  background: #6c757d;
+}
+
 .button--danger:disabled:hover {
-  background: inherit;
+  background: #dc3545;
 }
 
 .toolbar {

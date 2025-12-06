@@ -168,6 +168,7 @@ Export/import with duplicate detection by content fingerprint (not ID).
 - `updateButtonStates()` called from `updateSelectionCount()`
 - Disables "Tag Selected", "Delete Selected", "Dump Selected", "Restore Selected" when no selection
 - Buttons use `:disabled` CSS with 50% opacity and `cursor: not-allowed`
+- **Disabled hover states**: Each button type maintains its specific color on `:disabled:hover` (primary: #007bff, secondary: #6c757d, danger: #dc3545) - prevents visual inconsistency
 
 ### Keyboard Navigation
 
