@@ -182,6 +182,11 @@ Lightbox: Left/Right (prev/next), Up/Down (by columns), Space/Escape (close)
 
 ### Tag Input Behavior
 
+Tag inputs are `<textarea>` elements (not `<input>`):
+- Multi-line support with `rows="3"`, vertically resizable (`resize: vertical`)
+- Minimum height: 60px for comfortable editing
+- `setupTagAutocomplete()` accepts `HTMLInputElement | HTMLTextAreaElement`
+
 All tag inputs use two-step completion:
 1. Autocomplete has selection? → Insert selected tag
 2. Current token incomplete? → Complete it (add space)

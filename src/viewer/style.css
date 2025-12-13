@@ -1121,6 +1121,10 @@ body.preview-pane-open .page-container {
   font-size: 13px;
   color: #333;
   background: white;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 60px;
 }
 
 .preview-tag-input:focus {
@@ -1704,6 +1708,10 @@ body.preview-pane-open .page-container {
   color: white;
   font-size: 14px;
   margin-bottom: 8px;
+  font-family: inherit;
+  line-height: 1.4;
+  resize: vertical;
+  min-height: 60px;
 }
 
 .tag-input:focus {

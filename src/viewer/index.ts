@@ -1320,7 +1320,7 @@ async function handleSaveTags(e: Event) {
   if (!btn) return;
 
   const id = btn.dataset.id!;
-  const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
+  const input = document.getElementById('lightbox-tag-input') as HTMLTextAreaElement;
   if (!input) return;
 
   const tagsString = input.value.trim();
@@ -1518,7 +1518,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
         </div>
         <div class="preview-meta-row">
           <div class="tag-input-container">
-            <input type="text" id="preview-tag-input-${image.id}" class="preview-tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? sortTags(image.tags).join(' ') : ''}">
+            <textarea id="preview-tag-input-${image.id}" class="preview-tag-input" placeholder="Add tags (space-separated)..." rows="3">${image.tags ? sortTags(image.tags).join(' ') : ''}</textarea>
             <div id="preview-tag-autocomplete-${image.id}" class="tag-autocomplete"></div>
           </div>
         </div>
@@ -1621,7 +1621,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   }
 
   // Attach tag input with autocomplete and auto-save on blur
-  const previewTagInput = document.getElementById(`preview-tag-input-${image.id}`) as HTMLInputElement;
+  const previewTagInput = document.getElementById(`preview-tag-input-${image.id}`) as HTMLTextAreaElement;
   if (previewTagInput) {
     setupTagAutocomplete(previewTagInput, `preview-tag-autocomplete-${image.id}`, {
       onEnterComplete: async () => {
@@ -2169,7 +2169,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
     </div>
     <div class="metadata-row">
       <div class="tag-input-container">
-        <input type="text" id="lightbox-tag-input" class="tag-input" placeholder="Add tags (space-separated)..." value="${image.tags ? sortTags(image.tags).join(' ') : ''}">
+        <textarea id="lightbox-tag-input" class="tag-input" placeholder="Add tags (space-separated)..." rows="3">${image.tags ? sortTags(image.tags).join(' ') : ''}</textarea>
         <div id="tag-autocomplete" class="tag-autocomplete"></div>
       </div>
     </div>
@@ -2262,7 +2262,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
   });
 
   // Setup tag autocomplete with save callback
-  const input = document.getElementById('lightbox-tag-input') as HTMLInputElement;
+  const input = document.getElementById('lightbox-tag-input') as HTMLTextAreaElement;
   if (input) {
     setupTagAutocomplete(input, 'tag-autocomplete', {
       onEnterComplete: async () => {
@@ -2337,7 +2337,7 @@ interface AutocompleteOptions {
  * Returns updateAvailableTags function if Danbooru syntax is enabled.
  */
 function setupTagAutocomplete(
-  input: HTMLInputElement,
+  input: HTMLInputElement | HTMLTextAreaElement,
   autocompleteId: string,
   options: AutocompleteOptions = {}
 ): { updateAvailableTags?: () => void } {
