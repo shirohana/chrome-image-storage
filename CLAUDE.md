@@ -166,9 +166,14 @@ Export/import with duplicate detection by content fingerprint (not ID).
 
 **Button state management**:
 - `updateButtonStates()` called from `updateSelectionCount()`
-- Disables "Tag Selected", "Delete Selected", "Dump Selected", "Restore Selected" when no selection
+- Disables "Tag Selected", "Delete Selected", "Dump Selected", "Restore Selected", "Deselect All" when no selection
 - Buttons use `:disabled` CSS with 50% opacity and `cursor: not-allowed`
 - **Disabled hover states**: Each button type maintains its specific color on `:disabled:hover` (primary: #007bff, secondary: #6c757d, danger: #dc3545) - prevents visual inconsistency
+
+**Checkbox update optimization**:
+- `createImageCardHTML()` sets initial checkbox state correctly - no post-render updates needed
+- `updateAllCheckboxes()` only updates checkboxes when `cb.checked !== shouldBeChecked` (skip identical state)
+- Reduces unnecessary DOM updates during selection changes and re-renders
 
 ### Keyboard Navigation
 

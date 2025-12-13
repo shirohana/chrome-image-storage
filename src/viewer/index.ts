@@ -1217,6 +1217,7 @@ function renderImages(images: ImageMetadata[]) {
   }
 
   observeImages();
+  // Note: Checkboxes are already correct from createImageCardHTML(), no need to update
 }
 
 function renderUngroupedImages(images: ImageMetadata[]) {
@@ -1427,11 +1428,13 @@ function updateButtonStates() {
   const deleteSelectedBtn = document.getElementById('delete-selected-btn') as HTMLButtonElement;
   const dumpSelectedBtn = document.getElementById('dump-selected-btn') as HTMLButtonElement;
   const restoreSelectedBtn = document.getElementById('restore-selected-btn') as HTMLButtonElement;
+  const deselectAllBtn = document.getElementById('deselect-all-btn') as HTMLButtonElement;
 
   if (tagSelectedBtn) tagSelectedBtn.disabled = !hasSelection;
   if (deleteSelectedBtn) deleteSelectedBtn.disabled = !hasSelection;
   if (dumpSelectedBtn) dumpSelectedBtn.disabled = !hasSelection;
   if (restoreSelectedBtn) restoreSelectedBtn.disabled = !hasSelection;
+  if (deselectAllBtn) deselectAllBtn.disabled = !hasSelection;
 }
 
 function togglePreviewPane() {
@@ -2768,19 +2771,23 @@ function navigateGridByOffsetExpand(offset: number) {
 }
 
 function updateAllCheckboxes() {
+  // Read current checkbox state from DOM and compare with desired state
   const allCheckboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
+
+  // Update only checkboxes that differ from desired state
   allCheckboxes.forEach(cb => {
     const cbId = cb.dataset.id!;
-    const isSelected = state.selectedIds.has(cbId);
-    cb.checked = isSelected;
+    const shouldBeChecked = state.selectedIds.has(cbId);
 
-    // Update card class directly without extra DOM query
-    const card = cb.closest('.image-card');
-    if (card) {
-      if (isSelected) {
-        card.classList.add('selected');
-      } else {
-        card.classList.remove('selected');
+    if (cb.checked !== shouldBeChecked) {
+      cb.checked = shouldBeChecked;
+      const card = cb.closest('.image-card');
+      if (card) {
+        if (shouldBeChecked) {
+          card.classList.add('selected');
+        } else {
+          card.classList.remove('selected');
+        }
       }
     }
   });
@@ -2992,10 +2999,6 @@ document.getElementById('select-all-btn')!.addEventListener('click', () => {
 });
 
 document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
-  const checkboxes = document.querySelectorAll('.image-checkbox') as NodeListOf<HTMLInputElement>;
-  checkboxes.forEach(checkbox => {
-    checkbox.checked = false;
-  });
   state.selectedIds.clear();
   applyFilters();
   updateSelectionCount();
