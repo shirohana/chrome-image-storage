@@ -242,6 +242,10 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
 3. In both interfaces:
    - **Add Tags**: Enter tags to add to all selected images
    - **Remove Tags**: Enter tags to remove from all selected images
+     - **Quick tag pills**: Top 10 most common tags from selected images appear as clickable pills
+     - Pills show tag frequency count (e.g., "girl (15)" means 15 images have this tag)
+     - Click a pill to toggle the tag in/out of the remove input
+     - Active pills are highlighted in blue
    - **Set Rating**: Choose a rating to apply to all selected images (or "No Change")
 4. Click "Apply Changes" (preview pane) or "Save" (modal) to apply changes
 

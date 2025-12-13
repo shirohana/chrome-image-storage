@@ -68,9 +68,9 @@ Always wrap in `.catch()` since viewer may not be open.
 
 1. **CSS**: Use `grid.style.display = ''` to clear inline styles, let CSS control display
 2. **BEM CSS Convention**: All new CSS classes MUST follow BEM naming (Block__Element--Modifier)
-   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`, `.preview-bulk-tag`
-   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`, `.preview-bulk-tag__input`
-   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`, `.preview-bulk-tag__button--primary`
+   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`, `.preview-bulk-tag`, `.bulk-remove-quick-tags`, `.preview-remove-quick-tags`
+   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`, `.preview-bulk-tag__input`, `.bulk-remove-quick-tags__pill`, `.preview-remove-quick-tags__pill`
+   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`, `.preview-bulk-tag__button--primary`, `.bulk-remove-quick-tags__pill--active`
    - **Never use tag selectors** (header, h1, h3, button, etc.) - always use explicit classes
    - **Why BEM**: Prevents class name conflicts, self-documenting, AI-friendly explicit relationships
 3. **Service Worker**: Use `createImageBitmap()` for dimensions, not `new Image()`
@@ -194,6 +194,16 @@ All tag inputs use two-step completion:
 
 Functions: `setupTagAutocomplete()`, `isCurrentTokenIncomplete()`, `completeCurrentToken()`
 Use `mousedown` (not `click`) for autocomplete suggestions to prevent premature blur.
+
+### Bulk Tagging Quick Tag Pills
+
+Quick tag pills for bulk tag removal (both modal and preview pane):
+- `populateQuickRemoveTags()` / `populatePreviewQuickRemoveTags()`: Generates top 10 most common tags from selected images
+- Pills show tag name + frequency count: `${tag} (${count})`
+- `toggleTagInInput()`: Adds/removes tag from input on pill click
+- `updateQuickRemoveTagsState()` / `updatePreviewQuickRemoveTagsState()`: Syncs pill active state with input value
+- Active pills highlighted with `--active` modifier
+- Event listener cleanup: Remove `input` listener in `closeBulkTagModal()` to prevent duplicates
 
 ### Metadata Editing
 

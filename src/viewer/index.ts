@@ -1699,6 +1699,7 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
           <label class="preview-bulk-tag__label">Remove tags</label>
           <input type="text" class="preview-bulk-tag__input" id="preview-remove-tags-input" placeholder="Enter tags to remove">
           <div id="preview-remove-autocomplete" class="tag-autocomplete"></div>
+          <div id="preview-remove-quick-tags" class="preview-remove-quick-tags"></div>
         </div>
         <div class="preview-bulk-tag__section">
           <label class="preview-bulk-tag__label">Set rating</label>
@@ -1780,6 +1781,9 @@ function setupPreviewBulkTagging(images: ImageMetadata[]) {
     }
   });
 
+  // Populate quick remove tag pills
+  populatePreviewQuickRemoveTags(images);
+
   // Save button click handler
   saveBtn.addEventListener('click', applyPreviewBulkTags);
 }
@@ -1836,6 +1840,80 @@ async function applyPreviewBulkTags() {
   // Reload images and update preview
   await loadImages();
   updatePreviewPane();
+}
+
+function populatePreviewQuickRemoveTags(images: ImageMetadata[]) {
+  const quickTagsContainer = document.getElementById('preview-remove-quick-tags');
+  const removeInput = document.getElementById('preview-remove-tags-input') as HTMLInputElement;
+
+  if (!quickTagsContainer || !removeInput) return;
+
+  quickTagsContainer.innerHTML = '';
+
+  // Get tag frequency from selected images
+  const tagFrequency = new Map<string, number>();
+
+  images.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => {
+        tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
+      });
+    }
+  });
+
+  // Sort by frequency and take top tags
+  const sortedTags = Array.from(tagFrequency.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(entry => entry[0]);
+
+  if (sortedTags.length === 0) {
+    quickTagsContainer.style.display = 'none';
+    return;
+  }
+
+  quickTagsContainer.style.display = '';
+
+  sortedTags.forEach(tag => {
+    const pill = document.createElement('button');
+    pill.className = 'preview-remove-quick-tags__pill';
+    const count = tagFrequency.get(tag)!;
+    pill.textContent = `${tag} (${count})`;
+    pill.type = 'button';
+    pill.dataset.tag = tag;
+    pill.addEventListener('click', () => {
+      toggleTagInInput(removeInput, tag);
+      updatePreviewQuickRemoveTagsState();
+      removeInput.focus();
+    });
+    quickTagsContainer.appendChild(pill);
+  });
+
+  // Update initial state
+  updatePreviewQuickRemoveTagsState();
+
+  // Listen to input changes to update pill states
+  removeInput.addEventListener('input', updatePreviewQuickRemoveTagsState);
+}
+
+function updatePreviewQuickRemoveTagsState() {
+  const quickTagsContainer = document.getElementById('preview-remove-quick-tags');
+  const removeInput = document.getElementById('preview-remove-tags-input') as HTMLInputElement;
+
+  if (!quickTagsContainer || !removeInput) return;
+
+  const inputValue = removeInput.value.trim();
+  const tagsInInput = inputValue ? inputValue.split(/\s+/) : [];
+
+  quickTagsContainer.querySelectorAll('.preview-remove-quick-tags__pill').forEach(pill => {
+    const pillElement = pill as HTMLButtonElement;
+    const tag = pillElement.dataset.tag!;
+    if (tagsInInput.includes(tag)) {
+      pillElement.classList.add('preview-remove-quick-tags__pill--active');
+    } else {
+      pillElement.classList.remove('preview-remove-quick-tags__pill--active');
+    }
+  });
 }
 
 function formatFileSize(bytes: number): string {
@@ -3293,12 +3371,101 @@ function openBulkTagModal() {
     }
   });
 
+  // Populate quick remove tag pills
+  populateQuickRemoveTags(selectedImageTags);
+
   // Focus the first input
   bulkAddTagsInput.focus();
 }
 
+function populateQuickRemoveTags(selectedImageTags: Set<string>) {
+  const quickTagsContainer = document.getElementById('bulk-remove-quick-tags')!;
+  quickTagsContainer.innerHTML = '';
+
+  // Get tag frequency from selected images
+  const selectedImages = state.images.filter(img => state.selectedIds.has(img.id));
+  const tagFrequency = new Map<string, number>();
+
+  selectedImages.forEach(img => {
+    if (img.tags && img.tags.length > 0) {
+      img.tags.forEach(tag => {
+        tagFrequency.set(tag, (tagFrequency.get(tag) || 0) + 1);
+      });
+    }
+  });
+
+  // Sort by frequency and take top tags
+  const sortedTags = Array.from(tagFrequency.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(entry => entry[0]);
+
+  if (sortedTags.length === 0) {
+    quickTagsContainer.style.display = 'none';
+    return;
+  }
+
+  quickTagsContainer.style.display = '';
+
+  sortedTags.forEach(tag => {
+    const pill = document.createElement('button');
+    pill.className = 'bulk-remove-quick-tags__pill';
+    const count = tagFrequency.get(tag)!;
+    pill.textContent = `${tag} (${count})`;
+    pill.type = 'button';
+    pill.dataset.tag = tag;
+    pill.addEventListener('click', () => {
+      toggleTagInInput(bulkRemoveTagsInput, tag);
+      updateQuickRemoveTagsState();
+      bulkRemoveTagsInput.focus();
+    });
+    quickTagsContainer.appendChild(pill);
+  });
+
+  // Update initial state
+  updateQuickRemoveTagsState();
+
+  // Listen to input changes to update pill states
+  bulkRemoveTagsInput.addEventListener('input', updateQuickRemoveTagsState);
+}
+
+function updateQuickRemoveTagsState() {
+  const quickTagsContainer = document.getElementById('bulk-remove-quick-tags')!;
+  const inputValue = bulkRemoveTagsInput.value.trim();
+  const tagsInInput = inputValue ? inputValue.split(/\s+/) : [];
+
+  quickTagsContainer.querySelectorAll('.bulk-remove-quick-tags__pill').forEach(pill => {
+    const pillElement = pill as HTMLButtonElement;
+    const tag = pillElement.dataset.tag!;
+    if (tagsInInput.includes(tag)) {
+      pillElement.classList.add('bulk-remove-quick-tags__pill--active');
+    } else {
+      pillElement.classList.remove('bulk-remove-quick-tags__pill--active');
+    }
+  });
+}
+
+function toggleTagInInput(input: HTMLInputElement, tag: string) {
+  const currentValue = input.value.trim();
+  const existingTags = currentValue ? currentValue.split(/\s+/) : [];
+
+  if (existingTags.includes(tag)) {
+    // Remove tag
+    const newTags = existingTags.filter(t => t !== tag);
+    input.value = newTags.join(' ');
+  } else {
+    // Add tag
+    const newValue = existingTags.length > 0
+      ? `${currentValue} ${tag}`
+      : tag;
+    input.value = newValue;
+  }
+}
+
 function closeBulkTagModal() {
   bulkTagModal.classList.remove('active');
+  // Remove event listener to prevent duplicates
+  bulkRemoveTagsInput.removeEventListener('input', updateQuickRemoveTagsState);
 }
 
 async function saveBulkTags() {
