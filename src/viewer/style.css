@@ -1170,6 +1170,9 @@ body.preview-pane-open .page-container {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .preview-thumbnail {

@@ -223,7 +223,7 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
 
 **Lightbox**: Click any image to view it in full size. Use arrow keys to navigate between images. Close with Space, Escape, × button, or by clicking outside.
 
-**Preview Pane**: Toggle the preview pane to see details about selected images. Shows full preview + metadata for single selection, or a thumbnail grid with bulk tagging tool for multiple selections.
+**Preview Pane**: Toggle the preview pane to see details about selected images. Shows full preview + metadata for single selection, or a thumbnail grid with bulk tagging tool for multiple selections. Preview thumbnails are now scrollable to accommodate large selections.
 
 ### Tagging Images
 

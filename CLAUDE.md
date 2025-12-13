@@ -207,7 +207,7 @@ Quick tag pills for bulk tag removal (both modal and preview pane):
 
 ### Metadata Editing
 
-**Preview Sidebar**: Always editable, auto-save on blur
+**Preview Sidebar**: Always editable, auto-save on blur. Preview thumbnails in the preview sidebar are now scrollable to accommodate large selections.
 **Lightbox**: Read-only by default, click "Edit" to enable editing
 Both update `updatedAt` timestamp on save.
 
