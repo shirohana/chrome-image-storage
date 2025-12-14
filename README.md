@@ -42,6 +42,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 ### Tag Management
 - **Individual tagging**: Add tags to images with autocomplete
 - **Bulk tag operations**: Add or remove tags from multiple images at once
+- **Context menu removal**: Right-click on a tag to quickly remove it from the image
 - **Auto-tagging rules**: Automatically apply tags to new images based on page title patterns
 - **Alphabetical sorting**: Tags are automatically sorted alphabetically (case-insensitive)
   - "cat girl" and "girl cat" both result in ["cat", "girl"]
@@ -56,6 +57,7 @@ A Chrome extension that allows you to save web images locally (not just URLs) an
 ### Rating Management
 - **Individual rating**: Set content rating for images (General/Sensitive/Questionable/Explicit)
 - **Bulk rating operations**: Set rating for multiple images at once
+- **Context menu rating**: Right-click on image or rating badge for quick rating change menu
 - **Rating tags**: Apply `rating:g`, `rating:s`, `rating:q`, or `rating:e` tags to automatically set rating
 - **Quick rating filter**: Click rating pills above tag sidebar for fast multi-select filtering
   - Pills show image counts for each rating based on current filters (e.g., "G 42", "S 15")
@@ -249,6 +251,10 @@ When sorted by "Recently updated", any metadata changes automatically re-sort th
    - **Set Rating**: Choose a rating to apply to all selected images (or "No Change")
 4. Click "Apply Changes" (preview pane) or "Save" (modal) to apply changes
 
+**Remove tags quickly**:
+- **Right-click on any tag** on an image card to open the tag context menu
+- Click "Remove tag" to instantly remove that tag from the image
+
 **Filter by tags and accounts**:
 - **Click tags on image cards** to toggle them in the tag search (click again to remove)
 - **Click account button** (e.g., `@username`) on X/Twitter images to toggle account filter
@@ -295,8 +301,8 @@ When you save a new image, all enabled rules that match the page title will auto
 Images can have content ratings to help organize and filter them:
 
 **Set rating for single image**:
-1. Select an image and open the preview pane
-2. Choose a rating using the radio buttons:
+1. **Quick method**: Right-click on the image or rating badge, select rating from context menu
+2. **Preview pane method**: Select an image and open the preview pane, choose a rating using the radio buttons:
    - **General (G)**: Safe for work content
    - **Sensitive (S)**: Slightly suggestive content
    - **Questionable (Q)**: Questionable/suggestive content

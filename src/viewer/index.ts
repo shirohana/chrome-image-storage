@@ -32,6 +32,12 @@ const state = {
   selectionAnchor: -1,
 };
 
+// Context menu state
+let ratingContextMenu: HTMLElement | null = null;
+let tagContextMenu: HTMLElement | null = null;
+let contextMenuTargetImageId: string | null = null;
+let contextMenuTargetTag: string | null = null;
+
 // Settings
 async function loadSettings() {
   const result = await chrome.storage.local.get(['showNotifications']);
@@ -1062,6 +1068,83 @@ function revokeObjectURL(imageId: string) {
     URL.revokeObjectURL(url);
     state.objectUrls.delete(imageId);
   }
+}
+
+// Context menu for rating changes
+function createRatingContextMenu(): HTMLElement {
+  const menu = document.createElement('div');
+  menu.id = 'rating-context-menu';
+  menu.className = 'rating-context-menu';
+
+  const ratingOptions = [
+    { value: 'g', label: 'G', color: '#28a745' },
+    { value: 's', label: 'S', color: '#ffc107' },
+    { value: 'q', label: 'Q', color: '#fd7e14' },
+    { value: 'e', label: 'E', color: '#dc3545' },
+    { value: '', label: 'Unrated', color: '#6c757d' }
+  ];
+
+  menu.innerHTML = ratingOptions.map(opt => `
+    <button class="rating-context-menu__option" data-rating="${opt.value}">
+      <span class="rating-context-menu__badge" style="background-color: ${opt.color}"></span>
+      <span class="rating-context-menu__label">${opt.label}</span>
+    </button>
+  `).join('');
+
+  return menu;
+}
+
+// Context menu for tag removal
+function createTagContextMenu(): HTMLElement {
+  const menu = document.createElement('div');
+  menu.id = 'tag-context-menu';
+  menu.className = 'tag-context-menu';
+
+  menu.innerHTML = `
+    <button class="tag-context-menu__option tag-context-menu__option--remove">
+      <span class="tag-context-menu__label">Remove tag</span>
+    </button>
+  `;
+
+  return menu;
+}
+
+function positionContextMenu(menu: HTMLElement, x: number, y: number): void {
+  // Show menu temporarily to measure dimensions
+  menu.style.display = 'block';
+  const rect = menu.getBoundingClientRect();
+
+  // Calculate position, keeping menu within viewport
+  let left = x;
+  let top = y;
+
+  // Prevent overflow on right
+  if (left + rect.width > window.innerWidth) {
+    left = window.innerWidth - rect.width - 10;
+  }
+
+  // Prevent overflow on bottom
+  if (top + rect.height > window.innerHeight) {
+    top = window.innerHeight - rect.height - 10;
+  }
+
+  // Prevent overflow on left/top
+  left = Math.max(10, left);
+  top = Math.max(10, top);
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function closeContextMenus(): void {
+  if (ratingContextMenu) {
+    ratingContextMenu.style.display = 'none';
+  }
+  if (tagContextMenu) {
+    tagContextMenu.style.display = 'none';
+  }
+  contextMenuTargetImageId = null;
+  contextMenuTargetTag = null;
 }
 
 // Create image card HTML (shared by grouped and ungrouped rendering)
@@ -2928,6 +3011,117 @@ ratingPills.forEach((pill) => {
 
 // Event delegation for image grid
 const imageGrid = document.getElementById('image-grid')!;
+
+// Initialize context menus
+ratingContextMenu = createRatingContextMenu();
+tagContextMenu = createTagContextMenu();
+document.body.appendChild(ratingContextMenu);
+document.body.appendChild(tagContextMenu);
+
+// Show appropriate context menu based on target element
+imageGrid.addEventListener('contextmenu', (e: MouseEvent) => {
+  const target = e.target as HTMLElement;
+  const card = target.closest('.image-card');
+
+  if (!card) return;
+
+  const imageId = card.getAttribute('data-id');
+  if (!imageId) return;
+
+  // Check what element was right-clicked
+  // 1. Image preview or rating badge → show rating menu
+  if (target.matches('.image-preview') || target.closest('.rating-badge')) {
+    e.preventDefault();
+    closeContextMenus(); // Close any open menu first
+    contextMenuTargetImageId = imageId;
+    positionContextMenu(ratingContextMenu!, e.clientX, e.clientY);
+    ratingContextMenu!.style.display = 'block';
+    return;
+  }
+
+  // 2. Tag → show tag removal menu
+  if (target.matches('.image-tags__tag')) {
+    e.preventDefault();
+    const tag = target.getAttribute('data-tag');
+    if (!tag) return;
+
+    closeContextMenus(); // Close any open menu first
+    contextMenuTargetImageId = imageId;
+    contextMenuTargetTag = tag;
+    positionContextMenu(tagContextMenu!, e.clientX, e.clientY);
+    tagContextMenu!.style.display = 'block';
+    return;
+  }
+
+  // 3. Other areas of card → allow browser's default context menu
+  // Close custom menus if open
+  closeContextMenus();
+});
+
+// Handle rating option clicks
+ratingContextMenu.addEventListener('click', async (e: Event) => {
+  const target = e.target as HTMLElement;
+  const option = target.closest('.rating-context-menu__option') as HTMLElement;
+
+  if (!option || !contextMenuTargetImageId) return;
+
+  const ratingValue = option.getAttribute('data-rating') || undefined;
+
+  const { updateImageRating } = await import('../storage/service');
+  await updateImageRating(contextMenuTargetImageId, ratingValue as any);
+
+  syncImageMetadataToState(contextMenuTargetImageId, 'rating', ratingValue as any);
+
+  closeContextMenus();
+});
+
+// Handle tag removal clicks
+tagContextMenu.addEventListener('click', async (e: Event) => {
+  const target = e.target as HTMLElement;
+  const option = target.closest('.tag-context-menu__option');
+
+  if (!option || !contextMenuTargetImageId || !contextMenuTargetTag) return;
+
+  const image = state.images.find(img => img.id === contextMenuTargetImageId);
+  if (!image || !image.tags) return;
+
+  const updatedTags = image.tags.filter(t => t !== contextMenuTargetTag);
+
+  const { updateImageTags } = await import('../storage/service');
+  await updateImageTags(contextMenuTargetImageId, updatedTags);
+
+  syncImageMetadataToState(contextMenuTargetImageId, 'tags', updatedTags);
+
+  closeContextMenus();
+});
+
+// Close context menus on click outside
+document.addEventListener('click', (e: Event) => {
+  const target = e.target as HTMLElement;
+  const clickedInRatingMenu = ratingContextMenu?.contains(target);
+  const clickedInTagMenu = tagContextMenu?.contains(target);
+
+  if (!clickedInRatingMenu && !clickedInTagMenu) {
+    closeContextMenus();
+  }
+});
+
+// Close context menus on ESC key
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    closeContextMenus();
+  }
+});
+
+// Close context menus on scroll
+imageGrid.addEventListener('scroll', () => {
+  closeContextMenus();
+}, { passive: true });
+
+// Also close on window scroll (in case of page-level scrolling)
+window.addEventListener('scroll', () => {
+  closeContextMenus();
+}, { passive: true, capture: true }); // Passive for performance, capture to catch all scroll events
 
 imageGrid.addEventListener('click', (e: Event) => {
   const target = e.target as HTMLElement;

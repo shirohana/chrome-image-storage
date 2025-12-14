@@ -68,9 +68,9 @@ Always wrap in `.catch()` since viewer may not be open.
 
 1. **CSS**: Use `grid.style.display = ''` to clear inline styles, let CSS control display
 2. **BEM CSS Convention**: All new CSS classes MUST follow BEM naming (Block__Element--Modifier)
-   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`, `.preview-bulk-tag`, `.bulk-remove-quick-tags`, `.preview-remove-quick-tags`
-   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`, `.preview-bulk-tag__input`, `.bulk-remove-quick-tags__pill`, `.preview-remove-quick-tags__pill`
-   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`, `.preview-bulk-tag__button--primary`, `.bulk-remove-quick-tags__pill--active`
+   - Block: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`, `.preview-bulk-tag`, `.bulk-remove-quick-tags`, `.preview-remove-quick-tags`, `.rating-context-menu`, `.tag-context-menu`
+   - Element: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`, `.preview-bulk-tag__input`, `.bulk-remove-quick-tags__pill`, `.preview-remove-quick-tags__pill`, `.rating-context-menu__option`, `.rating-context-menu__badge`, `.rating-context-menu__label`, `.tag-context-menu__option`, `.tag-context-menu__label`
+   - Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`, `.preview-bulk-tag__button--primary`, `.bulk-remove-quick-tags__pill--active`, `.tag-context-menu__option--remove`
    - **Never use tag selectors** (header, h1, h3, button, etc.) - always use explicit classes
    - **Why BEM**: Prevents class name conflicts, self-documenting, AI-friendly explicit relationships
 3. **Service Worker**: Use `createImageBitmap()` for dimensions, not `new Image()`
@@ -117,6 +117,24 @@ No state properties - all filter state derived from search input value.
 - Button only shown when `getXAccountFromUrl()` extracts account from pageUrl
 - Active state highlighted green (`.image-account-btn--active`)
 - Appears below tags on image cards
+
+### Context Menus
+
+**Context-aware right-click menus** (`src/viewer/index.ts`):
+- **Image/Rating Badge**: Right-click shows rating context menu (G/S/Q/E/Unrated)
+  - `ratingContextMenu`: Created once, positioned on demand
+  - Updates rating via `updateImageRating()` + `syncImageMetadataToState()`
+- **Tag**: Right-click shows tag removal context menu
+  - `tagContextMenu`: Single "Remove tag" option
+  - Removes tag via `updateImageTags()` + `syncImageMetadataToState()`
+- **Other card areas**: Allow browser's default context menu
+
+**Implementation details**:
+- Two separate menus: `ratingContextMenu`, `tagContextMenu`
+- `closeContextMenus()`: Closes all custom menus, called before opening new menu
+- `positionContextMenu()`: Smart positioning to keep menu within viewport
+- Menus close on: option select, click outside, ESC key, scroll (passive listeners)
+- BEM classes: `.rating-context-menu`, `.tag-context-menu` with `__option`, `__badge`, `__label` elements
 
 ### Tag Sidebar
 
