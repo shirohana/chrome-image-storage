@@ -6,6 +6,29 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 Early prototype with core features completed. Keep it simple and make it work first.
 
+## Project Purpose
+
+**Primary goal**: Help people who like to save images from the internet.
+
+**Core problem solved**:
+- Downloading images to a folder loses source context (URL, page title, timestamp)
+- No built-in management tools for downloaded images
+
+**Primary features** (core value):
+1. Save images WITH source metadata (URL, page title, timestamp)
+2. Browse and search saved images
+3. Preserve images locally (won't disappear when source goes down)
+
+**Supporting features** (management tools):
+- Tagging system (manual + auto-tagging rules)
+- Rating system (G/S/Q/E)
+- Danbooru-style tag search
+- Bulk operations (tag, rate, delete, export)
+- SQLite backup/restore
+- Danbooru upload integration
+
+When writing documentation or adding features, prioritize communicating the core value: **saving images with their context** and **managing them effectively**. Advanced features are tools that support this goal, not the main story.
+
 ## Anti-Duplication Rules (CRITICAL)
 
 **Lessons from production bugs:**

@@ -1,558 +1,435 @@
-# Chrome Extension Image Storage
+# Chrome Image Storage
 
-A Chrome extension that allows you to save web images locally (not just URLs) and manage them with a built-in viewer. Export your saved images as a ZIP file with metadata.
+> Save web images with their source context. Never lose where an image came from.
 
-## Features
+A Chrome extension for people who save images from the internet. Unlike "Save Image As...", this preserves the source URL, page title, and timestamp. Plus powerful management tools: tag search, ratings, bulk operations, and backups.
 
-### Core Features
-- **Right-click to save**: Right-click any image and select "Save to Image Storage"
-- **Local storage**: Images are saved as blobs in IndexedDB (not just URLs)
-- **Metadata tracking**: Saves image URL, source page, dimensions, file size, and type
-- **Image viewer**: Click the extension icon to view all saved images
-- **Grid view**: Browse images in a responsive grid layout
-- **Native context menu**: Extension adds menu item alongside browser's default menu
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 
-### Organization & Filtering
-- **Search**: Filter images by image URL, page URL, or page title
-- **Danbooru-style tag search**: Unified search syntax for powerful filtering
-  - Tag search (AND): `girl cat` - Images with both tags
-  - OR operator: `girl or cat` - Images with either tag
-  - Exclude tags: `-dog` - Images without specific tags
-  - Rating filter: `rating:s` or `rating:g,s` - Filter by ratings
-  - Type filter: `is:png` or `is:jpg,webp` - Filter by image types
-  - Tag count filter: `tagcount:2`, `tagcount:>5`, `tagcount:1..10` - Filter by tag count
-  - Account filter: `account:username` or `account:user1,user2` - Filter by X/Twitter account
-  - Exclude accounts: `-account:username` - Exclude specific accounts
-  - Unrated filter: `is:unrated` - Show only unrated images
-  - Combine filters: `girl cat -dog rating:s is:png account:artist123` - Mix any filters
-- **Tag sidebar**: Dynamic sidebar showing tags from filtered results
-  - Click tag name to include/remove from search
-  - Click + to include, - to exclude tags
-  - Selected tags highlighted and sorted to top
-  - Always shows active filters even with 0 results
-- **Account sidebar**: Shows when grouping by X account
-  - Lists X/Twitter accounts with image counts (sorted by count)
-  - Click account name to include/remove from search
-  - Click + to include, - to exclude accounts
-  - Works alongside tag filters for combined filtering
-- **Sorting**: Sort by saved date, updated date, file size, dimensions, or URL
-- **Grouping**: Organize images by X/Twitter account or show duplicates
-- **Duplicate detection**: Groups images by dimensions + file size to find duplicates
+---
 
-### Tag Management
-- **Individual tagging**: Add tags to images with autocomplete
-- **Bulk tag operations**: Add or remove tags from multiple images at once
-- **Context menu removal**: Right-click on a tag to quickly remove it from the image
-- **Auto-tagging rules**: Automatically apply tags to new images based on page title patterns
-- **Alphabetical sorting**: Tags are automatically sorted alphabetically (case-insensitive)
-  - "cat girl" and "girl cat" both result in ["cat", "girl"]
-  - Ensures consistent tag order across all images
-  - Applies to both new saves and display rendering
-- **Clickable tags**: Click tags on image cards to toggle them in/out of search
-- **Tag sidebar**: Interactive sidebar for quick tag filtering
-  - Shows tags from currently filtered results
-  - Click tag names to add/remove filters
-  - Visual highlighting for included (green) and excluded (red) tags
+**📌 Project Status:** This is an **AI-maintained** project (using Claude Code) in **early stage** for personal use. Expect active development and potential bugs. See [Contributing](#contributing) for details.
 
-### Rating Management
-- **Individual rating**: Set content rating for images (General/Sensitive/Questionable/Explicit)
-- **Bulk rating operations**: Set rating for multiple images at once
-- **Context menu rating**: Right-click on image or rating badge for quick rating change menu
-- **Rating tags**: Apply `rating:g`, `rating:s`, `rating:q`, or `rating:e` tags to automatically set rating
-- **Quick rating filter**: Click rating pills above tag sidebar for fast multi-select filtering
-  - Pills show image counts for each rating based on current filters (e.g., "G 42", "S 15")
-- **Color-coded badges**: Visual indicators on image cards (Green/Yellow/Orange/Red)
-- **Danbooru integration**: Ratings automatically pre-fill when uploading to Danbooru
+---
 
-### Selection & Bulk Operations
-- **Multi-select**: Select multiple images with checkboxes or by clicking card area
-- **Click to select/deselect**: Click on image card (outside image/tags/buttons) to toggle selection
-- **Select all**: Quickly select or deselect all visible images
-- **Keyboard navigation**: Arrow keys to navigate, Shift+Arrow for range selection
-- **Disabled buttons**: Selection-dependent buttons (Tag/Delete/Dump Selected) disabled when nothing selected
-- **Bulk delete**: Delete selected images
-- **Bulk export**: Export selected images as a ZIP
-- **Bulk tagging**: Add or remove tags from selected images
-- **Bulk rating**: Set content rating for selected images
+## The Problem
 
-### Trash & Restore
-- **Soft delete**: Deleted images move to trash instead of permanent deletion
-- **Trash view**: View and manage deleted images separately
-- **Restore**: Recover images from trash
-- **Permanent delete**: Delete images forever from trash
-- **Empty trash**: Clear all trashed images at once
+When you download images to a folder:
+- ❌ No source URL - can't find the original page
+- ❌ No page title - can't remember the context
+- ❌ No timestamps - can't sort by when you saved it
+- ❌ No search or filtering - just a pile of files
 
-### Viewing & Preview
-- **Lightbox**: Click images to view full-size with keyboard navigation
-- **Preview pane**: Collapsible side panel showing selected image details and metadata
-- **View page button**: Open the original source page in a new tab
-- **Notes panel**: Persistent textarea for temporary notes, positioned below tag sidebar
-  - Auto-saves content to local storage with 500ms debounce
-  - Collapsible with toggle button (expanded by default)
-  - Content persists across page refreshes
-  - Perfect for temporary URLs, tag planning, or quick reminders
+## The Solution
 
-### Metadata Management
-- **Local file upload**: Import images from your computer via "Upload" button in header
-- **Edit metadata**: Update page title and page URL for individual images
-  - **Preview sidebar**: Always editable inputs with auto-save on blur (quick editing)
-  - **Lightbox**: Read-only by default, click "Edit Metadata" to enable editing
-- **Auto-tagging on import**: Local uploads automatically apply auto-tagging rules based on filename
+This extension saves images **with full context** in your browser's local storage:
+- ✅ Source URL and page title preserved
+- ✅ Save timestamp and dimensions tracked
+- ✅ Powerful search and filtering (Danbooru-style tag search)
+- ✅ Organize with tags and ratings
+- ✅ Bulk operations and backups
+- ✅ Everything stored locally - no cloud, no tracking
 
-### Import & Export
-- **Upload from computer**: Import images from local files via header button
-- **ZIP export**: Export all or selected images as a ZIP with metadata.json
-- **SQLite export**: Export database as SQLite format for backups with folder picker
-- **Progress indicator**: Visual progress modal shows export status in real-time
-- **Multi-file export**: Automatically splits large datasets into multiple files (200 images per file)
-- **Memory efficient**: Batched processing prevents memory allocation errors with thousands of images
-- **SQLite import**: Import from SQLite backups with multi-file selection support
-- **Conflict resolution**: Choose to skip, override, or review conflicts individually
+## Screenshots
 
-### Danbooru Integration
-- **Upload to Danbooru**: Upload images to self-hosted Danbooru instances
-- **Auto-fill metadata**: Automatically extracts tags, artist, and source from images
-- **Artist detection**: Recognizes artists from Pixiv, Twitter, Fanbox, DeviantArt, ArtStation URLs
-- **Settings**: Configure Danbooru instance URL, username, and API key
+![screenshot-2025-12-14](./screenshots/screenshot-2025-12-14.jpg)
 
-## Installation
+## Quick Start
 
-### Development Mode
+### Installation
 
-1. Clone this repository
-2. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-3. Build the extension:
-   ```bash
-   pnpm build
-   ```
-4. Load the extension in Chrome:
-   - Open Chrome and navigate to `chrome://extensions/`
+**For normal users** (recommended):
+1. Download the latest release from [Releases](https://github.com/shirohana/chrome-image-storage/releases)
+2. Extract the ZIP file
+3. Load in Chrome:
+   - Open `chrome://extensions/`
    - Enable "Developer mode" (top right)
    - Click "Load unpacked"
-   - Select the `dist` folder from this project
+   - Select the extracted folder
 
-### Development with Hot Reload
+**For developers** (build from source):
+1. Clone this repository
+2. Install dependencies: `pnpm install`
+3. Build: `pnpm build`
+4. Load the `dist/` folder in Chrome (same steps as above)
 
-```bash
-pnpm dev
-```
+### Upgrading to a New Version
 
-This will watch for changes and rebuild automatically.
+⚠️ **CRITICAL: To keep your saved images when upgrading:**
 
-## Usage
+1. Download the new release ZIP
+2. Extract to the **SAME folder** where you first installed the extension
+3. **Override all files** when prompted
+4. Reload the extension in Chrome (`chrome://extensions/` → click reload button)
+
+**⚠️ Data loss scenarios (AVOID THESE):**
+- ❌ **Uninstalling the extension** - Deletes all IndexedDB data permanently
+- ❌ **Loading from a different folder** - Creates new extension instance, old data inaccessible
+- ❌ **Deleting the installation folder** - Data stays in browser but extension won't work
+
+**To backup before upgrading:**
+1. Open the viewer
+2. Settings → "Export Database" → Save SQLite backup
+3. Now safe to upgrade or reinstall
+4. If needed, use "Import" button to restore data
+
+### First Steps (5 minutes)
+
+1. **Save an image**: Right-click any image → "Save to Image Storage"
+2. **View your library**: Click the extension icon → opens viewer in new tab
+3. **See the metadata**: Click an image to see source URL, page title, dimensions
+4. **Try searching**: Use the search bar to filter by URL or page title
+5. **Add tags**: Select an image → add tags in the preview pane → start organizing
+
+## Core Features
+
+### Save Images with Context
+- **Right-click to save** - Works alongside browser's default menu
+- **Full metadata** - Source URL, page title, timestamp, dimensions, file size
+- **True local storage** - Images saved as complete files in IndexedDB (not just URLs)
+- **Never breaks** - Images preserved even if source page disappears
+
+### Browse and Search
+- **Grid view** - Responsive layout with lazy loading for thousands of images
+- **URL/Page search** - Filter by image URL, source page URL, or page title
+- **Lightbox viewer** - Full-size view with keyboard navigation
+- **Sorting** - By save date, updated date, file size, dimensions, or URL
+
+### Organize with Tags and Ratings
+- **Tag images** - Add/remove tags with autocomplete suggestions
+- **Rating system** - Content ratings (General/Sensitive/Questionable/Explicit)
+- **Danbooru-style tag search** - Complex queries like `girl cat -dog rating:s is:png`
+- **Tag sidebar** - Interactive filtering with included (green) and excluded (red) tags
+- **Clickable tags** - Click tags on cards to toggle them in/out of search
+
+### Bulk Operations
+- **Multi-select** - Checkboxes, click to select, keyboard navigation (Shift+Arrow)
+- **Bulk tagging** - Add/remove tags from multiple images at once
+- **Bulk rating** - Set ratings for selections
+- **Bulk export** - ZIP export with metadata
+- **Bulk delete** - Soft delete to trash (can restore)
+
+### Advanced Management
+- **Auto-tagging rules** - Automatically tag new images based on page title patterns
+- **Duplicate detection** - Find images with matching dimensions and file size
+- **Account grouping** - Organize images by X/Twitter account
+- **SQLite backup** - Export/import full database with conflict resolution
+- **Edit metadata** - Update page title and source URL for any image
+
+## Usage Guide
 
 ### Saving Images
 
 1. Right-click on any image on a webpage
 2. Select "Save to Image Storage" from the context menu
-3. A notification will confirm the image was saved
+3. A notification confirms the image was saved
+4. Click the extension icon to view your library
 
-### Viewing Saved Images
+### Searching and Filtering
 
-1. Click the extension icon in your toolbar
-2. This opens the image viewer in a new tab
-3. View all your saved images with their metadata
+**URL/Page Search** (top search bar):
+- Filter by image URL, source page URL, or page title
+- Example: `pixiv` finds all images from Pixiv
 
-### Managing Images
+**Tag Search** (bottom search bar) - Danbooru-style syntax:
 
-**URL/Page Search**: Use the top search bar to filter images by image URL, source page URL, or page title.
+| Syntax | Meaning | Example |
+|--------|---------|---------|
+| `girl cat` | AND - both tags required | Images with girl AND cat |
+| `girl or cat` | OR - either tag | Images with girl OR cat |
+| `-dog` | Exclude tag | Images WITHOUT dog |
+| `rating:g,s` | Rating filter | General OR Sensitive |
+| `is:png,jpg` | File type filter | PNG OR JPEG images |
+| `tagcount:>5` | Tag count filter | More than 5 tags |
+| `tagcount:2..10` | Tag count range | Between 2-10 tags |
+| `account:username` | Account filter | From X/Twitter account |
+| `is:unrated` | Unrated filter | No rating set |
 
-**Tag Search**: Use the bottom search bar with Danbooru-style syntax for powerful filtering. Features autocomplete suggestions as you type (first match auto-selected, press Enter to accept).
-
-**Basic Tag Search**:
-- `girl cat` - Images with BOTH tags (AND logic)
-- `girl or cat` - Images with EITHER tag (OR logic)
-- `-dog` - Exclude images with "dog" tag
-- `girl cat -dog` - Combine: has girl AND cat, but NOT dog
-
-**Rating Filter**:
-- `rating:g` - General only
-- `rating:s` - Sensitive only
-- `rating:g,s` - General OR Sensitive (comma-separated)
-- `is:unrated` - Show only unrated images
-
-**Type Filter**:
-- `is:png` - PNG images only
-- `is:jpg` or `is:jpeg` - JPEG images
-- `is:webp`, `is:gif`, `is:svg` - Other formats
-- `is:png,jpg` - PNG OR JPEG (comma-separated)
-
-**Tag Count Filter**:
-- `tagcount:2` - Exactly 2 tags
-- `tagcount:1,3,5` - 1, 3, or 5 tags (list)
-- `tagcount:>5` - More than 5 tags
-- `tagcount:<3` - Less than 3 tags
-- `tagcount:>=2` - 2 or more tags
-- `tagcount:<=10` - 10 or fewer tags
-- `tagcount:1..10` - Between 1-10 tags (range)
-
-**Account Filter** (X/Twitter only):
-- `account:username` - Images from specific account
-- `account:user1,user2` - Images from multiple accounts (OR logic)
-- `-account:spammer` - Exclude images from specific account
-
-**Combine Everything**:
-- `girl cat -dog rating:s is:png tagcount:>2 account:artist123` - Mix any filters
-- `pixiv tagcount:2,4` - Pixiv images with 2 or 4 tags
-- `account:myartist rating:g` - Images from myartist with General rating
+**Combine filters**: `girl cat -dog rating:s is:png tagcount:>2 account:artist123`
 
 **Tag Sidebar**:
-- Left sidebar shows tags from currently filtered results
-- **Click tag name** to include (or remove if already selected)
-- **Click +** to include tag in search
-- **Click -** to exclude tag from search
-- Selected tags highlighted: green (included), red (excluded)
-- Selected tags always visible at top, even with 0 results
+- Shows tags from filtered results
+- Click tag name to include/remove from search
+- Click **+** to include, **-** to exclude
+- Highlighted tags: green (included), red (excluded)
 
-**Sorting**: Sort images using the sort dropdown with multiple options:
-- **Newest/Oldest first**: Sort by original save date
-- **Recently updated/Least recently updated**: Sort by last modification time (tags, rating, title, URL changes)
-- **Largest/Smallest file size**: Sort by image file size
-- **Biggest/Smallest dimensions**: Sort by image dimensions (width × height)
-- **URL (A-Z/Z-A)**: Sort alphabetically by image URL
+**Sorting**: By save date, updated date, file size, dimensions, or URL
 
-When sorted by "Recently updated", any metadata changes automatically re-sort the list to show the updated image at the top.
-
-**Grouping**:
-- **Group by X Account**: Organize images by X/Twitter account (sorted by image count)
-  - Shows account sidebar for filtering by account
-  - Both tag sidebar and account sidebar visible for combined filtering
-  - Images displayed in grid layout within each account section
-- **Show Duplicates**: Find images with matching dimensions and file size
-
-**Lightbox**: Click any image to view it in full size. Use arrow keys to navigate between images. Close with Space, Escape, × button, or by clicking outside.
-
-**Preview Pane**: Toggle the preview pane to see details about selected images. Shows full preview + metadata for single selection, or a thumbnail grid with bulk tagging tool for multiple selections. Preview thumbnails are now scrollable to accommodate large selections.
+**Grouping**: Group by X/Twitter account or show duplicates (matching dimensions + file size)
 
 ### Tagging Images
 
-**Add tags to single image**:
-1. Select an image and open the preview pane or lightbox
-2. Enter tags in the tag input field (space-separated, multi-line textarea)
-3. Use autocomplete suggestions (first match auto-selected when typing, press Enter to accept)
-4. Tags auto-save when you press Enter or blur the input (click away)
-5. Textarea supports multi-line editing and vertical resizing for easier tag management
+**Single image**:
+1. Select image → open preview pane or lightbox
+2. Enter tags (space-separated, supports multi-line textarea)
+3. Use autocomplete (press Enter to accept)
+4. Auto-saves on blur
 
-**Bulk tag operations**:
-1. Select multiple images using checkboxes
-2. Use either:
-   - **Preview Pane**: Bulk tagging tool appears below thumbnails in the preview pane
-   - **Tag Selected Button**: Opens a modal with bulk tagging options
-3. In both interfaces:
-   - **Add Tags**: Enter tags to add to all selected images
-   - **Remove Tags**: Enter tags to remove from all selected images
-     - **Quick tag pills**: Top 10 most common tags from selected images appear as clickable pills
-     - Pills show tag frequency count (e.g., "girl (15)" means 15 images have this tag)
-     - Click a pill to toggle the tag in/out of the remove input
-     - Active pills are highlighted in blue
-   - **Set Rating**: Choose a rating to apply to all selected images (or "No Change")
-4. Click "Apply Changes" (preview pane) or "Save" (modal) to apply changes
+**Bulk tagging**:
+1. Select multiple images with checkboxes
+2. Click "Tag Selected" button or use preview pane bulk tool
+3. Add tags, remove tags, or set rating
+4. **Quick removal pills**: Top 10 common tags shown as clickable pills with counts
+5. Click "Save" to apply
 
-**Remove tags quickly**:
-- **Right-click on any tag** on an image card to open the tag context menu
-- Click "Remove tag" to instantly remove that tag from the image
-
-**Filter by tags and accounts**:
-- **Click tags on image cards** to toggle them in the tag search (click again to remove)
-- **Click account button** (e.g., `@username`) on X/Twitter images to toggle account filter
-  - Button appears below tags on image cards
-  - Gray when inactive, green when filtering by that account
-  - Click to add `account:username` filter, click again to remove
-- **Use tag sidebar** for quick filtering:
-  - Click any tag name to include it in search
-  - Click + button to include tag
-  - Click - button to exclude tag
-  - Click selected tag name again to remove from search
-- **Use tag search syntax** for complex queries:
-  - `girl cat` - AND logic (both tags required)
-  - `girl or cat` - OR logic (either tag)
-  - `-dog` - Exclude specific tags
-  - Combine: `girl cat or boy -dog`
-- Active filtered tags are highlighted in green on image cards
-- Active account buttons are highlighted in green on image cards
-- Selected tags in sidebar are highlighted (green = included, red = excluded)
-
-**Auto-tagging rules**:
-1. Open Settings (⚙ button in header)
-2. Scroll to "Auto-Tagging Rules" section
-3. Create a rule:
-   - **Rule Name**: Descriptive name (e.g., "Pixiv Images")
-   - **Pattern**: Text or regex to match page title (leave empty to match all images)
-   - **Use Regex**: Check to enable regex pattern matching
-   - **Tags**: Space-separated tags to apply (e.g., "pixiv illustration")
-4. Click "Add Rule" to save
-5. Manage existing rules (displayed in alphabetical order by name):
-   - **Toggle**: Enable/disable rules without deleting
-   - **Edit**: Click ✎ to modify a rule
-   - **Delete**: Click × to remove a rule
-6. Export/Import rules:
-   - **Export Rules**: Download all rules as JSON file with timestamp
-   - **Import Rules**: Upload JSON file to import rules
-   - Smart duplicate detection: Identical rules are skipped, new/edited rules are imported
-   - Newly imported rules are highlighted with green border and "NEW" badge until settings panel is closed
-
-When you save a new image, all enabled rules that match the page title will automatically apply their tags to the image.
+**Quick actions**:
+- **Right-click tag** → Remove from image
+- **Click tag on card** → Add/remove from search
+- **Click account button** (X/Twitter) → Toggle account filter
 
 ### Rating Images
 
-Images can have content ratings to help organize and filter them:
+**Rating levels**:
+- **G** (General) - Safe for work
+- **S** (Sensitive) - Slightly suggestive
+- **Q** (Questionable) - Questionable content
+- **E** (Explicit) - Adult content
 
-**Set rating for single image**:
-1. **Quick method**: Right-click on the image or rating badge, select rating from context menu
-2. **Preview pane method**: Select an image and open the preview pane, choose a rating using the radio buttons:
-   - **General (G)**: Safe for work content
-   - **Sensitive (S)**: Slightly suggestive content
-   - **Questionable (Q)**: Questionable/suggestive content
-   - **Explicit (E)**: Explicit/adult content
-   - **Unrated**: No rating applied
-3. Rating updates immediately
-
-**Set rating for multiple images**:
-1. Select multiple images using checkboxes
-2. Click "Tag Selected" button
-3. In the "Set Rating" section, choose a rating (or "No Change" to keep existing)
-4. Click "Save" to apply
-
-**Using rating tags**:
-- Add `rating:g` tag to set General rating
-- Add `rating:s` tag to set Sensitive rating
-- Add `rating:q` tag to set Questionable rating
-- Add `rating:e` tag to set Explicit rating
-- Rating tags are automatically converted to the rating field and removed from tags
+**Set rating**:
+- **Quick**: Right-click image/rating badge → select from menu
+- **Preview pane**: Radio buttons
+- **Bulk**: Select multiple → "Tag Selected" button
+- **Via tags**: Add `rating:g` tag (auto-converts to rating field)
 
 **Filter by rating**:
-- Use the rating filter pills above the tag sidebar (G/S/Q/E/Unrated)
-- Pills display image counts for each rating based on current filters (e.g., "G 42" shows 42 General-rated images)
-- Click rating pills to toggle filters on/off (multi-select supported)
-- Active pills show with colored backgrounds
-- Alternatively, use tag search syntax: `rating:g,s` or `rating:g or s`
-- Shows images matching any of the selected ratings
+- Click rating pills above tag sidebar (shows counts like "G 42")
+- Or use search: `rating:g,s` or `is:unrated`
 
-**Visual indicators**:
-- Each image card displays a color-coded badge:
-  - Green badge (G) = General
-  - Yellow badge (S) = Sensitive
-  - Orange badge (Q) = Questionable
-  - Red badge (E) = Explicit
-  - Gray badge (—) = Unrated
+### Selection and Bulk Operations
 
-### Multi-Select and Bulk Operations
+**Select images**:
+- Click checkboxes or card area
+- **Select All** / **Deselect All** buttons
+- **Shift + Click**: Range selection
+- **Cmd/Ctrl + Click**: Toggle individual
+- **Arrow keys**: Navigate, **Shift + Arrow**: Extend selection
 
-1. Select images using:
-   - **Checkboxes**: Click checkbox on image cards
-   - **Card click**: Click anywhere on card (outside image/tags/buttons) to select
-   - **Click to deselect**: Click a single selected card to deselect it
-   - **Select All** / **Deselect All**: Quick selection buttons
-2. Use keyboard shortcuts:
-   - **Arrow keys**: Navigate and select items
-   - **Shift + Arrow keys**: Extend selection range
-   - **Cmd/Ctrl + Click card**: Toggle individual item selection
-   - **Shift + Click card**: Select range from last selected item
-3. Bulk actions available (disabled when nothing selected):
-   - **Tag Selected**: Add/remove tags or set rating for selected images
-   - **Delete Selected**: Move selected images to trash
-   - **Dump Selected**: Export selected images as a ZIP file
-
-### Trash & Restore
-
-Images are soft-deleted (moved to trash) instead of permanent deletion:
-
-1. **Delete images**: Click "Delete" button - images move to trash
-2. **View trash**: Click the "Trash" tab to see deleted images
-3. **Restore images**: Click "Restore" button on trashed images
-4. **Permanent delete**: In trash view, click "Delete Forever" to permanently remove
-5. **Empty trash**: Click "Empty Trash" to permanently delete all trashed images
+**Bulk actions**:
+- Tag/untag multiple images
+- Set rating for selections
+- Delete (soft delete to trash)
+- Export as ZIP
 
 ### Keyboard Navigation
 
-**Grid navigation**:
-- **Arrow keys**: Navigate grid (respects columns for up/down)
-- **Shift + Arrow keys**: Extend selection range
-- **Space**: Open/close lightbox for selected item
-- **Escape**: Close lightbox
+| Key | Grid View | Lightbox |
+|-----|-----------|----------|
+| Arrow keys | Navigate grid | Left/Right: prev/next<br>Up/Down: by columns |
+| Shift + Arrow | Extend selection | - |
+| Space | Open lightbox | Close lightbox |
+| Escape | - | Close lightbox |
 
-**Lightbox navigation**:
-- **Left/Right arrows**: Previous/next image
-- **Up/Down arrows**: Navigate by grid columns
-- **Space or Escape**: Close lightbox
+### Trash and Restore
 
-### Uploading Local Files
-
-**Import images from your computer**:
-1. Click "Upload" button in the header (between image count and "Select All")
-2. Select one or multiple image files from your computer
-3. Images are imported with metadata:
-   - **Page Title**: Extracted from filename (without extension)
-   - **Page URL**: Set to local file path (`file:///filename`)
-   - **Tags**: Auto-tagging rules applied based on filename
-4. Edit metadata afterwards using preview sidebar or lightbox
+- **Delete** → Moves to trash (soft delete)
+- **Trash tab** → View deleted images
+- **Restore** → Recover from trash
+- **Delete Forever** → Permanent deletion
+- **Empty Trash** → Clear all trashed images
 
 ### Editing Metadata
 
-**Preview sidebar (quick editing)**:
-1. Select an image to open preview sidebar
-2. Metadata inputs are always editable
-3. Edit Page Title, Page URL, or Tags directly
-4. Tag input is a multi-line textarea with autocomplete from existing tags
-5. Changes auto-save when you blur the input (click away or tab out)
-6. No save button needed - completely silent updates
+**Preview sidebar**: Always editable, auto-saves on blur (quick editing)
 
-**Lightbox (viewing mode)**:
-1. Open image in lightbox (click image or press Space)
-2. Metadata shown as read-only text by default
-3. Click "Edit Metadata" button to enable editing
-4. Make changes to Page Title or Page URL
-5. Click "Save Metadata" to apply and return to read-only view
+**Lightbox**: Read-only by default, click "Edit Metadata" to enable editing
 
-### Exporting & Importing
+Fields: Page Title, Page URL, Tags (with autocomplete)
 
-**Export options**:
-1. Open the image viewer
-2. Choose export format:
-   - **Dump Selected**: Export selected images as ZIP with metadata.json (or use Select All first)
-   - **Export Database**: SQLite database backup for all images (Settings panel)
+## Advanced Features
 
-**Export Database (SQLite backup)**:
-1. Click "Export Database" in Settings
-2. Browser shows folder picker - choose where to save backup
-3. Progress modal shows export status with visual progress bar
-4. Extension creates organized backup folder with timestamp:
-   ```
-   image-storage-backup-2025-11-15-1731567890123/
-   ├── manifest.json
-   ├── database.db (if <200 images)
-   └── database-part1of11.db, part2of11.db, ... (if >200 images)
-   ```
-5. **Large datasets**: Automatically splits into multiple files (200 images per file) to avoid memory issues
-6. **Memory efficient**: Uses batched processing to handle thousands of large images
+### Auto-Tagging Rules
 
-**Import from backup**:
+Automatically tag new images based on page title patterns.
+
+**Setup**:
+1. Open Settings (⚙ button)
+2. Create a rule:
+   - **Rule Name**: e.g., "Pixiv Images"
+   - **Pattern**: Text or regex to match page title (empty = match all)
+   - **Use Regex**: Enable regex matching
+   - **Tags**: Space-separated tags (e.g., "pixiv illustration")
+3. Click "Add Rule"
+
+**Management**:
+- Toggle rules on/off
+- Edit (✎) or delete (×) existing rules
+- Export/Import rules as JSON
+- Smart duplicate detection on import
+
+When you save an image, all enabled matching rules automatically apply their tags.
+
+### Upload Local Files
+
+1. Click "Upload" button in header
+2. Select image files from your computer
+3. Images imported with:
+   - **Page Title**: From filename
+   - **Page URL**: `file:///filename`
+   - **Tags**: Auto-tagging rules applied based on filename
+
+### SQLite Backup and Restore
+
+**Export**:
+1. Settings → "Export Database"
+2. Choose folder location
+3. Creates timestamped backup folder with manifest.json
+4. Large datasets: Auto-splits into 200-image chunks (avoids memory errors)
+5. Batched processing for thousands of images
+
+**Import**:
 1. Click "Import" button
-2. **Multi-file support**: Select one or multiple SQLite database files (Ctrl/Cmd + Click or Shift + Click)
-3. If importing multiple files from a backup, select all parts at once
-4. Choose conflict resolution strategy:
-   - **Skip conflicts**: Keep existing images, import only new ones
-   - **Override conflicts**: Replace existing images with imported versions
-   - **Review conflicts**: Review each conflict individually with side-by-side comparison
-5. Click "Import" to complete - all selected files are imported sequentially
+2. Select one or multiple .db files (Ctrl/Cmd + Click for multi-file)
+3. Choose conflict resolution:
+   - **Skip**: Keep existing, import only new
+   - **Override**: Replace existing with imported
+   - **Review**: Side-by-side comparison for each conflict
+4. Click "Import"
 
 ### Danbooru Integration
 
+Upload images to self-hosted Danbooru instances.
+
 **Setup** (one-time):
-1. Click "Settings" in the toolbar
-2. Enter your self-hosted Danbooru instance details:
-   - Danbooru URL (e.g., `https://your-danbooru.com`)
-   - Username
-   - API key
+1. Settings → Danbooru section
+2. Enter instance URL, username, API key
 3. Save settings
 
-**Upload images**:
-1. Select a single image (preview pane must show the image)
-2. Click "Upload to Danbooru" button
+**Upload**:
+1. Select a single image
+2. Click "Upload to Danbooru"
 3. Review auto-filled metadata:
    - Tags (from image tags)
-   - Artist (auto-detected from source URL)
+   - Artist (auto-detected from Pixiv, Twitter, Fanbox, DeviantArt, ArtStation URLs)
    - Source (from page URL)
-   - Rating (pre-filled from image rating, or defaults to Questionable)
-   - Copyright, Character, Description (optional)
+   - Rating (from image rating)
 4. Click "Upload to Danbooru"
-5. Wait for upload to complete (status shows in modal)
 
-**Supported artist detection**:
-- Pixiv (pixiv.net/users/*, pixiv.net/artworks/*)
-- Twitter/X (twitter.com/*, x.com/*)
-- Fanbox (*.fanbox.cc)
-- DeviantArt (deviantart.com/*)
-- ArtStation (artstation.com/*)
+## For Developers
 
-## Architecture
+### Development Setup
+
+```bash
+pnpm install          # Install dependencies
+pnpm dev             # Development mode with hot reload
+pnpm build           # Production build to dist/
+pnpm test            # Run 150 unit tests (~11ms)
+pnpm test:watch      # Watch mode for TDD
+```
+
+Load unpacked extension from `dist/` folder in Chrome.
 
 ### Tech Stack
 
-- **TypeScript**: Type-safe development
-- **Vite**: Fast build tool with HMR
-- **Manifest V3**: Latest Chrome extension standard
-- **IndexedDB**: Local storage for binary image data
-- **JSZip**: ZIP file generation for export
+- **TypeScript** + **Vite** - Fast type-safe development
+- **Manifest V3** - Latest Chrome extension standard
+- **IndexedDB** - Local storage for images (metadata + blobs)
+- **JSZip** - ZIP export
+- **Vitest** - 150 tests covering core logic
 
 ### Project Structure
 
 ```
 src/
-├── background/       # Service worker (context menu, event handling)
-├── content/          # Content script (injected into pages)
-├── viewer/           # Image viewer page (HTML/CSS/TS)
-├── storage/          # IndexedDB wrapper and storage service
-├── types/            # TypeScript type definitions
-├── icons/            # Extension icons
-└── manifest.json     # Extension manifest
+├── background/       # Service worker (saves images, anti-hotlinking)
+├── content/          # Content script (canvas capture)
+├── viewer/           # Image viewer UI (grid, search, tags)
+├── storage/          # IndexedDB wrapper + service layer
+└── types/            # TypeScript definitions
 ```
 
-### Storage Schema
+### Architecture Notes
 
-Images are stored in IndexedDB with this structure:
+**Three-context system**:
+1. **Background**: Service worker (no DOM) - uses `createImageBitmap()` for dimensions
+2. **Viewer**: Grid view with Danbooru-style search, lazy loading (Intersection Observer)
+3. **Content**: Canvas capture first, background fallback if tainted
 
-```typescript
-interface SavedImage {
-  id: string;              // UUID
-  blob: Blob;              // Actual image data
-  imageUrl: string;        // Original image URL
-  pageUrl: string;         // Source page URL
-  pageTitle?: string;      // Page title
-  mimeType: string;        // e.g., "image/jpeg"
-  fileSize: number;        // Bytes
-  width: number;           // Pixels
-  height: number;          // Pixels
-  savedAt: number;         // Timestamp (original save time)
-  updatedAt?: number;      // Timestamp (last modification time)
-  tags?: string[];         // Optional tags
-  isDeleted?: boolean;     // Soft delete flag for trash
-  rating?: 'g' | 's' | 'q' | 'e';  // Content rating (General/Sensitive/Questionable/Explicit)
-}
-```
+**Performance**:
+- Lazy loading: Metadata loaded without blobs (~20-50MB vs ~6GB for 2000 images)
+- Batched operations: SQLite export in 50-blob chunks
+- Smart re-rendering: Single-card updates vs full grid re-render
 
-## Development
-
-### Scripts
-
-- `pnpm dev` - Development mode with hot reload
-- `pnpm build` - Production build
-- `pnpm test` - Run tests
-- `pnpm test:watch` - Run tests in watch mode
-- `pnpm test:ui` - Run tests with visual UI
-- `pnpm test:coverage` - Run tests with coverage report
-- `node scripts/generate-icons.js` - Regenerate icons from SVG
+**Storage schema**: See `src/types/index.ts` for `SavedImage` interface
 
 ### CSS Convention
 
-This project uses **BEM (Block Element Modifier)** naming convention for CSS classes:
+**BEM naming** (Block__Element--Modifier):
+- Block: `.tag-sidebar`, `.bulk-tag-modal`
+- Element: `.tag-sidebar__heading`, `.bulk-tag-modal__input`
+- Modifier: `.tag-sidebar-item--included`, `.rating-filter-pill--active`
 
-- **Block**: `.page-header`, `.tag-sidebar`, `.bulk-tag-modal`
-- **Element**: `.page-header__title`, `.tag-sidebar__heading`, `.bulk-tag-section__title`
-- **Modifier**: `.tag-sidebar-item--included`, `.rating-filter-pill--active`
-
-**Rules**:
-- All new CSS classes must follow BEM naming
-- Never use tag selectors (header, h1, button, etc.) - always use explicit classes
-- Benefits: Prevents class name conflicts, self-documenting code, clear parent-child relationships
+Never use tag selectors - always explicit classes.
 
 ### Testing
 
-The project includes comprehensive unit tests for core logic functions:
+150 tests covering:
+- Tag search parser (50 tests)
+- Tag query manipulation (49 tests)
+- Auto-tagging rules (26 tests)
+- Rating extraction (25 tests)
 
-- **150 tests** covering tag search parsing, tag query manipulation, auto-tagging rules, and rating extraction
-- **Fast execution**: All tests run in ~11ms
-- **Test files**: Located in `tests/` directory
-- **Coverage**: Tag parser (50 tests), tag query manipulation (49 tests), auto-tagging (26 tests), rating extraction (25 tests)
+See `tests/README.md` for details.
 
-See `tests/README.md` for detailed documentation.
+## FAQ
 
-### Building
+**Q: How many images can it handle?**
+A: Tested with thousands of images. Lazy loading keeps memory usage low (~20-50MB metadata). SQLite export auto-splits large datasets.
 
-The build outputs to the `dist/` folder which can be loaded directly into Chrome as an unpacked extension.
+**Q: Where are images stored?**
+A: In your browser's IndexedDB (local storage). Not synced to cloud.
+
+**Q: Why isn't this on the Chrome Web Store?**
+A: Manual installation keeps the extension lightweight and focused. Download pre-built releases from the [Releases page](https://github.com/shirohana/chrome-image-storage/releases) - no building required.
+
+**Q: Does it work on Firefox/Edge/Brave?**
+A: Built for Chrome/Chromium. May work on Edge/Brave (untested). Firefox needs porting (Manifest V3 differences).
+
+**Q: Can I import existing image folders?**
+A: Yes, use "Upload" button. Source URL will be `file:///filename`. Add metadata manually or via auto-tagging rules.
+
+**Q: What's the difference between "Dump Selected" and "Export Database"?**
+A: Dump = ZIP export of selected images. Export Database = SQLite backup of entire library (for migration/backup).
+
+## Troubleshooting
+
+**Images not saving?**
+- Check browser console for errors
+- Some sites block saving with CSP headers or anti-hotlinking
+- Try viewing image in new tab first, then save
+
+**Viewer not loading images?**
+- Browser may have IndexedDB quota limits
+- Check `chrome://quota-internals/` for storage usage
+- Clear space or export/delete old images
+
+**Export fails with memory error?**
+- Use SQLite export instead of ZIP (batched processing)
+- Export smaller selections
+- Close other browser tabs to free memory
+
+**All my images disappeared after upgrading/reinstalling?**
+- If you loaded the extension from a **different folder**, your data is still in browser storage but inaccessible
+- **Recovery**: Load the extension from the **original folder** where you first installed it
+- If you **uninstalled** the extension, IndexedDB data is permanently deleted - no recovery possible
+- **Prevention**: Always export database backup before major changes (Settings → "Export Database")
+- For future upgrades: Extract new version to the SAME folder and override files
+
+## Contributing
+
+**Note about this project:**
+
+This extension is currently **AI-generated** (primarily using Claude Code) and in **early stage** for personal use. The codebase is maintained through AI-assisted development workflows.
+
+**If you want to contribute:**
+- Feel free to open issues for bugs or feature requests
+- Pull requests are welcome, but understand this is a personal-use project without formal contribution guidelines
+- The maintainer may be selective about accepting changes to keep the project aligned with personal needs
+- Code style and architecture follow AI-friendly patterns (see `CLAUDE.md` for development philosophy)
+
+**For AI-assisted development:**
+- See `CLAUDE.md` for project context, patterns, and development guidelines
+- The project follows "make it work first" philosophy with minimal defensive code
+- 150 tests cover core logic functions
 
 ## License
 
