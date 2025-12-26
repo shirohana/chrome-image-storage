@@ -1268,6 +1268,49 @@ function observeImages() {
   });
 }
 
+// Intersection Observer for lazy loading preview thumbnails
+let previewThumbnailObserver: IntersectionObserver | null = null;
+
+function setupPreviewThumbnailObserver() {
+  if (previewThumbnailObserver) {
+    previewThumbnailObserver.disconnect();
+  }
+
+  previewThumbnailObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(async (entry) => {
+        if (entry.isIntersecting) {
+          const img = entry.target as HTMLImageElement;
+          const imageId = img.dataset.imageId;
+          if (!imageId) return;
+
+          await loadImageBlob(imageId);
+          const url = getOrCreateObjectURL(imageId);
+          if (url !== PLACEHOLDER_IMAGE) {
+            img.src = url;
+            previewThumbnailObserver!.unobserve(img);
+          }
+        }
+      });
+    },
+    {
+      root: null,
+      rootMargin: '100px',
+    }
+  );
+}
+
+function observePreviewThumbnails() {
+  if (!previewThumbnailObserver) {
+    setupPreviewThumbnailObserver();
+  }
+
+  const thumbnails = document.querySelectorAll('.preview-thumbnail__image[data-image-id]');
+  thumbnails.forEach(img => {
+    previewThumbnailObserver!.observe(img);
+  });
+}
+
 function renderImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const emptyState = document.getElementById('empty-state')!;
@@ -1753,13 +1796,11 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 async function renderMultiPreview(images: ImageMetadata[], container: HTMLElement) {
   const count = images.length;
 
-  await Promise.all(images.map(img => loadImageBlob(img.id)));
-
+  // Use placeholder initially, load lazily with IntersectionObserver
   const thumbnails = images.map(image => {
-    const url = getOrCreateObjectURL(image.id);
     return `
       <div class="preview-thumbnail" data-id="${image.id}">
-        <img class="preview-thumbnail__image" src="${url}" alt="Thumbnail">
+        <img class="preview-thumbnail__image" src="${PLACEHOLDER_IMAGE}" data-image-id="${image.id}" alt="Thumbnail">
       </div>
     `;
   }).join('');
@@ -1830,6 +1871,9 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
       if (index !== -1) openLightbox(index);
     });
   });
+
+  // Setup lazy loading for preview thumbnails
+  observePreviewThumbnails();
 
   // Setup bulk tagging
   setupPreviewBulkTagging(images);
