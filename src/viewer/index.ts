@@ -50,6 +50,54 @@ async function saveSettings(settings: { showNotifications: boolean }) {
   await chrome.storage.local.set(settings);
 }
 
+// Search state persistence
+async function saveSearchState() {
+  const urlSearch = (document.getElementById('url-search-input') as HTMLInputElement)?.value || '';
+  const tagSearch = (document.getElementById('tag-search-input') as HTMLInputElement)?.value || '';
+  await chrome.storage.local.set({
+    urlSearch,
+    tagSearch,
+  });
+}
+
+async function restoreSearchState() {
+  const result = await chrome.storage.local.get(['urlSearch', 'tagSearch']);
+  const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
+  const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
+
+  if (urlSearchInput && result.urlSearch) {
+    urlSearchInput.value = result.urlSearch;
+  }
+
+  if (tagSearchInput && result.tagSearch) {
+    tagSearchInput.value = result.tagSearch;
+  }
+}
+
+// View settings persistence (sort, groupBy)
+async function saveViewSettings() {
+  await chrome.storage.local.set({
+    sortBy: state.sort,
+    groupBy: state.groupBy,
+  });
+}
+
+async function restoreViewSettings() {
+  const result = await chrome.storage.local.get(['sortBy', 'groupBy']);
+
+  if (result.sortBy) {
+    state.sort = result.sortBy;
+    const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
+    if (sortSelect) sortSelect.value = result.sortBy;
+  }
+
+  if (result.groupBy) {
+    state.groupBy = result.groupBy;
+    const groupBySelect = document.getElementById('group-by') as HTMLSelectElement;
+    if (groupBySelect) groupBySelect.value = result.groupBy;
+  }
+}
+
 async function loadImages() {
   state.images = await getAllImagesMetadata();
   applySorting();
@@ -338,7 +386,7 @@ function toggleTagInSearch(tag: string) {
     }
   }
 
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Add tag to search input (for sidebar + button)
@@ -359,7 +407,7 @@ function addTagToSearch(tag: string) {
   } else {
     input.value = tag;
   }
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Exclude tag from search input (for sidebar - button)
@@ -389,7 +437,7 @@ function excludeTagFromSearch(tag: string) {
   } else {
     input.value = `-${tag}`;
   }
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Remove included tag from search input (for clicking included tag name in sidebar)
@@ -399,7 +447,7 @@ function removeIncludedTagFromSearch(tag: string) {
 
   const current = input.value.trim();
   input.value = removeTagFromQuery(current, tag);
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Remove excluded tag from search input (for clicking excluded tag name)
@@ -415,7 +463,7 @@ function removeExcludedTagFromSearch(tag: string) {
   const newTokens = tokens.filter(token => token !== excludedPattern);
 
   input.value = newTokens.join(' ').trim();
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Account sidebar functions (for X/Twitter account filtering)
@@ -551,7 +599,7 @@ function toggleAccountInSearch(account: string) {
     input.value = current ? `${current} account:${account}` : `account:${account}`;
   }
 
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 function addAccountToSearch(account: string) {
@@ -568,7 +616,7 @@ function addAccountToSearch(account: string) {
 
   // Append to search
   input.value = current ? `${current} account:${account}` : `account:${account}`;
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 function excludeAccountFromSearch(account: string) {
@@ -588,7 +636,7 @@ function excludeAccountFromSearch(account: string) {
 
   // Add exclusion
   input.value = current ? `${current} -account:${account}` : `-account:${account}`;
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 function removeAccountFromSearch(account: string) {
@@ -605,7 +653,7 @@ function removeAccountFromSearch(account: string) {
   newValue = newValue.replace(/\s+/g, ' ');
 
   input.value = newValue;
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 function removeExcludedAccountFromSearch(account: string) {
@@ -622,7 +670,7 @@ function removeExcludedAccountFromSearch(account: string) {
   newValue = newValue.replace(/\s+/g, ' ');
 
   input.value = newValue;
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Toggle rating in search input (for rating filter pills)
@@ -682,7 +730,7 @@ function toggleRatingInSearch(rating: string) {
     }
   }
 
-  applyFilters();
+  applyFiltersAndSave();
 }
 
 // Update rating pill UI to reflect current search state and counts
@@ -994,6 +1042,12 @@ function applyFilters() {
   updateSelectionCount();
   updatePreviewPane();
   updateRatingPills();
+}
+
+// Apply filters and save search state (for search input modifications)
+function applyFiltersAndSave() {
+  applyFilters();
+  saveSearchState();
 }
 
 function applySorting() {
@@ -3021,11 +3075,8 @@ function debounce<T extends (...args: any[]) => any>(
 const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
 const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
 
-const debouncedApplyFilters = debounce(() => applyFilters(), 200);
-const debouncedTagSearch = debounce(() => {
-  applyFilters();
-  updateRatingPills();
-}, 200);
+const debouncedApplyFilters = debounce(() => applyFiltersAndSave(), 200);
+const debouncedTagSearch = debounce(() => applyFiltersAndSave(), 200);
 
 // Store the tag autocomplete update function globally
 let updateTagAutocompleteAvailableTags: (() => void) | undefined;
@@ -3358,6 +3409,7 @@ const groupBySelect = document.getElementById('group-by') as HTMLSelectElement;
 
 groupBySelect.addEventListener('change', () => {
   state.groupBy = groupBySelect.value;
+  saveViewSettings();
   applyFilters();
 });
 
@@ -3366,17 +3418,10 @@ const sortSelect = document.getElementById('sort-select') as HTMLSelectElement;
 
 sortSelect.addEventListener('change', () => {
   state.sort = sortSelect.value;
-  localStorage.setItem('sortBy', state.sort);
+  saveViewSettings();
   applySorting();
   applyFilters();
 });
-
-// Load saved sort preference
-const savedSort = localStorage.getItem('sortBy');
-if (savedSort) {
-  state.sort = savedSort;
-  sortSelect.value = savedSort;
-}
 
 // Preview pane toggle
 const previewPaneToggle = document.getElementById('preview-pane-toggle')!;
@@ -4976,4 +5021,9 @@ notesToggle.addEventListener('click', () => {
 
 renderTagRules();
 
-loadImages();
+// Initialize: restore view settings and search state, then load images
+(async () => {
+  await restoreViewSettings();
+  await restoreSearchState();
+  await loadImages();
+})();
