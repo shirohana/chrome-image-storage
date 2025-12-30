@@ -138,11 +138,11 @@ function updateSingleImageCardInDOM(imageId: string): void {
  * Synchronizes local state with database changes and sets updatedAt timestamp.
  * Only triggers filtering if the field affects filter results.
  */
-function syncImageMetadataToState<T extends keyof ImageMetadata>(
+async function syncImageMetadataToState<T extends keyof ImageMetadata>(
   imageId: string,
   field: T,
   value: ImageMetadata[T]
-): void {
+): Promise<void> {
   const imageInState = state.images.find(img => img.id === imageId);
   if (imageInState) {
     (imageInState as any)[field] = value;
@@ -174,7 +174,7 @@ function syncImageMetadataToState<T extends keyof ImageMetadata>(
       updateRatingPills();
     } else {
       // Filter membership or position changed: do full re-render
-      renderImages(state.filteredImages);
+      await renderImages(state.filteredImages);
       updateImageCount();
       updateViewBadges();
       updateSelectionCount();
@@ -1034,19 +1034,23 @@ function applyFiltersWithoutRender(): void {
   }
 }
 
-function applyFilters() {
+async function applyFilters() {
   applyFiltersWithoutRender();
-  renderImages(state.filteredImages);
+
+  // Update counters immediately after filtering (before rendering)
   updateImageCount();
   updateViewBadges();
   updateSelectionCount();
   updatePreviewPane();
   updateRatingPills();
+
+  // Render images (async - chunked for large datasets)
+  await renderImages(state.filteredImages);
 }
 
 // Apply filters and save search state (for search input modifications)
-function applyFiltersAndSave() {
-  applyFilters();
+async function applyFiltersAndSave() {
+  await applyFilters();
   saveSearchState();
 }
 
@@ -1365,7 +1369,7 @@ function observePreviewThumbnails() {
   });
 }
 
-function renderImages(images: ImageMetadata[]) {
+async function renderImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const emptyState = document.getElementById('empty-state')!;
 
@@ -1389,22 +1393,56 @@ function renderImages(images: ImageMetadata[]) {
   grid.style.display = '';
 
   if (state.groupBy === 'x-account') {
-    renderXAccountGroups(images);
+    await renderXAccountGroups(images);
   } else if (state.groupBy === 'duplicates') {
-    renderDuplicateGroups(images);
+    await renderDuplicateGroups(images);
   } else {
-    renderUngroupedImages(images);
+    await renderUngroupedImages(images);
   }
 
   observeImages();
   // Note: Checkboxes are already correct from createImageCardHTML(), no need to update
 }
 
-function renderUngroupedImages(images: ImageMetadata[]) {
+// Chunked rendering for large datasets - keeps UI responsive
+async function renderCardsInChunks(
+  container: HTMLElement,
+  htmlChunks: string[],
+  chunkSize: number = 100
+): Promise<void> {
+  container.innerHTML = '';
+
+  for (let i = 0; i < htmlChunks.length; i += chunkSize) {
+    const chunk = htmlChunks.slice(i, i + chunkSize).join('');
+    const fragment = document.createElement('div');
+    fragment.innerHTML = chunk;
+
+    // Move nodes from fragment to container
+    while (fragment.firstChild) {
+      container.appendChild(fragment.firstChild);
+    }
+
+    // Yield to browser between chunks for UI responsiveness
+    if (i + chunkSize < htmlChunks.length) {
+      await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+    }
+  }
+}
+
+async function renderUngroupedImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   // Restore grid layout for ungrouped display
   grid.style.display = '';
-  grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
+
+  // For small datasets, use fast synchronous path
+  if (images.length < 500) {
+    grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
+    return;
+  }
+
+  // For large datasets (500+), render in chunks to keep UI responsive
+  const htmlChunks = images.map(image => createImageCardHTML(image));
+  await renderCardsInChunks(grid, htmlChunks, 100);
 }
 
 async function handleDownload(e: Event) {
@@ -1767,7 +1805,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const ratingValue = target.value || undefined;
       const { updateImageRating } = await import('../storage/service');
       await updateImageRating(image.id, ratingValue as any);
-      syncImageMetadataToState(image.id, 'rating', ratingValue as any);
+      await syncImageMetadataToState(image.id, 'rating', ratingValue as any);
     });
   });
 
@@ -1780,7 +1818,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
       const newPageTitle = previewPageTitleInput.value.trim() || undefined;
       const { updateImagePageTitle } = await import('../storage/service');
       await updateImagePageTitle(image.id, newPageTitle);
-      syncImageMetadataToState(image.id, 'pageTitle', newPageTitle);
+      await syncImageMetadataToState(image.id, 'pageTitle', newPageTitle);
     });
   }
 
@@ -1796,7 +1834,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
       const { updateImagePageUrl } = await import('../storage/service');
       await updateImagePageUrl(image.id, newPageUrl);
-      syncImageMetadataToState(image.id, 'pageUrl', newPageUrl);
+      await syncImageMetadataToState(image.id, 'pageUrl', newPageUrl);
     });
   }
 
@@ -1816,7 +1854,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
         const { updateImageTags } = await import('../storage/service');
         await updateImageTags(image.id, uniqueTags);
-        syncImageMetadataToState(image.id, 'tags', uniqueTags);
+        await syncImageMetadataToState(image.id, 'tags', uniqueTags);
       }
     });
 
@@ -1842,7 +1880,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
 
       const { updateImageTags } = await import('../storage/service');
       await updateImageTags(image.id, uniqueTags);
-      syncImageMetadataToState(image.id, 'tags', uniqueTags);
+      await syncImageMetadataToState(image.id, 'tags', uniqueTags);
     });
   }
 }
@@ -2166,7 +2204,7 @@ function groupImagesByDuplicates(images: ImageMetadata[]): Map<string, ImageMeta
   return duplicates;
 }
 
-function renderXAccountGroups(images: ImageMetadata[]) {
+async function renderXAccountGroups(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByXAccount(images);
 
@@ -2187,32 +2225,65 @@ function renderXAccountGroups(images: ImageMetadata[]) {
     })
     .map(([account]) => account);
 
-  let html = '';
-  for (const account of sortedAccounts) {
-    const groupImages = groups.get(account)!;
-    const count = groupImages.length;
+  // Count total cards to determine rendering strategy
+  const totalCards = images.length;
 
-    html += `
-      <div class="group-section">
-        <div class="group-header">
-          <h3 class="group-title">@${account}</h3>
-          <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
+  if (totalCards < 500) {
+    // Fast path for small datasets
+    let html = '';
+    for (const account of sortedAccounts) {
+      const groupImages = groups.get(account)!;
+      const count = groupImages.length;
+
+      html += `
+        <div class="group-section">
+          <div class="group-header">
+            <h3 class="group-title">@${account}</h3>
+            <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="group-content image-grid">
+      `;
+
+      html += groupImages.map(image => createImageCardHTML(image)).join('');
+
+      html += `
+          </div>
         </div>
-        <div class="group-content image-grid">
-    `;
+      `;
+    }
+    grid.innerHTML = html;
+  } else {
+    // Chunked rendering for large datasets
+    grid.innerHTML = '';
+    for (const account of sortedAccounts) {
+      const groupImages = groups.get(account)!;
+      const count = groupImages.length;
 
-    html += groupImages.map(image => createImageCardHTML(image)).join('');
+      const groupSection = document.createElement('div');
+      groupSection.className = 'group-section';
 
-    html += `
-        </div>
-      </div>
-    `;
+      const groupHeader = document.createElement('div');
+      groupHeader.className = 'group-header';
+      groupHeader.innerHTML = `
+        <h3 class="group-title">@${account}</h3>
+        <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
+      `;
+
+      const groupContent = document.createElement('div');
+      groupContent.className = 'group-content image-grid';
+
+      groupSection.appendChild(groupHeader);
+      groupSection.appendChild(groupContent);
+      grid.appendChild(groupSection);
+
+      // Render cards in chunks
+      const htmlChunks = groupImages.map(image => createImageCardHTML(image));
+      await renderCardsInChunks(groupContent, htmlChunks, 100);
+    }
   }
-
-  grid.innerHTML = html;
 }
 
-function renderDuplicateGroups(images: ImageMetadata[]) {
+async function renderDuplicateGroups(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByDuplicates(images);
 
@@ -2225,32 +2296,65 @@ function renderDuplicateGroups(images: ImageMetadata[]) {
   grid.style.display = 'block';
 
   const sortedKeys = Array.from(groups.keys()).sort();
+  const totalCards = images.length;
 
-  let html = '';
-  for (const key of sortedKeys) {
-    const groupImages = groups.get(key)!;
-    const count = groupImages.length;
-    const [dimensions, fileSize] = key.split('-');
-    const fileSizeFormatted = formatFileSize(Number(fileSize));
+  if (totalCards < 500) {
+    // Fast path for small datasets
+    let html = '';
+    for (const key of sortedKeys) {
+      const groupImages = groups.get(key)!;
+      const count = groupImages.length;
+      const [dimensions, fileSize] = key.split('-');
+      const fileSizeFormatted = formatFileSize(Number(fileSize));
 
-    html += `
-      <div class="group-section">
-        <div class="group-header">
-          <h3 class="group-title">${dimensions}, ${fileSizeFormatted}</h3>
-          <span class="group-count">${count} duplicates</span>
+      html += `
+        <div class="group-section">
+          <div class="group-header">
+            <h3 class="group-title">${dimensions}, ${fileSizeFormatted}</h3>
+            <span class="group-count">${count} duplicates</span>
+          </div>
+          <div class="group-content image-grid">
+      `;
+
+      html += groupImages.map(image => createImageCardHTML(image)).join('');
+
+      html += `
+          </div>
         </div>
-        <div class="group-content image-grid">
-    `;
+      `;
+    }
+    grid.innerHTML = html;
+  } else {
+    // Chunked rendering for large datasets
+    grid.innerHTML = '';
+    for (const key of sortedKeys) {
+      const groupImages = groups.get(key)!;
+      const count = groupImages.length;
+      const [dimensions, fileSize] = key.split('-');
+      const fileSizeFormatted = formatFileSize(Number(fileSize));
 
-    html += groupImages.map(image => createImageCardHTML(image)).join('');
+      const groupSection = document.createElement('div');
+      groupSection.className = 'group-section';
 
-    html += `
-        </div>
-      </div>
-    `;
+      const groupHeader = document.createElement('div');
+      groupHeader.className = 'group-header';
+      groupHeader.innerHTML = `
+        <h3 class="group-title">${dimensions}, ${fileSizeFormatted}</h3>
+        <span class="group-count">${count} duplicates</span>
+      `;
+
+      const groupContent = document.createElement('div');
+      groupContent.className = 'group-content image-grid';
+
+      groupSection.appendChild(groupHeader);
+      groupSection.appendChild(groupContent);
+      grid.appendChild(groupSection);
+
+      // Render cards in chunks
+      const htmlChunks = groupImages.map(image => createImageCardHTML(image));
+      await renderCardsInChunks(groupContent, htmlChunks, 100);
+    }
   }
-
-  grid.innerHTML = html;
 }
 
 /**
@@ -2492,8 +2596,8 @@ function updateLightboxMetadata(image: ImageMetadata) {
           await updateImagePageTitle(image.id, newPageTitle);
           await updateImagePageUrl(image.id, newPageUrl);
 
-          syncImageMetadataToState(image.id, 'pageTitle', newPageTitle);
-          syncImageMetadataToState(image.id, 'pageUrl', newPageUrl);
+          await syncImageMetadataToState(image.id, 'pageTitle', newPageTitle);
+          await syncImageMetadataToState(image.id, 'pageUrl', newPageUrl);
 
           // Update lightbox metadata display
           const imageInState = state.images.find(img => img.id === image.id);
@@ -2512,7 +2616,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
       const { updateImageRating } = await import('../storage/service');
       await updateImageRating(image.id, ratingValue as any);
 
-      syncImageMetadataToState(image.id, 'rating', ratingValue as any);
+      await syncImageMetadataToState(image.id, 'rating', ratingValue as any);
 
       // Update lightbox metadata display
       const imageInState = state.images.find(img => img.id === image.id);
@@ -2536,7 +2640,7 @@ function updateLightboxMetadata(image: ImageMetadata) {
 
         await updateImageTags(image.id, uniqueTags);
 
-        syncImageMetadataToState(image.id, 'tags', uniqueTags);
+        await syncImageMetadataToState(image.id, 'tags', uniqueTags);
 
         // Update lightbox metadata display
         const imageInState = state.images.find(img => img.id === image.id);
@@ -3165,7 +3269,7 @@ ratingContextMenu.addEventListener('click', async (e: Event) => {
   const { updateImageRating } = await import('../storage/service');
   await updateImageRating(contextMenuTargetImageId, ratingValue as any);
 
-  syncImageMetadataToState(contextMenuTargetImageId, 'rating', ratingValue as any);
+  await syncImageMetadataToState(contextMenuTargetImageId, 'rating', ratingValue as any);
 
   closeContextMenus();
 });
@@ -3185,7 +3289,7 @@ tagContextMenu.addEventListener('click', async (e: Event) => {
   const { updateImageTags } = await import('../storage/service');
   await updateImageTags(contextMenuTargetImageId, updatedTags);
 
-  syncImageMetadataToState(contextMenuTargetImageId, 'tags', updatedTags);
+  await syncImageMetadataToState(contextMenuTargetImageId, 'tags', updatedTags);
 
   closeContextMenus();
 });
@@ -3360,14 +3464,14 @@ document.getElementById('select-all-btn')!.addEventListener('click', () => {
   state.filteredImages.forEach(image => {
     state.selectedIds.add(image.id);
   });
-  applyFilters();
+  updateAllCheckboxes();
   updateSelectionCount();
   updatePreviewPane();
 });
 
 document.getElementById('deselect-all-btn')!.addEventListener('click', () => {
   state.selectedIds.clear();
-  applyFilters();
+  updateAllCheckboxes();
   updateSelectionCount();
   updatePreviewPane();
 });
