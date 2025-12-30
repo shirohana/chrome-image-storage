@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(pnpm build:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)"
     ],
     "deny": [],
     "ask": []

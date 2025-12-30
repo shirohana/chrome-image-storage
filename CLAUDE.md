@@ -49,6 +49,16 @@ When writing documentation or adding features, prioritize communicating the core
 - `pnpm dev` - Dev mode with hot reload
 - `pnpm test` - Run all tests
 - `pnpm test:watch` - Watch mode for TDD
+- `pnpm lint` - Run ESLint to check for issues
+
+## Code Quality
+
+ESLint configured to catch async/await bugs (warnings only):
+- `@typescript-eslint/no-floating-promises` - Catches missing await/catch
+- `@typescript-eslint/require-await` - Catches unnecessary async
+- `@typescript-eslint/return-await` - Catches inconsistent await returns
+
+Warnings don't block development. Fix gradually as you work on related code.
 
 ## Testing
 
