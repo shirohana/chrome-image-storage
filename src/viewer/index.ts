@@ -30,6 +30,7 @@ const state = {
   previewPaneVisible: false,
   lastSelectedIndex: -1,
   selectionAnchor: -1,
+  currentRenderToken: 0,
 };
 
 // Context menu state
@@ -1373,6 +1374,9 @@ async function renderImages(images: ImageMetadata[]) {
   const grid = document.getElementById('image-grid')!;
   const emptyState = document.getElementById('empty-state')!;
 
+  // Generate new render token to cancel any in-progress renders
+  const renderToken = ++state.currentRenderToken;
+
   if (images.length === 0) {
     revokeObjectURLs();
     emptyState.style.display = 'block';
@@ -1393,26 +1397,35 @@ async function renderImages(images: ImageMetadata[]) {
   grid.style.display = '';
 
   if (state.groupBy === 'x-account') {
-    await renderXAccountGroups(images);
+    await renderXAccountGroups(images, renderToken);
   } else if (state.groupBy === 'duplicates') {
-    await renderDuplicateGroups(images);
+    await renderDuplicateGroups(images, renderToken);
   } else {
-    await renderUngroupedImages(images);
+    await renderUngroupedImages(images, renderToken);
   }
 
-  observeImages();
-  // Note: Checkboxes are already correct from createImageCardHTML(), no need to update
+  // Only observe if this render is still current
+  if (renderToken === state.currentRenderToken) {
+    observeImages();
+    // Note: Checkboxes are already correct from createImageCardHTML(), no need to update
+  }
 }
 
 // Chunked rendering for large datasets - keeps UI responsive
 async function renderCardsInChunks(
   container: HTMLElement,
   htmlChunks: string[],
+  renderToken: number,
   chunkSize: number = 100
 ): Promise<void> {
   container.innerHTML = '';
 
   for (let i = 0; i < htmlChunks.length; i += chunkSize) {
+    // Abort if a newer render has started
+    if (renderToken !== state.currentRenderToken) {
+      return;
+    }
+
     const chunk = htmlChunks.slice(i, i + chunkSize).join('');
     const fragment = document.createElement('div');
     fragment.innerHTML = chunk;
@@ -1429,7 +1442,7 @@ async function renderCardsInChunks(
   }
 }
 
-async function renderUngroupedImages(images: ImageMetadata[]) {
+async function renderUngroupedImages(images: ImageMetadata[], renderToken: number) {
   const grid = document.getElementById('image-grid')!;
   // Restore grid layout for ungrouped display
   grid.style.display = '';
@@ -1442,7 +1455,7 @@ async function renderUngroupedImages(images: ImageMetadata[]) {
 
   // For large datasets (500+), render in chunks to keep UI responsive
   const htmlChunks = images.map(image => createImageCardHTML(image));
-  await renderCardsInChunks(grid, htmlChunks, 100);
+  await renderCardsInChunks(grid, htmlChunks, renderToken, 100);
 }
 
 async function handleDownload(e: Event) {
@@ -2204,7 +2217,7 @@ function groupImagesByDuplicates(images: ImageMetadata[]): Map<string, ImageMeta
   return duplicates;
 }
 
-async function renderXAccountGroups(images: ImageMetadata[]) {
+async function renderXAccountGroups(images: ImageMetadata[], renderToken: number) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByXAccount(images);
 
@@ -2256,6 +2269,11 @@ async function renderXAccountGroups(images: ImageMetadata[]) {
     // Chunked rendering for large datasets
     grid.innerHTML = '';
     for (const account of sortedAccounts) {
+      // Abort if a newer render has started
+      if (renderToken !== state.currentRenderToken) {
+        return;
+      }
+
       const groupImages = groups.get(account)!;
       const count = groupImages.length;
 
@@ -2278,12 +2296,12 @@ async function renderXAccountGroups(images: ImageMetadata[]) {
 
       // Render cards in chunks
       const htmlChunks = groupImages.map(image => createImageCardHTML(image));
-      await renderCardsInChunks(groupContent, htmlChunks, 100);
+      await renderCardsInChunks(groupContent, htmlChunks, renderToken, 100);
     }
   }
 }
 
-async function renderDuplicateGroups(images: ImageMetadata[]) {
+async function renderDuplicateGroups(images: ImageMetadata[], renderToken: number) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByDuplicates(images);
 
@@ -2328,6 +2346,11 @@ async function renderDuplicateGroups(images: ImageMetadata[]) {
     // Chunked rendering for large datasets
     grid.innerHTML = '';
     for (const key of sortedKeys) {
+      // Abort if a newer render has started
+      if (renderToken !== state.currentRenderToken) {
+        return;
+      }
+
       const groupImages = groups.get(key)!;
       const count = groupImages.length;
       const [dimensions, fileSize] = key.split('-');
@@ -2352,7 +2375,7 @@ async function renderDuplicateGroups(images: ImageMetadata[]) {
 
       // Render cards in chunks
       const htmlChunks = groupImages.map(image => createImageCardHTML(image));
-      await renderCardsInChunks(groupContent, htmlChunks, 100);
+      await renderCardsInChunks(groupContent, htmlChunks, renderToken, 100);
     }
   }
 }
