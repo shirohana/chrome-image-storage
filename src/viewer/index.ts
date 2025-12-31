@@ -1,4 +1,4 @@
-import { getAllImages, getAllImagesMetadata, getImageBlob, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
+import { getAllImages, getAllImagesMetadata, getImageBlob, getImage, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
 import type { SavedImage, ImageMetadata } from '../types';
 import { parseTagSearch, removeTagFromQuery, sortTags, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
 
@@ -111,6 +111,68 @@ async function loadImages() {
 }
 
 /**
+ * Loads a single image from database and adds it to state.
+ * Used when a new image is saved to avoid reloading all metadata.
+ */
+async function loadSingleImage(imageId: string) {
+  const savedImage = await getImage(imageId);
+  if (!savedImage) return;
+
+  // Strip blob to keep only metadata
+  const { blob, ...metadata } = savedImage;
+
+  // Check if image already exists in state
+  const existingIndex = state.images.findIndex(img => img.id === imageId);
+
+  if (existingIndex !== -1) {
+    // Update existing image
+    state.images[existingIndex] = metadata;
+  } else {
+    // Add new image
+    state.images.push(metadata);
+  }
+
+  // Re-sort to place image in correct position
+  applySorting();
+
+  // For grouped modes, do full re-render (complexity of surgical insert not worth it)
+  if (state.groupBy !== 'none') {
+    await applyFilters();
+    // Update tag autocomplete with newly added tags
+    if (typeof updateTagAutocompleteAvailableTags === 'function') {
+      updateTagAutocompleteAvailableTags();
+    }
+    return;
+  }
+
+  // For ungrouped mode: surgical insertion to avoid full re-render
+  // Re-filter without rendering
+  applyFiltersWithoutRender();
+
+  // Check if image is in filtered results
+  const newIndex = state.filteredImages.findIndex(img => img.id === imageId);
+  const isVisible = newIndex !== -1;
+
+  if (isVisible) {
+    // Image is visible after filtering: insert it surgically
+    insertNewImageCard(imageId, newIndex);
+  }
+  // If filtered out: no visual update needed
+
+  // Update all UI counters and badges
+  updateImageCount();
+  updateViewBadges();
+  updateSelectionCount();
+  updatePreviewPane();
+  updateRatingPills();
+
+  // Update tag autocomplete with newly added tags
+  if (typeof updateTagAutocompleteAvailableTags === 'function') {
+    updateTagAutocompleteAvailableTags();
+  }
+}
+
+/**
  * Updates a single image card in the DOM without re-rendering the entire grid.
  */
 function updateSingleImageCardInDOM(imageId: string): void {
@@ -131,6 +193,48 @@ function updateSingleImageCardInDOM(imageId: string): void {
   const img = newCard.querySelector('.image-preview[data-image-id]');
   if (img && imageObserver) {
     imageObserver.observe(img);
+  }
+}
+
+/**
+ * Inserts a single image card at the specified position in the DOM.
+ * Used for surgical updates to avoid full grid re-renders.
+ */
+function insertNewImageCard(imageId: string, targetIndex: number): void {
+  const image = state.images.find(img => img.id === imageId);
+  if (!image) return;
+
+  const grid = document.getElementById('image-grid')!;
+  const existingCard = grid.querySelector(`.image-card[data-id="${imageId}"]`);
+
+  // If card already exists, use existing update logic
+  if (existingCard) {
+    updateSingleImageCardInDOM(imageId);
+    return;
+  }
+
+  // Create new card HTML
+  const cardHTML = createImageCardHTML(image);
+  const existingCards = grid.querySelectorAll('.image-card');
+
+  if (existingCards.length === 0) {
+    // Empty grid: just set innerHTML
+    grid.innerHTML = cardHTML;
+  } else if (targetIndex >= existingCards.length) {
+    // Append at end
+    grid.insertAdjacentHTML('beforeend', cardHTML);
+  } else {
+    // Insert before the card currently at targetIndex
+    existingCards[targetIndex].insertAdjacentHTML('beforebegin', cardHTML);
+  }
+
+  // Set up lazy loading observer for the new card
+  const newCard = grid.querySelector(`.image-card[data-id="${imageId}"]`);
+  if (newCard && imageObserver) {
+    const img = newCard.querySelector('.image-preview[data-image-id]');
+    if (img) {
+      imageObserver.observe(img);
+    }
   }
 }
 
@@ -3527,7 +3631,7 @@ document.getElementById('delete-selected-btn')!.addEventListener('click', async 
 
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'IMAGE_SAVED') {
-    loadImages();
+    loadSingleImage(message.imageId);
   }
 });
 
