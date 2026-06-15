@@ -62,8 +62,25 @@ Warnings don't block development. Fix gradually as you work on related code.
 
 ## Testing
 
-150 tests covering tag parser, tag removal, auto-tagging, rating extraction.
-Extracted pure functions in `src/viewer/tag-utils.ts` for testing (no DOM dependencies).
+153 tests (Vitest, `node` env — pure functions, no DOM). Coverage: tag parser, tag
+removal, auto-tagging, rating extraction, grouping, filtering/sorting, format helpers,
+and navigation index math.
+
+Pure logic is extracted out of the `src/viewer/index.ts` monolith into DOM-free,
+side-effect-free modules so it can be unit-tested directly:
+- `src/viewer/tag-utils.ts` — tag parse/sort/search-query helpers
+- `src/viewer/grouping.ts` — `getXAccountFromUrl`, `groupImagesBy*`, `getVisualOrder(images, groupBy)`
+- `src/viewer/filters.ts` — `filterImages`, `computeRatingCounts`, `sortImages`, `parseSearchQuery`
+- `src/viewer/format.ts` — `formatFileSize`, `extractArtistFromUrl`, `debounce`
+- `src/viewer/navigation-math.ts` — pure grid/lightbox index math (`offsetIndexClamped` clamps at
+  edges for the grid; `offsetIndexBounded` no-ops at edges for the lightbox — ONE TRUTH for the
+  navigation that previously diverged between grid and lightbox)
+
+**Pattern**: when logic in `index.ts` only touches the DOM to read an input value or
+card order, parameterize that out into one of these modules and leave a thin DOM-reading
+wrapper behind (e.g. `applySorting()` → `sortImages(state.images, state.sort)`). This keeps
+the core testable in the `node` env without a DOM runner.
+
 See `tests/README.md` for details.
 
 ## Architecture

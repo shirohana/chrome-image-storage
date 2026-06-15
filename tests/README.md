@@ -39,7 +39,7 @@ Tests the Danbooru-style tag search parser (`parseTagSearch`).
 - User-facing search functionality
 - Hard to manually verify all combinations
 
-### `tag-query.test.ts` (49 tests)
+### `tag-query.test.ts` (11 tests)
 Tests tag removal utility function (`removeTagFromQuery`).
 
 **Coverage:**
@@ -95,15 +95,28 @@ Tests rating tag extraction logic (`extractRatingFromTags`).
 - Called in multiple places (save, update, bulk operations)
 - Tag cleanup must be consistent
 
+### `grouping.test.ts` (9 tests)
+Tests image grouping (`src/viewer/grouping.ts`): `getXAccountFromUrl`,
+`groupImagesByXAccount`, `groupImagesByDuplicates`, and `getVisualOrder` ordering for
+each grouping mode (none / x-account / duplicates).
+
+### `filters.test.ts` (11 tests)
+Tests the filter/sort core (`src/viewer/filters.ts`): `parseSearchQuery`, `filterImages`
+(view + URL + tag search incl. rating), `computeRatingCounts` (same filters but rating
+skipped, so pills show all-rating counts), and `sortImages` for each sort key.
+
+### `format.test.ts` (11 tests)
+Tests `src/viewer/format.ts`: `formatFileSize`, `extractArtistFromUrl` (incl. a documented
+pre-existing greedy-capture quirk for fanbox URLs), and `debounce`.
+
+### `navigation-math.test.ts` (11 tests)
+Tests pure grid/lightbox index math (`src/viewer/navigation-math.ts`). Locks in the
+deliberate edge-behavior difference that used to diverge: grid CLAMPS at the boundary,
+lightbox returns "no movement".
+
 ## Test Performance
 
-All 150 tests run in ~11ms total:
-- `tag-parser.test.ts`: 5ms (50 tests)
-- `tag-query.test.ts`: ~1ms (49 tests)
-- `auto-tagging.test.ts`: 3ms (26 tests)
-- `rating-extraction.test.ts`: 3ms (25 tests)
-
-Fast execution enables TDD workflow and pre-commit hooks.
+All 153 tests run in ~25ms total. Fast execution enables TDD workflow and pre-commit hooks.
 
 ## Architecture Decision: Function Extraction
 
@@ -122,6 +135,13 @@ Fast execution enables TDD workflow and pre-commit hooks.
 - `src/viewer/tag-utils.ts`: Tag search parser, tag query manipulation, and types
   - `parseTagSearch()`: Danbooru-style search parser
   - `removeTagFromQuery()`: Tag removal with "or" operator cleanup
+- `src/viewer/grouping.ts`: account/duplicate grouping + visual-order helpers
+- `src/viewer/filters.ts`: view/URL/tag filtering, rating counts, sorting, `parseSearchQuery`
+- `src/viewer/format.ts`: file size, artist-from-URL, debounce
+- `src/viewer/navigation-math.ts`: grid/lightbox index math (one truth)
+
+When `index.ts` logic only reads the DOM for an input value or card order, parameterize
+that out into one of these modules and leave a thin DOM-reading wrapper in `index.ts`.
 
 **Exported for testing:**
 - `extractRatingFromTags` in `src/storage/service.ts`
