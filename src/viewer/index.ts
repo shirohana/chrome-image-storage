@@ -1,6 +1,7 @@
 import { getAllImages, getAllImagesMetadata, getImageBlob, getImage, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
 import type { SavedImage, ImageMetadata } from '../types';
 import { parseTagSearch, removeTagFromQuery, sortTags, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
+import { getXAccountFromUrl, groupImagesByXAccount, groupImagesByDuplicates, getVisualOrder, type GroupBy } from './grouping';
 
 // Constants
 const SortField = {
@@ -21,7 +22,7 @@ const state = {
   filteredImages: [] as ImageMetadata[],
   loadedBlobs: new Map<string, Blob>(),
   sort: 'savedAt-desc',
-  groupBy: 'none',
+  groupBy: 'none' as GroupBy,
   selectedIds: new Set<string>(),
   objectUrls: new Map<string, string>(),
   currentView: 'all' as 'all' | 'trash',
@@ -1904,7 +1905,7 @@ async function renderSinglePreview(image: ImageMetadata, container: HTMLElement)
   const viewBtn = container.querySelector('.preview-view-btn');
   if (viewBtn) {
     viewBtn.addEventListener('click', () => {
-      const visualOrder = getVisualOrder();
+      const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
       const index = visualOrder.findIndex(img => img.id === image.id);
       if (index !== -1) openLightbox(index);
     });
@@ -2075,7 +2076,7 @@ async function renderMultiPreview(images: ImageMetadata[], container: HTMLElemen
   thumbElements.forEach(thumb => {
     thumb.addEventListener('click', () => {
       const id = thumb.getAttribute('data-id')!;
-      const visualOrder = getVisualOrder();
+      const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
       const index = visualOrder.findIndex(img => img.id === id);
       if (index !== -1) openLightbox(index);
     });
@@ -2258,69 +2259,6 @@ function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
-function getXAccountFromUrl(url: string): string | null {
-  try {
-    const urlObj = new URL(url);
-    // Match x.com or twitter.com
-    if (urlObj.hostname === 'x.com' || urlObj.hostname === 'twitter.com' ||
-        urlObj.hostname === 'www.x.com' || urlObj.hostname === 'www.twitter.com') {
-      // Extract account from path like /accountname/status/...
-      const match = urlObj.pathname.match(/^\/([^\/]+)/);
-      if (match && match[1]) {
-        // Skip non-account paths
-        const path = match[1].toLowerCase();
-        if (path === 'i' || path === 'home' || path === 'explore' ||
-            path === 'notifications' || path === 'messages' || path === 'search') {
-          return null;
-        }
-        return match[1];
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function groupImagesByXAccount(images: ImageMetadata[]): Map<string, ImageMetadata[]> {
-  const groups = new Map<string, ImageMetadata[]>();
-
-  for (const image of images) {
-    const account = getXAccountFromUrl(image.pageUrl);
-    if (account) {
-      if (!groups.has(account)) {
-        groups.set(account, []);
-      }
-      groups.get(account)!.push(image);
-    }
-  }
-
-  return groups;
-}
-
-function groupImagesByDuplicates(images: ImageMetadata[]): Map<string, ImageMetadata[]> {
-  const groups = new Map<string, ImageMetadata[]>();
-
-  for (const image of images) {
-    // Group by dimensions AND file size
-    const key = `${image.width}×${image.height}-${image.fileSize}`;
-    if (!groups.has(key)) {
-      groups.set(key, []);
-    }
-    groups.get(key)!.push(image);
-  }
-
-  // Only return groups with 2+ images (actual duplicates)
-  const duplicates = new Map<string, ImageMetadata[]>();
-  for (const [key, groupImages] of groups) {
-    if (groupImages.length >= 2) {
-      duplicates.set(key, groupImages);
-    }
-  }
-
-  return duplicates;
-}
-
 async function renderXAccountGroups(images: ImageMetadata[], renderToken: number) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByXAccount(images);
@@ -2488,48 +2426,12 @@ async function renderDuplicateGroups(images: ImageMetadata[], renderToken: numbe
  * Returns images in their visual rendering order.
  * This matches the DOM order when grouping is enabled.
  */
-function getVisualOrder(): ImageMetadata[] {
-  if (state.groupBy === 'none') {
-    // Ungrouped: use filtered images as-is
-    return state.filteredImages;
-  } else if (state.groupBy === 'x-account') {
-    // Group by X account: sort by count (desc) then alphabetically
-    const groups = groupImagesByXAccount(state.filteredImages);
-    const sortedAccounts = Array.from(groups.entries())
-      .sort((a, b) => {
-        const countDiff = b[1].length - a[1].length;
-        if (countDiff !== 0) return countDiff;
-        return a[0].localeCompare(b[0]);
-      })
-      .map(([account]) => account);
-
-    const visualOrder: ImageMetadata[] = [];
-    for (const account of sortedAccounts) {
-      visualOrder.push(...groups.get(account)!);
-    }
-    return visualOrder;
-  } else if (state.groupBy === 'duplicates') {
-    // Group by duplicates: sort by key alphabetically
-    const groups = groupImagesByDuplicates(state.filteredImages);
-    const sortedKeys = Array.from(groups.keys()).sort();
-
-    const visualOrder: ImageMetadata[] = [];
-    for (const key of sortedKeys) {
-      visualOrder.push(...groups.get(key)!);
-    }
-    return visualOrder;
-  }
-
-  // Fallback
-  return state.filteredImages;
-}
-
 function handleImageClick(e: Event) {
   const imageCard = (e.target as HTMLElement).closest('.image-card');
   if (!imageCard) return;
 
   const id = imageCard.getAttribute('data-id')!;
-  const visualOrder = getVisualOrder();
+  const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
   const index = visualOrder.findIndex(img => img.id === id);
   if (index !== -1) {
     openLightbox(index);
@@ -2537,7 +2439,7 @@ function handleImageClick(e: Event) {
 }
 
 function openLightbox(index: number) {
-  const visualOrder = getVisualOrder();
+  const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
   const image = visualOrder[index];
   if (!image) return;
 
@@ -3067,7 +2969,7 @@ function closeLightbox() {
 }
 
 function navigateLightboxByOffset(offset: number) {
-  const visualOrder = getVisualOrder();
+  const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
 
   // Get all visible image cards in DOM order (respects grouping)
   const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
@@ -3187,7 +3089,7 @@ function navigateGridByOffset(offset: number) {
 
 function selectCard(card: HTMLElement) {
   const id = card.dataset.id!;
-  const visualOrder = getVisualOrder();
+  const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
   const index = visualOrder.findIndex(img => img.id === id);
 
   state.selectedIds.clear();
@@ -3204,7 +3106,7 @@ function selectCard(card: HTMLElement) {
 function navigateGridByOffsetExpand(offset: number) {
   if (state.filteredImages.length === 0) return;
 
-  const visualOrder = getVisualOrder();
+  const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
 
   // Get all visible image cards in DOM order
   const allCards = Array.from(document.querySelectorAll('.image-card')) as HTMLElement[];
@@ -3527,7 +3429,7 @@ imageGrid.addEventListener('click', (e: Event) => {
   const card = target.closest('.image-card');
   if (card) {
     const id = card.getAttribute('data-id')!;
-    const visualOrder = getVisualOrder();
+    const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
     const clickedIndex = visualOrder.findIndex(img => img.id === id);
 
     if (mouseEvent.metaKey || mouseEvent.ctrlKey) {
@@ -3639,7 +3541,7 @@ chrome.runtime.onMessage.addListener((message) => {
 const groupBySelect = document.getElementById('group-by') as HTMLSelectElement;
 
 groupBySelect.addEventListener('change', () => {
-  state.groupBy = groupBySelect.value;
+  state.groupBy = groupBySelect.value as GroupBy;
   saveViewSettings();
   applyFilters();
 });
@@ -3723,7 +3625,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     e.preventDefault();
     if (state.selectedIds.size === 1) {
       const selectedId = Array.from(state.selectedIds)[0];
-      const visualOrder = getVisualOrder();
+      const visualOrder = getVisualOrder(state.filteredImages, state.groupBy);
       const index = visualOrder.findIndex(img => img.id === selectedId);
       if (index !== -1) {
         openLightbox(index);
