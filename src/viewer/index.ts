@@ -2,6 +2,7 @@ import { getAllImages, getAllImagesMetadata, getImageBlob, getImage, deleteImage
 import type { SavedImage, ImageMetadata } from '../types';
 import { parseTagSearch, removeTagFromQuery, sortTags, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
 import { getXAccountFromUrl, groupImagesByXAccount, groupImagesByDuplicates, getVisualOrder, type GroupBy } from './grouping';
+import { formatFileSize, extractArtistFromUrl, debounce } from './format';
 
 // Constants
 const SortField = {
@@ -2253,12 +2254,6 @@ function updatePreviewQuickRemoveTagsState() {
   });
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
 async function renderXAccountGroups(images: ImageMetadata[], renderToken: number) {
   const grid = document.getElementById('image-grid')!;
   const groups = groupImagesByXAccount(images);
@@ -3193,17 +3188,6 @@ function scrollToImage(id: string) {
 }
 
 // Debounce utility for performance
-function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: number | undefined;
-  return function(...args: Parameters<T>) {
-    clearTimeout(timeout);
-    timeout = window.setTimeout(() => func(...args), wait);
-  };
-}
-
 // Search input event listeners with debouncing
 const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
 const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
@@ -4538,49 +4522,6 @@ if (!document.getElementById('toast-styles')) {
 }
 
 // URL parsing helper for artist extraction
-function extractArtistFromUrl(url: string): { artist?: string; source?: string } {
-  const result: { artist?: string; source?: string } = {};
-
-  // Pixiv
-  const pixivUser = url.match(/pixiv\.net\/(?:en\/)?users\/(\d+)/);
-  const pixivArtwork = url.match(/pixiv\.net\/(?:en\/)?artworks\/(\d+)/);
-  if (pixivUser) {
-    result.artist = `pixiv_user_${pixivUser[1]}`;
-    result.source = url;
-  } else if (pixivArtwork) {
-    result.source = url;
-  }
-
-  // Twitter/X
-  const twitter = url.match(/(?:twitter|x)\.com\/([^/]+)/);
-  if (twitter && !['i', 'home', 'search'].includes(twitter[1])) {
-    result.artist = twitter[1];
-    result.source = url;
-  }
-
-  // Fanbox
-  const fanbox = url.match(/([^.]+)\.fanbox\.cc/);
-  if (fanbox) {
-    result.artist = `${fanbox[1]}_fanbox`;
-    result.source = url;
-  }
-
-  // DeviantArt
-  const deviantart = url.match(/deviantart\.com\/([^/]+)/);
-  if (deviantart) {
-    result.artist = deviantart[1];
-    result.source = url;
-  }
-
-  // ArtStation
-  const artstation = url.match(/artstation\.com\/(?:artwork\/|[^/]+$)/);
-  if (artstation) {
-    result.source = url;
-  }
-
-  return result;
-}
-
 // Modal control
 const danbooruModal = document.getElementById('danbooru-upload-modal')!;
 const danbooruOverlay = document.querySelector('.danbooru-upload-overlay')!;
