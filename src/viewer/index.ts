@@ -3,6 +3,7 @@ import type { SavedImage, ImageMetadata } from '../types';
 import { parseTagSearch, removeTagFromQuery, sortTags, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
 import { getXAccountFromUrl, groupImagesByXAccount, groupImagesByDuplicates, getVisualOrder, type GroupBy } from './grouping';
 import { formatFileSize, extractArtistFromUrl, debounce } from './format';
+import { offsetIndexClamped, offsetIndexBounded } from './navigation-math';
 
 // Constants
 const SortField = {
@@ -2977,9 +2978,9 @@ function navigateLightboxByOffset(offset: number) {
   const currentCardIndex = allCards.findIndex(card => card.dataset.id === currentImage.id);
   if (currentCardIndex === -1) return;
 
-  // Calculate new position in DOM order
-  const newCardIndex = currentCardIndex + offset;
-  if (newCardIndex < 0 || newCardIndex >= allCards.length) return;
+  // Calculate new position in DOM order (bounded: edges do nothing)
+  const newCardIndex = offsetIndexBounded(currentCardIndex, offset, allCards.length);
+  if (newCardIndex === null) return;
 
   // Get new image from DOM card
   const newCard = allCards[newCardIndex];
@@ -3063,23 +3064,9 @@ function navigateGridByOffset(offset: number) {
 
   const currentIndex = allCards.indexOf(currentCard);
 
-  // For horizontal navigation (offset = ±1), simple linear navigation
-  if (Math.abs(offset) === 1) {
-    const newIndex = currentIndex + offset;
-    const clampedIndex = Math.max(0, Math.min(newIndex, allCards.length - 1));
-    const newCard = allCards[clampedIndex];
-    selectCard(newCard);
-    return;
-  }
-
-  // For vertical navigation (offset = ±columns), need to handle grid layout
-  const columns = getGridColumns();
-  const targetIndex = currentIndex + offset;
-
-  // Simple bounds checking
-  const clampedIndex = Math.max(0, Math.min(targetIndex, allCards.length - 1));
-  const newCard = allCards[clampedIndex];
-  selectCard(newCard);
+  // Horizontal (offset = ±1) and vertical (offset = ±columns) both clamp to bounds
+  const clampedIndex = offsetIndexClamped(currentIndex, offset, allCards.length);
+  selectCard(allCards[clampedIndex]);
 }
 
 function selectCard(card: HTMLElement) {
@@ -3131,9 +3118,8 @@ function navigateGridByOffsetExpand(offset: number) {
   const currentCardIndex = allCards.findIndex(card => card.dataset.id === lastSelectedId);
   if (currentCardIndex === -1) return;
 
-  // Calculate new focus position in DOM order
-  const newFocusIndex = currentCardIndex + offset;
-  const clampedFocusIndex = Math.max(0, Math.min(newFocusIndex, allCards.length - 1));
+  // Calculate new focus position in DOM order (clamped, like grid navigation)
+  const clampedFocusIndex = offsetIndexClamped(currentCardIndex, offset, allCards.length);
 
   if (clampedFocusIndex !== currentCardIndex) {
     const newFocusCard = allCards[clampedFocusIndex];
