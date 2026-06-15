@@ -114,9 +114,24 @@ Tests pure grid/lightbox index math (`src/viewer/navigation-math.ts`). Locks in 
 deliberate edge-behavior difference that used to diverge: grid CLAMPS at the boundary,
 lightbox returns "no movement".
 
+### `toast.test.ts` (4 tests, happy-dom)
+Tests `showToast` (`src/viewer/toast.ts`): message/styling, lazy one-time style injection,
+auto-dismiss timeout.
+
+### `render.test.ts` (16 tests, happy-dom)
+Tests `createImageCardHTML` (`src/viewer/render.ts`): selection/checkbox state, rating
+badges (g/s/q/e + unrated), tag sorting + active-search highlighting, X-account button +
+active state, and trash-vs-normal action buttons.
+
+## DOM tests (happy-dom)
+
+Pure-logic tests run in the `node` env (default). DOM-dependent tests opt into happy-dom
+per-file with a `// @vitest-environment happy-dom` docblock at the top, so the fast node
+tests are unaffected. `@testing-library/dom` is available for queries.
+
 ## Test Performance
 
-All 153 tests run in ~25ms total. Fast execution enables TDD workflow and pre-commit hooks.
+All 173 tests run in ~0.3s total. Fast execution enables TDD workflow and pre-commit hooks.
 
 ## Architecture Decision: Function Extraction
 

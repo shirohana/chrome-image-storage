@@ -62,26 +62,56 @@ Warnings don't block development. Fix gradually as you work on related code.
 
 ## Testing
 
-153 tests (Vitest, `node` env — pure functions, no DOM). Coverage: tag parser, tag
-removal, auto-tagging, rating extraction, grouping, filtering/sorting, format helpers,
-and navigation index math.
-
-Pure logic is extracted out of the `src/viewer/index.ts` monolith into DOM-free,
-side-effect-free modules so it can be unit-tested directly:
-- `src/viewer/tag-utils.ts` — tag parse/sort/search-query helpers
-- `src/viewer/grouping.ts` — `getXAccountFromUrl`, `groupImagesBy*`, `getVisualOrder(images, groupBy)`
-- `src/viewer/filters.ts` — `filterImages`, `computeRatingCounts`, `sortImages`, `parseSearchQuery`
-- `src/viewer/format.ts` — `formatFileSize`, `extractArtistFromUrl`, `debounce`
-- `src/viewer/navigation-math.ts` — pure grid/lightbox index math (`offsetIndexClamped` clamps at
-  edges for the grid; `offsetIndexBounded` no-ops at edges for the lightbox — ONE TRUTH for the
-  navigation that previously diverged between grid and lightbox)
+173 tests (Vitest). Most run in the `node` env (pure functions); DOM-dependent tests opt
+into happy-dom per-file via `// @vitest-environment happy-dom` (so node tests stay fast).
+Coverage: tag parser, tag removal, auto-tagging, rating extraction, grouping,
+filtering/sorting, format helpers, navigation index math, toast, and image-card rendering.
 
 **Pattern**: when logic in `index.ts` only touches the DOM to read an input value or
-card order, parameterize that out into one of these modules and leave a thin DOM-reading
-wrapper behind (e.g. `applySorting()` → `sortImages(state.images, state.sort)`). This keeps
-the core testable in the `node` env without a DOM runner.
+card order, parameterize that out into a module and leave a thin DOM-reading wrapper behind
+(e.g. `applySorting()` → `sortImages(state.images, state.sort)`). This keeps the core
+testable in the `node` env without a DOM runner.
 
 See `tests/README.md` for details.
+
+## Viewer Module Map
+
+`src/viewer/index.ts` was a 5260-line monolith; it has been split into focused modules
+(index.ts is now the bootstrap + event wiring + the `applyFilters` controller + the
+not-yet-extracted view layer). Modules:
+
+**Pure / logic (node-testable, no DOM, no import-time side effects):**
+- `tag-utils.ts` — tag parse/sort/search-query helpers
+- `grouping.ts` — `getXAccountFromUrl`, `groupImagesBy*`, `getVisualOrder(images, groupBy)`
+- `filters.ts` — `filterImages`, `computeRatingCounts`, `sortImages`, `parseSearchQuery`
+- `format.ts` — `formatFileSize`, `extractArtistFromUrl`, `debounce`
+- `navigation-math.ts` — pure grid/lightbox index math (`offsetIndexClamped` clamps at edges
+  for the grid; `offsetIndexBounded` no-ops at edges for the lightbox — ONE TRUTH for the
+  navigation that previously diverged between grid and lightbox)
+
+**State / data:**
+- `state.ts` — the shared mutable `state` singleton (imported by all)
+- `blobs.ts` — object-URL/blob lifecycle (`getOrCreateObjectURL`, `loadImageBlob`, revoke, `PLACEHOLDER_IMAGE`)
+
+**View (happy-dom-testable):**
+- `render.ts` — `createImageCardHTML`, the render pipeline, group rendering, lazy-load observers, `observeImage`
+
+**Leaf UI utils & feature blocks (side-effectful; imported by index.ts):**
+- `toast.ts` — `showToast` (lazy style injection)
+- `autocomplete.ts` — `setupTagAutocomplete`
+- `danbooru.ts` — Danbooru upload (`openDanbooruUploadModal`)
+- `notes.ts` — notes panel (side-effect import, wires itself up)
+- `tag-rules-ui.ts` — auto-tag rules UI (`renderTagRules`, `newlyImportedRuleIds`)
+- `import-export-ui.ts` — SQLite/local-files import & export; `initImportExport(reload)` injected with `loadImages` (no cycle)
+
+**Conventions for further extraction:**
+- Extracted modules must avoid import-time DOM lookups (use inline lazy `getElementById` or
+  an `init(deps)` function) so they stay importable in tests.
+- ES-module **circular imports are fine for runtime calls** (a module may call back into a
+  sibling/controller inside a function body), but never at module-init time.
+- The remaining view/controller in `index.ts` (selection, nav, lightbox, preview, sidebar,
+  data-coordination like `loadImages`/`syncImageMetadataToState`) is deliberately left for a
+  future UI-lib / light-MVC migration that will make the view importable and testable.
 
 ## Architecture
 
