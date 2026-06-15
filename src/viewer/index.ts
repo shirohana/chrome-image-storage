@@ -1,9 +1,10 @@
 import { getAllImages, getAllImagesMetadata, getImageBlob, getImage, deleteImage, deleteAllImages, restoreImage, permanentlyDeleteImage, emptyTrash, updateImageTags, addTagsToImages, removeTagsFromImages } from '../storage/service';
 import type { SavedImage, ImageMetadata } from '../types';
-import { parseTagSearch, removeTagFromQuery, sortTags, type ParsedTagSearch, type TagCountFilter } from './tag-utils';
+import { parseTagSearch, removeTagFromQuery, sortTags } from './tag-utils';
 import { getXAccountFromUrl, groupImagesByXAccount, groupImagesByDuplicates, getVisualOrder, type GroupBy } from './grouping';
 import { formatFileSize, extractArtistFromUrl, debounce } from './format';
 import { offsetIndexClamped, offsetIndexBounded } from './navigation-math';
+import { filterImages, computeRatingCounts, sortImages } from './filters';
 
 // Constants
 const SortField = {
@@ -296,64 +297,6 @@ async function syncImageMetadataToState<T extends keyof ImageMetadata>(
 }
 
 // TagCountFilter moved to tag-utils.ts
-
-interface ParsedSearch {
-  terms: string;
-  tagCount: TagCountFilter | null;
-}
-
-function parseSearchQuery(query: string): ParsedSearch {
-  // Try to match tagcount patterns in order of specificity
-  // 1. List: tagcount:1,3,5
-  const listRegex = /tagcount:(\d+(?:,\d+)+)/i;
-  const listMatch = query.match(listRegex);
-
-  if (listMatch) {
-    const values = listMatch[1].split(',').map(v => parseInt(v.trim(), 10));
-    const terms = query.replace(listRegex, '').trim();
-    return {
-      terms,
-      tagCount: { operator: 'list', values }
-    };
-  }
-
-  // 2. Range or comparison operators
-  const tagCountRegex = /tagcount:(>=|<=|>|<|)(\d+)(\.\.(\d+))?/i;
-  const match = query.match(tagCountRegex);
-
-  let tagCount: TagCountFilter | null = null;
-
-  if (match) {
-    const operator = match[1];
-    const firstNum = parseInt(match[2], 10);
-    const secondNum = match[4] ? parseInt(match[4], 10) : undefined;
-
-    if (secondNum !== undefined) {
-      // Range: tagcount:1..10
-      tagCount = {
-        operator: 'range',
-        min: Math.min(firstNum, secondNum),
-        max: Math.max(firstNum, secondNum),
-      };
-    } else if (operator === '>') {
-      tagCount = { operator: '>', value: firstNum };
-    } else if (operator === '<') {
-      tagCount = { operator: '<', value: firstNum };
-    } else if (operator === '>=') {
-      tagCount = { operator: '>=', value: firstNum };
-    } else if (operator === '<=') {
-      tagCount = { operator: '<=', value: firstNum };
-    } else {
-      // Exact: tagcount:2
-      tagCount = { operator: '=', value: firstNum };
-    }
-  }
-
-  // Remove tagcount: from query
-  const terms = query.replace(tagCountRegex, '').trim();
-
-  return { terms, tagCount };
-}
 
 // Update tag sidebar with tags from filtered images
 function updateTagSidebar(images: ImageMetadata[] = state.filteredImages) {
@@ -881,122 +824,13 @@ function updateRatingPills() {
 // This allows showing counts for each rating based on current search/tag/account filters.
 // If you modify applyFilters(), update this function to match (except for rating filter).
 function getRatingCounts(): { g: number; s: number; q: number; e: number; unrated: number } {
-  let filtered = state.images;
-
-  // 1. Apply view filter (all or trash)
-  if (state.currentView === 'all') {
-    filtered = filtered.filter(img => !img.isDeleted);
-  } else {
-    filtered = filtered.filter(img => img.isDeleted);
-  }
-
-  // 2. Apply URL/page title search filter
   const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
-  if (urlSearchInput && urlSearchInput.value) {
-    const query = urlSearchInput.value.toLowerCase();
-    filtered = filtered.filter(img =>
-      img.imageUrl.toLowerCase().includes(query) ||
-      img.pageUrl.toLowerCase().includes(query) ||
-      (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
-    );
-  }
-
-  // 3. Apply tag search filter (Danbooru syntax) - BUT SKIP RATING FILTER
   const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
-  if (tagSearchInput && tagSearchInput.value) {
-    const parsed = parseTagSearch(tagSearchInput.value);
-
-    // Skip rating filter - we want counts across all ratings
-
-    // Apply file type filters
-    if (parsed.fileTypes.size > 0) {
-      filtered = filtered.filter(img => parsed.fileTypes.has(img.mimeType));
-    }
-
-    // Apply tag count filter
-    if (parsed.tagCount) {
-      filtered = filtered.filter(img => {
-        const tagCount = img.tags?.length ?? 0;
-        const filter = parsed.tagCount!;
-
-        if (filter.operator === 'list') {
-          return filter.values!.includes(tagCount);
-        } else if (filter.operator === 'range') {
-          return tagCount >= filter.min! && tagCount <= filter.max!;
-        } else if (filter.operator === '=') {
-          return tagCount === filter.value!;
-        } else if (filter.operator === '>') {
-          return tagCount > filter.value!;
-        } else if (filter.operator === '<') {
-          return tagCount < filter.value!;
-        } else if (filter.operator === '>=') {
-          return tagCount >= filter.value!;
-        } else if (filter.operator === '<=') {
-          return tagCount <= filter.value!;
-        }
-        return true;
-      });
-    }
-
-    // Apply account filters (OR logic for included accounts)
-    if (parsed.accounts.size > 0) {
-      filtered = filtered.filter(img => {
-        const account = getXAccountFromUrl(img.pageUrl);
-        return account && parsed.accounts.has(account);
-      });
-    }
-
-    // Apply excluded account filters
-    if (parsed.excludeAccounts.size > 0) {
-      filtered = filtered.filter(img => {
-        const account = getXAccountFromUrl(img.pageUrl);
-        return !account || !parsed.excludeAccounts.has(account);
-      });
-    }
-
-    // Apply include tags (AND logic)
-    if (parsed.includeTags.length > 0) {
-      filtered = filtered.filter(img =>
-        img.tags && parsed.includeTags.every(tag => img.tags!.includes(tag))
-      );
-    }
-
-    // Apply OR groups
-    if (parsed.orGroups.length > 0) {
-      filtered = filtered.filter(img => {
-        if (!img.tags) return false;
-        // Image must match at least one tag from each OR group
-        return parsed.orGroups.every(group =>
-          group.some(tag => img.tags!.includes(tag))
-        );
-      });
-    }
-
-    // Apply exclude tags
-    if (parsed.excludeTags.length > 0) {
-      filtered = filtered.filter(img =>
-        !img.tags || !parsed.excludeTags.some(tag => img.tags!.includes(tag))
-      );
-    }
-  }
-
-  // Count images by rating
-  const counts = { g: 0, s: 0, q: 0, e: 0, unrated: 0 };
-  for (const img of filtered) {
-    if (!img.rating) {
-      counts.unrated++;
-    } else if (img.rating === 'g') {
-      counts.g++;
-    } else if (img.rating === 's') {
-      counts.s++;
-    } else if (img.rating === 'q') {
-      counts.q++;
-    } else if (img.rating === 'e') {
-      counts.e++;
-    }
-  }
-
-  return counts;
+  return computeRatingCounts(state.images, {
+    view: state.currentView,
+    urlSearch: urlSearchInput?.value ?? '',
+    tagSearch: tagSearchInput?.value ?? '',
+  });
 }
 
 // parseTagSearch moved to tag-utils.ts
@@ -1008,112 +842,14 @@ function applyFiltersWithoutRender(): void {
   // Re-sort first so updated images move to correct position
   applySorting();
 
-  let filtered = state.images;
-
-  // 1. Apply view filter (all or trash)
-  if (state.currentView === 'all') {
-    filtered = filtered.filter(img => !img.isDeleted);
-  } else {
-    filtered = filtered.filter(img => img.isDeleted);
-  }
-
-  // 2. Apply URL/page title search filter
   const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
-  if (urlSearchInput && urlSearchInput.value) {
-    const query = urlSearchInput.value.toLowerCase();
-    filtered = filtered.filter(img =>
-      img.imageUrl.toLowerCase().includes(query) ||
-      img.pageUrl.toLowerCase().includes(query) ||
-      (img.pageTitle && img.pageTitle.toLowerCase().includes(query))
-    );
-  }
-
-  // 3. Apply tag search filter (Danbooru syntax)
   const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputElement;
-  if (tagSearchInput && tagSearchInput.value) {
-    const parsed = parseTagSearch(tagSearchInput.value);
 
-    // Apply rating filters
-    if (parsed.ratings.size > 0 || parsed.includeUnrated) {
-      filtered = filtered.filter(img => {
-        if (parsed.includeUnrated && !img.rating) {
-          return true;
-        }
-        return img.rating && parsed.ratings.has(img.rating);
-      });
-    }
-
-    // Apply file type filters
-    if (parsed.fileTypes.size > 0) {
-      filtered = filtered.filter(img => parsed.fileTypes.has(img.mimeType));
-    }
-
-    // Apply tag count filter
-    if (parsed.tagCount) {
-      filtered = filtered.filter(img => {
-        const tagCount = img.tags?.length ?? 0;
-        const filter = parsed.tagCount!;
-
-        if (filter.operator === 'list') {
-          return filter.values!.includes(tagCount);
-        } else if (filter.operator === 'range') {
-          return tagCount >= filter.min! && tagCount <= filter.max!;
-        } else if (filter.operator === '=') {
-          return tagCount === filter.value!;
-        } else if (filter.operator === '>') {
-          return tagCount > filter.value!;
-        } else if (filter.operator === '<') {
-          return tagCount < filter.value!;
-        } else if (filter.operator === '>=') {
-          return tagCount >= filter.value!;
-        } else if (filter.operator === '<=') {
-          return tagCount <= filter.value!;
-        }
-        return true;
-      });
-    }
-
-    // Apply account filters (OR logic for included accounts)
-    if (parsed.accounts.size > 0) {
-      filtered = filtered.filter(img => {
-        const account = getXAccountFromUrl(img.pageUrl);
-        return account && parsed.accounts.has(account);
-      });
-    }
-
-    // Apply excluded account filters
-    if (parsed.excludeAccounts.size > 0) {
-      filtered = filtered.filter(img => {
-        const account = getXAccountFromUrl(img.pageUrl);
-        return !account || !parsed.excludeAccounts.has(account);
-      });
-    }
-
-    // Apply include tags (AND logic)
-    if (parsed.includeTags.length > 0) {
-      filtered = filtered.filter(img =>
-        img.tags && parsed.includeTags.every(tag => img.tags!.includes(tag))
-      );
-    }
-
-    // Apply OR groups
-    if (parsed.orGroups.length > 0) {
-      filtered = filtered.filter(img => {
-        if (!img.tags) return false;
-        // Image must match at least one tag from each OR group
-        return parsed.orGroups.every(group =>
-          group.some(tag => img.tags!.includes(tag))
-        );
-      });
-    }
-
-    // Apply exclude tags
-    if (parsed.excludeTags.length > 0) {
-      filtered = filtered.filter(img =>
-        !img.tags || !parsed.excludeTags.some(tag => img.tags!.includes(tag))
-      );
-    }
-  }
+  const filtered = filterImages(state.images, {
+    view: state.currentView,
+    urlSearch: urlSearchInput?.value ?? '',
+    tagSearch: tagSearchInput?.value ?? '',
+  });
 
   // Store filtered images for select all
   state.filteredImages = filtered;
@@ -1163,32 +899,7 @@ async function applyFiltersAndSave() {
 }
 
 function applySorting() {
-  const [field, direction] = state.sort.split('-');
-  const isAsc = direction === 'asc';
-
-  state.images.sort((a, b) => {
-    let comparison = 0;
-
-    switch (field) {
-      case 'savedAt':
-        comparison = a.savedAt - b.savedAt;
-        break;
-      case 'updatedAt':
-        comparison = (a.updatedAt ?? a.savedAt) - (b.updatedAt ?? b.savedAt);
-        break;
-      case 'fileSize':
-        comparison = a.fileSize - b.fileSize;
-        break;
-      case 'dimensions':
-        comparison = (a.width * a.height) - (b.width * b.height);
-        break;
-      case 'url':
-        comparison = a.imageUrl.localeCompare(b.imageUrl);
-        break;
-    }
-
-    return isAsc ? comparison : -comparison;
-  });
+  sortImages(state.images, state.sort);
 }
 
 // Placeholder for unloaded images
