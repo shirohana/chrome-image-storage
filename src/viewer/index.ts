@@ -5,37 +5,7 @@ import { getXAccountFromUrl, groupImagesByXAccount, groupImagesByDuplicates, get
 import { formatFileSize, extractArtistFromUrl, debounce } from './format';
 import { offsetIndexClamped, offsetIndexBounded } from './navigation-math';
 import { filterImages, computeRatingCounts, sortImages } from './filters';
-
-// Constants
-const SortField = {
-  SAVED_AT: 'savedAt',
-  FILE_SIZE: 'fileSize',
-  DIMENSIONS: 'dimensions',
-  URL: 'url',
-} as const;
-
-const SortDirection = {
-  ASC: 'asc',
-  DESC: 'desc',
-} as const;
-
-// State
-const state = {
-  images: [] as ImageMetadata[],
-  filteredImages: [] as ImageMetadata[],
-  loadedBlobs: new Map<string, Blob>(),
-  sort: 'savedAt-desc',
-  groupBy: 'none' as GroupBy,
-  selectedIds: new Set<string>(),
-  objectUrls: new Map<string, string>(),
-  currentView: 'all' as 'all' | 'trash',
-  lightboxActive: false,
-  currentLightboxIndex: -1,
-  previewPaneVisible: false,
-  lastSelectedIndex: -1,
-  selectionAnchor: -1,
-  currentRenderToken: 0,
-};
+import { state } from './state';
 
 // Context menu state
 let ratingContextMenu: HTMLElement | null = null;
