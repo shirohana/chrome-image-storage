@@ -126,6 +126,17 @@ function observeImages() {
   });
 }
 
+/**
+ * Observe a single image element for lazy loading (used after surgical card
+ * updates/inserts). No-op if the observer hasn't been created yet — a full
+ * render sets it up first.
+ */
+export function observeImage(img: Element): void {
+  if (imageObserver) {
+    imageObserver.observe(img);
+  }
+}
+
 // Intersection Observer for lazy loading preview thumbnails
 let previewThumbnailObserver: IntersectionObserver | null = null;
 
