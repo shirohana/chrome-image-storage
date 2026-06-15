@@ -6,6 +6,13 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 Early prototype with core features completed. Keep it simple and make it work first.
 
+## Handoff (read first when resuming)
+
+`HANDOFF.md` (repo root) is the cross-session **"what's next" signal**. When wrapping up a
+work phase, update it with: current state, decisions already made (so they aren't
+relitigated), gotchas learned, and the recommended next step. It's committed on purpose —
+the first thing to read when picking the project back up.
+
 ## Project Purpose
 
 **Primary goal**: Help people who like to save images from the internet.
