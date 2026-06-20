@@ -47,51 +47,60 @@ async function saveDanbooruSettings(settings: DanbooruSettings) {
   await chrome.storage.local.set(settings);
 }
 
-// Load settings on page load
-const danbooruUrlInput = document.getElementById('danbooru-url-input') as HTMLInputElement;
-const danbooruUsernameInput = document.getElementById('danbooru-username-input') as HTMLInputElement;
-const danbooruApiKeyInput = document.getElementById('danbooru-apikey-input') as HTMLInputElement;
-const danbooruApiKeyToggle = document.getElementById('danbooru-apikey-toggle')!;
+// DOM refs assigned by initDanbooru() (no import-time DOM access).
+let danbooruModal: HTMLElement;
+let danbooruSubmitBtn: HTMLButtonElement;
 
-loadDanbooruSettings().then(settings => {
-  danbooruUrlInput.value = settings.danbooruUrl;
-  danbooruUsernameInput.value = settings.danbooruUsername;
-  danbooruApiKeyInput.value = settings.danbooruApiKey;
-});
+// Look up DOM refs, load settings, and wire up the Danbooru UI. Call once on page load.
+export function initDanbooru(): void {
+  // Settings inputs
+  const danbooruUrlInput = document.getElementById('danbooru-url-input') as HTMLInputElement;
+  const danbooruUsernameInput = document.getElementById('danbooru-username-input') as HTMLInputElement;
+  const danbooruApiKeyInput = document.getElementById('danbooru-apikey-input') as HTMLInputElement;
+  const danbooruApiKeyToggle = document.getElementById('danbooru-apikey-toggle')!;
 
-// Save on change
-danbooruUrlInput.addEventListener('change', async () => {
-  const settings = await loadDanbooruSettings();
-  settings.danbooruUrl = danbooruUrlInput.value.trim();
-  await saveDanbooruSettings(settings);
-});
+  // Load settings on page load
+  loadDanbooruSettings().then(settings => {
+    danbooruUrlInput.value = settings.danbooruUrl;
+    danbooruUsernameInput.value = settings.danbooruUsername;
+    danbooruApiKeyInput.value = settings.danbooruApiKey;
+  });
 
-danbooruUsernameInput.addEventListener('change', async () => {
-  const settings = await loadDanbooruSettings();
-  settings.danbooruUsername = danbooruUsernameInput.value.trim();
-  await saveDanbooruSettings(settings);
-});
+  // Save on change
+  danbooruUrlInput.addEventListener('change', async () => {
+    const settings = await loadDanbooruSettings();
+    settings.danbooruUrl = danbooruUrlInput.value.trim();
+    await saveDanbooruSettings(settings);
+  });
+  danbooruUsernameInput.addEventListener('change', async () => {
+    const settings = await loadDanbooruSettings();
+    settings.danbooruUsername = danbooruUsernameInput.value.trim();
+    await saveDanbooruSettings(settings);
+  });
+  danbooruApiKeyInput.addEventListener('change', async () => {
+    const settings = await loadDanbooruSettings();
+    settings.danbooruApiKey = danbooruApiKeyInput.value.trim();
+    await saveDanbooruSettings(settings);
+  });
 
-danbooruApiKeyInput.addEventListener('change', async () => {
-  const settings = await loadDanbooruSettings();
-  settings.danbooruApiKey = danbooruApiKeyInput.value.trim();
-  await saveDanbooruSettings(settings);
-});
+  // Toggle API key visibility
+  danbooruApiKeyToggle.addEventListener('click', () => {
+    const isPassword = danbooruApiKeyInput.type === 'password';
+    danbooruApiKeyInput.type = isPassword ? 'text' : 'password';
+  });
 
-// Toggle API key visibility
-danbooruApiKeyToggle.addEventListener('click', () => {
-  const isPassword = danbooruApiKeyInput.type === 'password';
-  danbooruApiKeyInput.type = isPassword ? 'text' : 'password';
-});
+  // Modal control
+  danbooruModal = document.getElementById('danbooru-upload-modal')!;
+  const danbooruOverlay = document.querySelector('.danbooru-upload-overlay')!;
+  const danbooruCloseBtn = document.querySelector('.danbooru-upload-close')!;
+  const danbooruCancelBtn = document.getElementById('danbooru-upload-cancel-btn')!;
+  danbooruSubmitBtn = document.getElementById('danbooru-upload-submit-btn') as HTMLButtonElement;
 
-// Toast notification system
-// URL parsing helper for artist extraction
-// Modal control
-const danbooruModal = document.getElementById('danbooru-upload-modal')!;
-const danbooruOverlay = document.querySelector('.danbooru-upload-overlay')!;
-const danbooruCloseBtn = document.querySelector('.danbooru-upload-close')!;
-const danbooruCancelBtn = document.getElementById('danbooru-upload-cancel-btn')!;
-const danbooruSubmitBtn = document.getElementById('danbooru-upload-submit-btn')!;
+  danbooruOverlay.addEventListener('click', closeDanbooruModal);
+  danbooruCloseBtn.addEventListener('click', closeDanbooruModal);
+  danbooruCancelBtn.addEventListener('click', closeDanbooruModal);
+  danbooruSubmitBtn.addEventListener('click', handleDanbooruSubmit);
+}
 
 let currentUploadImageId: string | null = null;
 
@@ -99,10 +108,6 @@ function closeDanbooruModal() {
   danbooruModal.classList.remove('active');
   currentUploadImageId = null;
 }
-
-danbooruOverlay.addEventListener('click', closeDanbooruModal);
-danbooruCloseBtn.addEventListener('click', closeDanbooruModal);
-danbooruCancelBtn.addEventListener('click', closeDanbooruModal);
 
 export async function openDanbooruUploadModal(imageId: string) {
   const settings = await loadDanbooruSettings();
@@ -164,7 +169,7 @@ export async function openDanbooruUploadModal(imageId: string) {
 }
 
 // Upload to Danbooru
-danbooruSubmitBtn.addEventListener('click', async () => {
+async function handleDanbooruSubmit() {
   if (!currentUploadImageId) return;
 
   const image = state.images.find(img => img.id === currentUploadImageId);
@@ -265,7 +270,7 @@ danbooruSubmitBtn.addEventListener('click', async () => {
     danbooruSubmitBtn.disabled = false;
     danbooruSubmitBtn.textContent = 'Upload to Danbooru';
   }
-});
+}
 
 async function pollUploadStatus(settings: DanbooruSettings, uploadId: number): Promise<number | null> {
   console.log(`Polling upload ${uploadId} for completion...`);

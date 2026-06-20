@@ -12,16 +12,17 @@ import {
   type ImportResult
 } from '../storage/tag-rules';
 
-const tagRulesList = document.getElementById('tag-rules-list')!;
-const ruleNameInput = document.getElementById('rule-name-input') as HTMLInputElement;
-const rulePatternInput = document.getElementById('rule-pattern-input') as HTMLInputElement;
-const ruleRegexToggle = document.getElementById('rule-regex-toggle') as HTMLInputElement;
-const ruleTagsInput = document.getElementById('rule-tags-input') as HTMLInputElement;
-const addRuleBtn = document.getElementById('add-rule-btn')!;
-const cancelRuleBtn = document.getElementById('cancel-rule-btn')!;
-const exportRulesBtn = document.getElementById('export-rules-btn')!;
-const importRulesBtn = document.getElementById('import-rules-btn')!;
-const importRulesInput = document.getElementById('import-rules-input') as HTMLInputElement;
+// DOM refs assigned by initTagRules() (no import-time DOM access).
+let tagRulesList: HTMLElement;
+let ruleNameInput: HTMLInputElement;
+let rulePatternInput: HTMLInputElement;
+let ruleRegexToggle: HTMLInputElement;
+let ruleTagsInput: HTMLInputElement;
+let addRuleBtn: HTMLElement;
+let cancelRuleBtn: HTMLElement;
+let exportRulesBtn: HTMLElement;
+let importRulesBtn: HTMLElement;
+let importRulesInput: HTMLInputElement;
 
 let editingRuleId: string | null = null;
 export let newlyImportedRuleIds = new Set<string>();
@@ -105,7 +106,21 @@ function attachRuleEventListeners() {
   });
 }
 
-addRuleBtn.addEventListener('click', async () => {
+// Look up DOM refs and wire up the tag-rules UI. Call once on page load
+// before renderTagRules().
+export function initTagRules(): void {
+  tagRulesList = document.getElementById('tag-rules-list')!;
+  ruleNameInput = document.getElementById('rule-name-input') as HTMLInputElement;
+  rulePatternInput = document.getElementById('rule-pattern-input') as HTMLInputElement;
+  ruleRegexToggle = document.getElementById('rule-regex-toggle') as HTMLInputElement;
+  ruleTagsInput = document.getElementById('rule-tags-input') as HTMLInputElement;
+  addRuleBtn = document.getElementById('add-rule-btn')!;
+  cancelRuleBtn = document.getElementById('cancel-rule-btn')!;
+  exportRulesBtn = document.getElementById('export-rules-btn')!;
+  importRulesBtn = document.getElementById('import-rules-btn')!;
+  importRulesInput = document.getElementById('import-rules-input') as HTMLInputElement;
+
+  addRuleBtn.addEventListener('click', async () => {
   const name = ruleNameInput.value.trim();
   const pattern = rulePatternInput.value.trim();
   const isRegex = ruleRegexToggle.checked;
@@ -191,7 +206,8 @@ importRulesInput.addEventListener('change', async (e) => {
   }
 
   importRulesInput.value = '';
-});
+  });
+}
 
 function escapeHtml(text: string): string {
   const div = document.createElement('div');

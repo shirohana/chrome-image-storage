@@ -8,10 +8,10 @@ import { filterImages, computeRatingCounts, sortImages } from './filters';
 import { state } from './state';
 import { showToast } from './toast';
 import { setupTagAutocomplete } from './autocomplete';
-import { openDanbooruUploadModal } from './danbooru';
+import { openDanbooruUploadModal, initDanbooru } from './danbooru';
 import { PLACEHOLDER_IMAGE, getOrCreateObjectURL, loadImageBlob, revokeObjectURL } from './blobs';
-import './notes';
-import { renderTagRules, newlyImportedRuleIds } from './tag-rules-ui';
+import { initNotes } from './notes';
+import { renderTagRules, newlyImportedRuleIds, initTagRules } from './tag-rules-ui';
 import { createImageCardHTML, renderImages, observePreviewThumbnails, observeImage } from './render';
 import { initImportExport } from './import-export-ui';
 
@@ -20,6 +20,9 @@ let ratingContextMenu: HTMLElement | null = null;
 let tagContextMenu: HTMLElement | null = null;
 let contextMenuTargetImageId: string | null = null;
 let contextMenuTargetTag: string | null = null;
+
+// Tag autocomplete updater (assigned in init(), called from functions above the bootstrap)
+let updateTagAutocompleteAvailableTags: (() => void) | undefined;
 
 // Settings
 async function loadSettings() {
@@ -2127,6 +2130,31 @@ function scrollToImage(id: string) {
   card.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'nearest' });
 }
 
+function toggleTagInInput(input: HTMLInputElement, tag: string) {
+  const currentValue = input.value.trim();
+  const existingTags = currentValue ? currentValue.split(/\s+/) : [];
+
+  if (existingTags.includes(tag)) {
+    // Remove tag
+    const newTags = existingTags.filter(t => t !== tag);
+    input.value = newTags.join(' ');
+  } else {
+    // Add tag
+    const newValue = existingTags.length > 0
+      ? `${currentValue} ${tag}`
+      : tag;
+    input.value = newValue;
+  }
+}
+
+// Bootstrap: all top-level DOM lookups + event wiring live here so the module can be
+// imported in a node/test environment without touching the DOM at import time.
+export function init() {
+// Wire up sibling feature modules (each looks up its own DOM refs).
+initNotes();
+initDanbooru();
+initTagRules();
+
 // Debounce utility for performance
 // Search input event listeners with debouncing
 const urlSearchInput = document.getElementById('url-search-input') as HTMLInputElement;
@@ -2134,9 +2162,6 @@ const tagSearchInput = document.getElementById('tag-search-input') as HTMLInputE
 
 const debouncedApplyFilters = debounce(() => applyFiltersAndSave(), 200);
 const debouncedTagSearch = debounce(() => applyFiltersAndSave(), 200);
-
-// Store the tag autocomplete update function globally
-let updateTagAutocompleteAvailableTags: (() => void) | undefined;
 
 if (urlSearchInput) {
   urlSearchInput.addEventListener('input', debouncedApplyFilters);
@@ -2785,23 +2810,6 @@ function updateQuickRemoveTagsState() {
   });
 }
 
-function toggleTagInInput(input: HTMLInputElement, tag: string) {
-  const currentValue = input.value.trim();
-  const existingTags = currentValue ? currentValue.split(/\s+/) : [];
-
-  if (existingTags.includes(tag)) {
-    // Remove tag
-    const newTags = existingTags.filter(t => t !== tag);
-    input.value = newTags.join(' ');
-  } else {
-    // Add tag
-    const newValue = existingTags.length > 0
-      ? `${currentValue} ${tag}`
-      : tag;
-    input.value = newValue;
-  }
-}
-
 function closeBulkTagModal() {
   bulkTagModal.classList.remove('active');
   // Remove event listener to prevent duplicates
@@ -2871,3 +2879,10 @@ renderTagRules();
   await restoreSearchState();
   await loadImages();
 })();
+}
+
+// Auto-init in the real viewer page. Tests import this module without the viewer
+// HTML fixture (no #image-grid), so init() does not auto-run; tests call init() themselves.
+if (typeof document !== 'undefined' && document.getElementById('image-grid')) {
+  init();
+}
