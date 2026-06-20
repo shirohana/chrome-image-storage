@@ -10,7 +10,9 @@ export default [
     languageOptions: {
       parser: tsparser,
       parserOptions: {
-        project: './tsconfig.json',
+        // tsconfig.eslint.json widens `include` to cover tests/ + config files
+        // (the build tsconfig only includes src/). Rules are unchanged for src.
+        project: './tsconfig.eslint.json',
       },
       globals: {
         ...globals.browser,
@@ -43,6 +45,23 @@ export default [
 
       // Downgrade regex escape warnings
       'no-useless-escape': 'warn',
+    },
+  },
+  {
+    // Vitest provides describe/it/expect/vi as globals (test.globals: true).
+    files: ['tests/**/*.ts', 'tests/**/*.tsx'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        describe: 'readonly',
+        it: 'readonly',
+        expect: 'readonly',
+        vi: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+      },
     },
   },
 ];
