@@ -54,12 +54,46 @@ toggle, selection-driven content, blur auto-save asserted via the mocked service
 pills). **242 tests, eslint 0 errors.** Documented-not-fixed: grid vertical clamp jumps columns at
 the bottom edge; lightbox metadata + preview render are async (tests flush microtasks).
 
-**Next step — the big one (only remaining piece of the migration):**
-1. **Finish render.ts migration**: convert the pipeline (`renderImages`/group/chunked) + the two
-   `index.ts` surgical-update sites (`insertNewImageCard`, `updateSingleImageCardInDOM`) to mount
-   Solid nodes directly, dropping the string round-trip; then a reactive `<For>` grid driven by a
-   signal. This is where the real win lands — it dissolves the manual "mutate state → call every
-   `update*()`" orchestration in `index.ts`'s `applyFilters`.
+**Render pipeline node-ification DONE (commit `aa75ccb`).** The pipeline
+(`renderImages`/group/chunked) + the two `index.ts` surgical-update sites now mount `ImageCard`
+DOM nodes via `createImageCardNode(image)` (in `ImageCard.tsx`) — the `createImageCardHTML` string
+round-trip is gone (deleted, was dead). Behavior-preserving; 242 tests + build green.
+
+**Next step — the reactive `<For>` grid (the real win, the last piece).** This dissolves the
+manual "mutate `state` → call every `update*()`" orchestration in `applyFilters`. It is a
+**cohesive change** — it can't be cleanly half-done, because:
+- The surgical updaters (`updateSingleImageCardInDOM`, `insertNewImageCard`) call `replaceWith`/
+  `insertBefore` on card nodes — that DESYNCS a Solid `<For>` (Solid still holds the old node refs).
+  So card *content* must become reactive (a store) and "edit one card" becomes "update the store",
+  not a manual DOM swap.
+- Selection is `state.selectedIds` (a `Set`) read/mutated in ~50 places + toggled onto cards
+  imperatively (`updateImageCard`, `updateAllCheckboxes`). For cards to re-style reactively,
+  selection must be reactive too.
+
+Recommended design + suggested commit slices (each stays green against the 65 characterization +
+16 render tests — run them continuously):
+1. **Reactive selection seam.** Keep `state.selectedIds` as the source of truth, add a
+   `selectionVersion` signal, and route every mutation through helpers (`selectId`/`deselectId`/
+   `clearSelection`/`setSelection`) that bump it (~10–15 sites). No behavior change yet (leave the
+   imperative `update*` calls). Commit.
+2. **Reactive grid.** Add a Solid store of the displayed images + a `<Grid>` component
+   (`<For each>` keyed by id; grouped via nested `<For>` reading `state.groupBy`), rendering
+   `<ImageCard>`. Mount ONE Solid root into `#image-grid` in `init()`. `renderImages(images)`
+   becomes "reconcile the store" (by id). Wire lazy-load via a per-card `ref`/`onMount` →
+   `observeImage(el)` instead of the post-render `querySelectorAll`. Commit.
+3. **Make `ImageCard` reactive** on the store item (content) + `selectionVersion` (`.selected`/
+   checkbox). Then delete the now-redundant imperative DOM updaters (`updateImageCard`,
+   `updateAllCheckboxes`, `updateSingleImageCardInDOM`, `insertNewImageCard`) — edits/inserts flow
+   through the store. Commit.
+4. **Simplify the controller.** `applyFilters` just sets state + store; drop the manual
+   `renderImages` call and any now-dead `update*()` for the grid (counters/sidebars can stay
+   imperative or migrate later). Commit.
+
+Watch-outs: (a) `<For>` renders all rows at once — the old code chunked ≥500 for responsiveness;
+re-check perf for ~2000 cards (lazy images keep cost low, but consider keeping a chunked/windowed
+feed into the store if needed). (b) The render-token cancellation likely becomes unnecessary
+(reactive reconciliation replaces it) — remove deliberately. (c) Add new tests for "edit one card
+updates in place" and "add/remove reflects in the grid" once reactive.
 
 ## Goal of the next phase
 
