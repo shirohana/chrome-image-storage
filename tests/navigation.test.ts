@@ -44,7 +44,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await resetState();
-  document.getElementById('lightbox')?.classList.remove('active');
 });
 
 describe('columns fallback under happy-dom', () => {

@@ -192,6 +192,12 @@ export async function resetState(): Promise<void> {
   // listeners (bound once in init()) stay valid for the next test.
   const grid = document.getElementById('image-grid');
   if (grid) grid.innerHTML = '';
+  // Restore the closed/hidden UI baseline. The body is never wiped (that would
+  // orphan listeners), so the lightbox/preview "open" classes would otherwise leak
+  // across tests. ONE place so each test file doesn't re-reset this itself.
+  document.getElementById('lightbox')?.classList.remove('active');
+  document.getElementById('preview-pane')?.classList.remove('visible');
+  document.body.classList.remove('preview-pane-open');
 }
 
 /** Reset state + clear the grid between tests. Call from afterEach (never wipes
