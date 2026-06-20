@@ -8,9 +8,8 @@ import { getXAccountFromUrl } from './grouping';
 import { parseTagSearch, sortTags } from './tag-utils';
 
 // First migrated view component (SolidJS). It is the single source of truth for
-// image-card markup. The legacy string pipeline still consumes cards as HTML, so
-// createImageCardHTML() below renders this component to a detached node and returns
-// its innerHTML — a temporary bridge until the render pipeline mounts nodes directly.
+// image-card markup. The render pipeline + surgical updates mount its DOM nodes
+// directly via createImageCardNode() (no string round-trip).
 
 const RATING_CONFIG: Record<string, { label: string; color: string }> = {
   g: { label: 'G', color: '#28a745' }, // green
@@ -107,12 +106,14 @@ export function ImageCard(props: { image: ImageMetadata }): JSX.Element {
   );
 }
 
-// Bridge for the legacy string-based render pipeline: render the component to a
-// detached container and return its serialized HTML. Single source of truth = ImageCard.
-export function createImageCardHTML(image: ImageMetadata): string {
+// Render the ImageCard component to a real, standalone DOM node. Cards carry no own
+// event listeners (the grid uses event delegation), so we cloneNode(true) BEFORE
+// dispose() to detach the returned node from Solid's reactive disposal — the card is
+// static and nothing is lost. Single source of truth = ImageCard.
+export function createImageCardNode(image: ImageMetadata): HTMLElement {
   const container = document.createElement('div');
   const dispose = render(() => <ImageCard image={image} />, container);
-  const html = container.innerHTML;
+  const node = container.firstElementChild!.cloneNode(true) as HTMLElement;
   dispose();
-  return html;
+  return node;
 }

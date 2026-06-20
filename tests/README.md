@@ -119,7 +119,7 @@ Tests `showToast` (`src/viewer/toast.ts`): message/styling, lazy one-time style 
 auto-dismiss timeout.
 
 ### `render.test.ts` (16 tests, happy-dom)
-Tests `createImageCardHTML` (`src/viewer/render.ts`): selection/checkbox state, rating
+Tests `createImageCardNode` (`src/viewer/ImageCard.tsx`): selection/checkbox state, rating
 badges (g/s/q/e + unrated), tag sorting + active-search highlighting, X-account button +
 active state, and trash-vs-normal action buttons.
 

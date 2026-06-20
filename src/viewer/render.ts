@@ -3,11 +3,12 @@ import { state } from './state';
 import { getOrCreateObjectURL, loadImageBlob, revokeObjectURLs, revokeObjectURL, PLACEHOLDER_IMAGE } from './blobs';
 import { formatFileSize } from './format';
 import { groupImagesByXAccount, groupImagesByDuplicates } from './grouping';
-import { createImageCardHTML } from './ImageCard';
+import { createImageCardNode } from './ImageCard';
 
-// createImageCardHTML now lives in the SolidJS ImageCard component (single source of
-// truth for card markup); re-exported here so existing `./render` imports keep working.
-export { createImageCardHTML };
+// Card markup lives in the SolidJS ImageCard component (single source of truth);
+// re-exported here so existing `./render` imports keep working. createImageCardNode
+// produces real DOM nodes — the hot render paths below append nodes (no string round-trip).
+export { createImageCardNode };
 
 // Intersection Observer for lazy loading images
 let imageObserver: IntersectionObserver | null = null;
@@ -141,36 +142,39 @@ export async function renderImages(images: ImageMetadata[]) {
   // Only observe if this render is still current
   if (renderToken === state.currentRenderToken) {
     observeImages();
-    // Note: Checkboxes are already correct from createImageCardHTML(), no need to update
+    // Note: Checkboxes are already correct from createImageCardNode(), no need to update
   }
+}
+
+/** Build a DocumentFragment of card nodes for a list of images. */
+function buildCardFragment(images: ImageMetadata[]): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  for (const image of images) {
+    fragment.appendChild(createImageCardNode(image));
+  }
+  return fragment;
 }
 
 // Chunked rendering for large datasets - keeps UI responsive
 async function renderCardsInChunks(
   container: HTMLElement,
-  htmlChunks: string[],
+  images: ImageMetadata[],
   renderToken: number,
   chunkSize: number = 100
 ): Promise<void> {
   container.innerHTML = '';
 
-  for (let i = 0; i < htmlChunks.length; i += chunkSize) {
+  for (let i = 0; i < images.length; i += chunkSize) {
     // Abort if a newer render has started
     if (renderToken !== state.currentRenderToken) {
       return;
     }
 
-    const chunk = htmlChunks.slice(i, i + chunkSize).join('');
-    const fragment = document.createElement('div');
-    fragment.innerHTML = chunk;
-
-    // Move nodes from fragment to container
-    while (fragment.firstChild) {
-      container.appendChild(fragment.firstChild);
-    }
+    // Append this chunk's card nodes
+    container.appendChild(buildCardFragment(images.slice(i, i + chunkSize)));
 
     // Yield to browser between chunks for UI responsiveness
-    if (i + chunkSize < htmlChunks.length) {
+    if (i + chunkSize < images.length) {
       await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
     }
   }
@@ -183,13 +187,13 @@ async function renderUngroupedImages(images: ImageMetadata[], renderToken: numbe
 
   // For small datasets, use fast synchronous path
   if (images.length < 500) {
-    grid.innerHTML = images.map(image => createImageCardHTML(image)).join('');
+    grid.innerHTML = '';
+    grid.appendChild(buildCardFragment(images));
     return;
   }
 
   // For large datasets (500+), render in chunks to keep UI responsive
-  const htmlChunks = images.map(image => createImageCardHTML(image));
-  await renderCardsInChunks(grid, htmlChunks, renderToken, 100);
+  await renderCardsInChunks(grid, images, renderToken, 100);
 }
 
 async function renderXAccountGroups(images: ImageMetadata[], renderToken: number) {
@@ -218,28 +222,18 @@ async function renderXAccountGroups(images: ImageMetadata[], renderToken: number
 
   if (totalCards < 500) {
     // Fast path for small datasets
-    let html = '';
+    grid.innerHTML = '';
     for (const account of sortedAccounts) {
       const groupImages = groups.get(account)!;
       const count = groupImages.length;
 
-      html += `
-        <div class="group-section">
-          <div class="group-header">
-            <h3 class="group-title">@${account}</h3>
-            <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
-          </div>
-          <div class="group-content image-grid">
-      `;
-
-      html += groupImages.map(image => createImageCardHTML(image)).join('');
-
-      html += `
-          </div>
-        </div>
-      `;
+      const { section, content } = createGroupSection(
+        `@${account}`,
+        `${count} image${count !== 1 ? 's' : ''}`
+      );
+      content.appendChild(buildCardFragment(groupImages));
+      grid.appendChild(section);
     }
-    grid.innerHTML = html;
   } else {
     // Chunked rendering for large datasets
     grid.innerHTML = '';
@@ -252,26 +246,14 @@ async function renderXAccountGroups(images: ImageMetadata[], renderToken: number
       const groupImages = groups.get(account)!;
       const count = groupImages.length;
 
-      const groupSection = document.createElement('div');
-      groupSection.className = 'group-section';
-
-      const groupHeader = document.createElement('div');
-      groupHeader.className = 'group-header';
-      groupHeader.innerHTML = `
-        <h3 class="group-title">@${account}</h3>
-        <span class="group-count">${count} image${count !== 1 ? 's' : ''}</span>
-      `;
-
-      const groupContent = document.createElement('div');
-      groupContent.className = 'group-content image-grid';
-
-      groupSection.appendChild(groupHeader);
-      groupSection.appendChild(groupContent);
-      grid.appendChild(groupSection);
+      const { section, content } = createGroupSection(
+        `@${account}`,
+        `${count} image${count !== 1 ? 's' : ''}`
+      );
+      grid.appendChild(section);
 
       // Render cards in chunks
-      const htmlChunks = groupImages.map(image => createImageCardHTML(image));
-      await renderCardsInChunks(groupContent, htmlChunks, renderToken, 100);
+      await renderCardsInChunks(content, groupImages, renderToken, 100);
     }
   }
 }
@@ -293,30 +275,20 @@ async function renderDuplicateGroups(images: ImageMetadata[], renderToken: numbe
 
   if (totalCards < 500) {
     // Fast path for small datasets
-    let html = '';
+    grid.innerHTML = '';
     for (const key of sortedKeys) {
       const groupImages = groups.get(key)!;
       const count = groupImages.length;
       const [dimensions, fileSize] = key.split('-');
       const fileSizeFormatted = formatFileSize(Number(fileSize));
 
-      html += `
-        <div class="group-section">
-          <div class="group-header">
-            <h3 class="group-title">${dimensions}, ${fileSizeFormatted}</h3>
-            <span class="group-count">${count} duplicates</span>
-          </div>
-          <div class="group-content image-grid">
-      `;
-
-      html += groupImages.map(image => createImageCardHTML(image)).join('');
-
-      html += `
-          </div>
-        </div>
-      `;
+      const { section, content } = createGroupSection(
+        `${dimensions}, ${fileSizeFormatted}`,
+        `${count} duplicates`
+      );
+      content.appendChild(buildCardFragment(groupImages));
+      grid.appendChild(section);
     }
-    grid.innerHTML = html;
   } else {
     // Chunked rendering for large datasets
     grid.innerHTML = '';
@@ -331,26 +303,46 @@ async function renderDuplicateGroups(images: ImageMetadata[], renderToken: numbe
       const [dimensions, fileSize] = key.split('-');
       const fileSizeFormatted = formatFileSize(Number(fileSize));
 
-      const groupSection = document.createElement('div');
-      groupSection.className = 'group-section';
-
-      const groupHeader = document.createElement('div');
-      groupHeader.className = 'group-header';
-      groupHeader.innerHTML = `
-        <h3 class="group-title">${dimensions}, ${fileSizeFormatted}</h3>
-        <span class="group-count">${count} duplicates</span>
-      `;
-
-      const groupContent = document.createElement('div');
-      groupContent.className = 'group-content image-grid';
-
-      groupSection.appendChild(groupHeader);
-      groupSection.appendChild(groupContent);
-      grid.appendChild(groupSection);
+      const { section, content } = createGroupSection(
+        `${dimensions}, ${fileSizeFormatted}`,
+        `${count} duplicates`
+      );
+      grid.appendChild(section);
 
       // Render cards in chunks
-      const htmlChunks = groupImages.map(image => createImageCardHTML(image));
-      await renderCardsInChunks(groupContent, htmlChunks, renderToken, 100);
+      await renderCardsInChunks(content, groupImages, renderToken, 100);
     }
   }
+}
+
+/**
+ * Build a group-section DOM subtree: a `group-section` wrapping a `group-header`
+ * (`group-title` + `group-count`) and an empty `group-content image-grid`.
+ * Returns the outer section and the inner content container to append cards into.
+ */
+function createGroupSection(title: string, countLabel: string): { section: HTMLElement; content: HTMLElement } {
+  const section = document.createElement('div');
+  section.className = 'group-section';
+
+  const header = document.createElement('div');
+  header.className = 'group-header';
+
+  const titleEl = document.createElement('h3');
+  titleEl.className = 'group-title';
+  titleEl.textContent = title;
+
+  const countEl = document.createElement('span');
+  countEl.className = 'group-count';
+  countEl.textContent = countLabel;
+
+  header.appendChild(titleEl);
+  header.appendChild(countEl);
+
+  const content = document.createElement('div');
+  content.className = 'group-content image-grid';
+
+  section.appendChild(header);
+  section.appendChild(content);
+
+  return { section, content };
 }

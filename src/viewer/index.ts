@@ -12,7 +12,7 @@ import { openDanbooruUploadModal, initDanbooru } from './danbooru';
 import { PLACEHOLDER_IMAGE, getOrCreateObjectURL, loadImageBlob, revokeObjectURL } from './blobs';
 import { initNotes } from './notes';
 import { renderTagRules, newlyImportedRuleIds, initTagRules } from './tag-rules-ui';
-import { createImageCardHTML, renderImages, observePreviewThumbnails, observeImage } from './render';
+import { createImageCardNode, renderImages, observePreviewThumbnails, observeImage } from './render';
 import { initImportExport } from './import-export-ui';
 
 // Context menu state
@@ -167,10 +167,7 @@ function updateSingleImageCardInDOM(imageId: string): void {
   const image = state.images.find(img => img.id === imageId);
   if (!image) return;
 
-  const newCardHTML = createImageCardHTML(image);
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = newCardHTML;
-  const newCard = tempDiv.firstElementChild as HTMLElement;
+  const newCard = createImageCardNode(image);
 
   existingCard.replaceWith(newCard);
 
@@ -198,28 +195,26 @@ function insertNewImageCard(imageId: string, targetIndex: number): void {
     return;
   }
 
-  // Create new card HTML
-  const cardHTML = createImageCardHTML(image);
+  // Create new card node
+  const newCard = createImageCardNode(image);
   const existingCards = grid.querySelectorAll('.image-card');
 
   if (existingCards.length === 0) {
-    // Empty grid: just set innerHTML
-    grid.innerHTML = cardHTML;
+    // Empty grid: clear then append
+    grid.innerHTML = '';
+    grid.appendChild(newCard);
   } else if (targetIndex >= existingCards.length) {
     // Append at end
-    grid.insertAdjacentHTML('beforeend', cardHTML);
+    grid.appendChild(newCard);
   } else {
     // Insert before the card currently at targetIndex
-    existingCards[targetIndex].insertAdjacentHTML('beforebegin', cardHTML);
+    existingCards[targetIndex].before(newCard);
   }
 
   // Set up lazy loading observer for the new card
-  const newCard = grid.querySelector(`.image-card[data-id="${imageId}"]`);
-  if (newCard) {
-    const img = newCard.querySelector('.image-preview[data-image-id]');
-    if (img) {
-      observeImage(img);
-    }
+  const img = newCard.querySelector('.image-preview[data-image-id]');
+  if (img) {
+    observeImage(img);
   }
 }
 

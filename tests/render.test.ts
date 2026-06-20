@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createImageCardHTML } from '../src/viewer/render';
+import { createImageCardNode } from '../src/viewer/render';
 import { state } from '../src/viewer/state';
 import type { ImageMetadata } from '../src/types';
 
@@ -22,11 +22,9 @@ function img(p: Partial<ImageMetadata>): ImageMetadata {
   };
 }
 
-/** Render the card HTML string into a detached element for querying. */
+/** Render the card to a standalone DOM node for querying. */
 function card(image: ImageMetadata): HTMLElement {
-  const div = document.createElement('div');
-  div.innerHTML = createImageCardHTML(image);
-  return div.firstElementChild as HTMLElement;
+  return createImageCardNode(image);
 }
 
 function setTagSearch(value: string) {
@@ -47,7 +45,7 @@ beforeEach(() => {
   state.objectUrls.clear();
 });
 
-describe('createImageCardHTML structure', () => {
+describe('createImageCardNode structure', () => {
   it('renders a card with id, an image-preview, and an unchecked checkbox by default', () => {
     const el = card(img({ id: 'abc' }));
     expect(el.classList.contains('image-card')).toBe(true);
