@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import solid from 'vite-plugin-solid';
 import webExtension from 'vite-plugin-web-extension';
 import { copyFileSync, existsSync, renameSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
@@ -6,6 +7,7 @@ import { resolve, join } from 'path';
 export default defineConfig(({ mode }) => ({
   publicDir: 'public',
   plugins: [
+    solid(),
     webExtension({
       manifest: './src/manifest.json',
       additionalInputs: ['src/viewer/index.html'],

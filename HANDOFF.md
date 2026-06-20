@@ -13,6 +13,41 @@ This was a deliberately **behavior-preserving** refactor — no framework, no re
 no visual changes. The goal was to create clean seams so a UI-lib migration can happen
 incrementally.
 
+## Progress (2026-06-21)
+
+**Route A chosen. Step 1 (init refactor) DONE.** `src/viewer/index.ts` no longer touches the
+DOM at import time: the whole bootstrap region is wrapped in `export function init()` with a
+guarded auto-call (`if (document.getElementById('image-grid')) init()`), so tests can import the
+module without the viewer HTML fixture and call `init()` themselves. The three self-wiring
+siblings got the same treatment — `notes.ts` → `initNotes()`, `danbooru.ts` → `initDanbooru()`,
+`tag-rules-ui.ts` → `initTagRules()` — all called at the top of `index.init()`. Proven by
+`tests/_init-importable.test.ts` (imports `index.ts` under happy-dom). **174 tests, eslint 0
+errors, build clean.** Caveat: the bootstrap body was left un-reindented inside `init()` (still
+col-1) to keep the diff reviewable — purely cosmetic, fold it in during the view-split.
+
+**Lib LOCKED: SolidJS** (owner: JSX fine, no React). Installed `solid-js` + `vite-plugin-solid`;
+wired into `tsconfig.json` (`jsx: preserve`, `jsxImportSource: solid-js`), `vite.config.ts`
+(`solid()` first plugin), `vitest.config.ts` (`solid()` plugin + `resolve.conditions:
+['development','browser']`). Toolchain proven by `tests/_solid-smoke.test.tsx`. NOTE: did **not**
+add `@solidjs/testing-library` — `solid-js/web`'s `render` works directly in happy-dom tests
+(zero extra deps); add it only if test ergonomics demand.
+
+**First component migrated: `ImageCard.tsx`** — now the single source of truth for image-card
+markup. The legacy string pipeline still consumes cards as HTML, so `createImageCardHTML(image)`
+is a temporary **bridge**: it renders `<ImageCard>` into a detached node and returns
+`innerHTML` (re-exported from `render.ts`, so `index.ts` + tests are untouched). Fidelity gate =
+the 16 existing `render.test.ts` tests, all green. Gotcha handled: checkbox `checked` must use
+Solid `attr:checked` (property form does NOT serialize through `innerHTML`).
+
+**Next steps, in order:**
+1. **Step 2 — characterization tests** for selection/nav/lightbox/preview AS-IS (safety net;
+   `index.ts` is now importable under happy-dom — drive `init()` against a viewer-HTML fixture).
+2. **Finish render.ts migration**: convert the pipeline (`renderImages`/group/chunked) + the two
+   `index.ts` surgical-update sites (`insertNewImageCard`, `updateSingleImageCardInDOM`) to mount
+   Solid nodes directly, dropping the string round-trip; then a reactive `<For>` grid driven by a
+   signal. This is where the real win lands — it dissolves the manual "mutate state → call every
+   `update*()`" orchestration in `index.ts`'s `applyFilters`.
+
 ## Goal of the next phase
 
 Migrate the **view layer** to a UI lib for a **light MVC / clean architecture**, so the
