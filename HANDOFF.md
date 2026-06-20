@@ -39,22 +39,23 @@ is a temporary **bridge**: it renders `<ImageCard>` into a detached node and ret
 the 16 existing `render.test.ts` tests, all green. Gotcha handled: checkbox `checked` must use
 Solid `attr:checked` (property form does NOT serialize through `innerHTML`).
 
-**Step 2 — characterization harness + tests IN PROGRESS.** `tests/helpers/viewer-harness.ts`
-boots the real `init()` against `index.html` with `chrome` + the data layer mocked, under
-happy-dom. KEY harness rules (learned the hard way): it boots **once per file** and imports
-`index.ts` **before** installing the DOM fixture (so the guarded auto-init doesn't fire and you
-call `init()` exactly once) — otherwise document-level keydown listeners accumulate and a single
-keypress fires N×; `resetState()` clears state + grid and restores selection-UI via the real
-deselect-all handler (never wipe the body — it orphans the grid-delegated listeners). Locked so
-far: **selection** (`tests/selection.test.ts`, 11) and **keyboard nav** (`tests/navigation.test.ts`,
-29 — grid clamps at edges via `offsetIndexClamped`, lightbox is a bounded no-op via
-`offsetIndexBounded`; grouped nav follows `getVisualOrder`; columns fall back to 4 under happy-dom).
-**217 tests, eslint 0 errors.** REMAINING for Step 2: **lightbox** (open/close/metadata) and
-**preview pane**.
+**Step 2 — characterization safety net DONE.** `tests/helpers/viewer-harness.ts` boots the real
+`init()` against `index.html` with `chrome` + the data layer mocked, under happy-dom. KEY harness
+rules (learned the hard way): it boots **once per file** and imports `index.ts` **before**
+installing the DOM fixture (so the guarded auto-init doesn't fire and you call `init()` exactly
+once) — otherwise document-level keydown listeners accumulate and a single keypress fires N×;
+`resetState()` clears state + grid, restores selection-UI via the real deselect-all handler, and
+restores the closed/hidden lightbox+preview baseline (never wipe the body — it orphans the
+grid-delegated listeners). Locked: **selection** (11), **keyboard nav** (29 — grid clamps at edges
+via `offsetIndexClamped`, lightbox is a bounded no-op via `offsetIndexBounded`; grouped nav follows
+`getVisualOrder`; columns fall back to 4 under happy-dom), **lightbox** (13 — open via
+`.image-preview` click or Space-with-one-selected; metadata/edit/close), **preview pane** (12 —
+toggle, selection-driven content, blur auto-save asserted via the mocked service, quick-remove
+pills). **242 tests, eslint 0 errors.** Documented-not-fixed: grid vertical clamp jumps columns at
+the bottom edge; lightbox metadata + preview render are async (tests flush microtasks).
 
-**Next steps, in order:**
-1. Finish Step 2 characterization: **lightbox** + **preview pane** (reuse the harness).
-2. **Finish render.ts migration**: convert the pipeline (`renderImages`/group/chunked) + the two
+**Next step — the big one (only remaining piece of the migration):**
+1. **Finish render.ts migration**: convert the pipeline (`renderImages`/group/chunked) + the two
    `index.ts` surgical-update sites (`insertNewImageCard`, `updateSingleImageCardInDOM`) to mount
    Solid nodes directly, dropping the string round-trip; then a reactive `<For>` grid driven by a
    signal. This is where the real win lands — it dissolves the manual "mutate state → call every
