@@ -94,22 +94,32 @@ function stubBrowserGlobals(): void {
   }
 }
 
+let bootedMod: typeof import('../../src/viewer/index') | null = null;
+
 /**
- * Boot the viewer: install the DOM fixture + globals and call `init()`.
- * Safe to call once per test (use `teardownViewer()` in afterEach).
- * Returns the loaded module so callers can reach exported helpers if needed.
+ * Boot the viewer ONCE per test file: install globals, then `init()` against the
+ * real index.html fixture. Idempotent — calling it again (e.g. in every
+ * `beforeEach`) returns the already-booted module without re-initialising.
+ *
+ * Two things matter for clean tests:
+ *  - We import index.ts BEFORE installing the DOM fixture, so the module's guarded
+ *    auto-init (it checks for `#image-grid`) does NOT fire — we call `init()` exactly
+ *    once ourselves. Otherwise init runs twice and every handler is double-wired.
+ *  - Booting once (not per test) keeps a single set of document-level listeners
+ *    (keyboard nav, click-outside). Re-init would accumulate them and a single
+ *    keydown would fire N times. Reset state between tests with `resetState()`.
  */
 export async function bootViewer() {
+  if (bootedMod) return bootedMod;
   stubChrome();
-  document.body.innerHTML = loadViewerBody();
   stubBrowserGlobals();
 
   const mod = await import('../../src/viewer/index');
+  document.body.innerHTML = loadViewerBody();
   mod.init();
-  // init()'s trailing IIFE awaits loadImages(); flush the microtask queue so
-  // the initial (empty) render settles before tests run.
-  await Promise.resolve();
-  await Promise.resolve();
+  // init()'s trailing IIFE awaits loadImages(); let it settle before tests run.
+  await new Promise(r => setTimeout(r, 0));
+  bootedMod = mod;
   return mod;
 }
 
@@ -156,9 +166,14 @@ export function checkbox(id: string): HTMLInputElement | null {
   return document.querySelector(`.image-card[data-id="${id}"] .image-checkbox`);
 }
 
-/** Reset the shared state singleton between tests (object reference stays stable). */
+/** Reset the shared state singleton between tests (object reference stays stable).
+ *  Because the harness boots once and never wipes the body, DOM chrome that handlers
+ *  mutated (selection-count visibility, button disabled states) must be restored to
+ *  the no-selection baseline. We drive that through the viewer's OWN deselect-all
+ *  handler rather than re-implementing the DOM updates here (ONE TRUTH). */
 export async function resetState(): Promise<void> {
   const { state } = await import('../../src/viewer/state');
+  document.getElementById('deselect-all-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   state.images = [];
   state.filteredImages = [];
   state.selectedIds.clear();
@@ -173,12 +188,16 @@ export async function resetState(): Promise<void> {
   state.lastSelectedIndex = -1;
   state.selectionAnchor = -1;
   state.currentRenderToken = 0;
+  // Clear rendered cards but keep the #image-grid element so its delegated
+  // listeners (bound once in init()) stay valid for the next test.
+  const grid = document.getElementById('image-grid');
+  if (grid) grid.innerHTML = '';
 }
 
-/** Tear down DOM + state. Call from afterEach. */
+/** Reset state + clear the grid between tests. Call from afterEach (never wipes
+ *  the body — that would orphan the single set of wired-up listeners). */
 export async function teardownViewer(): Promise<void> {
   await resetState();
-  document.body.innerHTML = '';
 }
 
 export { makeImage };
