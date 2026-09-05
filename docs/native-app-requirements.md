@@ -11,6 +11,10 @@ Move image storage and management out of the browser into a standalone desktop a
 plus metadata. The app is the product. A browser extension is **one of several sources**
 that feed it — right-click → capture → hand off; it also imports plain local image files.
 
+The app is also a **staging area in front of boorus**: images are saved here first, tagged and
+rated, then posted to Danbooru or a self-hosted booru via its API (today's upload feature).
+Booru integration is a first-class, two-way concept — not a side button — and will grow (§6).
+
 Why: browser-extension storage is fragile (uninstall = data loss, updates can break, backup is
 a manual export) and caps what features are possible. New features are built in the app only.
 
@@ -108,6 +112,13 @@ zero registration.
   a Kobalte-based kit (Park UI / shadcn-solid), or Vue 3 + PrimeVue. Pure logic worth lifting
   from this repo verbatim, framework-free and tested: `tag-utils` (search parser), `filters`,
   `grouping`, `navigation-math`.
+- **Booru integration** (two-way, per configured site — official Danbooru and self-hosted):
+  Phase 2 ports today's upload flow. Each image records *where it has been posted* (site +
+  post id), shown as a label and usable as a search filter ("posted:danbooru",
+  "unposted"). Later: pin/save booru posts back into the library with their tags, and
+  reconcile tags between the local copy and the post. Model this from day one — a
+  `posts` relation (image ↔ site ↔ remote id ↔ posted at), so the label and filter are cheap
+  and the pull-back feature has somewhere to land.
 - **Sources:** bridge extension; **local file import** (drop files/folders; metadata =
   filename, mtime, dimensions); import of this repo's export bundle (§8). Per-source counts
   are visible so the user can verify a migration.
@@ -147,8 +158,8 @@ column is the browser-era shortcut); keep image blobs out of the DB; rollback-jo
 | 0 — Export bundle | this repo | "Export for app": today's multi-file SQLite export **plus** tag rules, notes and settings from `chrome.storage.local` (today's export omits them). Behavior-preserving otherwise. Ship as the final feature release of this extension. |
 | 1 — App MVP | monorepo | Pick folder · HTTP listener + ingest · import the Phase-0 bundle (trash imports as trash) with a report (imported / skipped / failed + reasons) · local file import · browse, tag search, lightbox · per-source counts. |
 | 1b — Bridge extension | monorepo | Capture (ported) · X + Pixiv adapters · deliver · Download History with Retry. |
-| 2 — Parity | monorepo | Tags/ratings editing, bulk ops, auto-tag rules, trash, Danbooru upload, notes. |
-| 3 — App-only features | monorepo | Whatever comes next. |
+| 2 — Parity | monorepo | Tags/ratings editing, bulk ops, auto-tag rules, trash, notes, booru upload (official + self-hosted) recording the resulting post per image. |
+| 3 — App-only features | monorepo | First candidates: "posted to <site>" label + `posted:`/`unposted` filters, pull booru posts back into the library, tag reconciliation with the remote post. |
 
 Phase 0 can start now and is independent of every other decision.
 
@@ -199,13 +210,14 @@ Users who never do this keep working as before, indefinitely.
 | Browsers | Chrome only; others on request. |
 | Monorepo name | Owner picks from the shortlist below (all verified name-free on GitHub 2026-09-06). |
 
-**Repo name shortlist** — booru-flavored because the tag system descends from Danbooru;
-`localbooru` (owner's pick) is taken (73★), as are `homebooru`, `mybooru`, `deskbooru`,
-`pocketbooru`. No GitHub repo carries any of these names as of 2026-09-06:
-- `sourcebooru` — leads with the differentiator: a booru that keeps the *source* of every image. Recommended.
-- `keepbooru` — "keep" = preserve locally; short, verb-like.
-- `nestbooru` — your own local nest of images; warm, memorable.
-- `shelfbooru` — images on your own shelf, folder-as-library imagery.
-- `ownbooru` — you own the data; plain statement of the project's point.
-- `foldbooru` — nods to "stored in a folder you chose"; slightly awkward to say.
-- also free: `boorubox`, `boorukeep`, `sidebooru`, `kotobooru`, `trovebooru`.
+**Repo name shortlist** — booru-flavored because the tag system descends from Danbooru and
+the app is a staging area in front of booru sites (images land here, get tagged, ship out to a
+booru, and may come back). Taken on GitHub: `localbooru` (owner's pick, 73★), `homebooru`,
+`mybooru`, `deskbooru`, `pocketbooru`, `prebooru` (an existing Danbooru-adjacent project),
+`boorusync`. No GitHub repo carries any of these names as of 2026-09-06:
+- `boorudock` — a dock: images arrive, wait, ship out to boorus, and can dock back. Two-way and local at once. Recommended.
+- `boorubay` — same harbor image, softer sound.
+- `stagebooru` / `draftbooru` / `boorudraft` — say "before posting" clearly, but read one-directional; weaker once pull-back exists.
+- `boorubridge` / `boorulink` / `booruport` — emphasize the connection to boorus; underplay "this is where my images live".
+- `boorustash` / `boorunest` / `boorudesk` / `boorupad` — emphasize the local home; underplay the booru workflow.
+- From the earlier list, still free and still fine: `sourcebooru`, `keepbooru`, `nestbooru`.
