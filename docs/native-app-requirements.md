@@ -1,6 +1,6 @@
 # Native App + Bridge Extension — Requirements
 
-> Status: **DRAFT v2, owner-reviewed once.** Remaining `[OPEN]` items are listed in §11.
+> Status: **v3 — decisions closed** (§11 is the decision log). Ready to hand to the planner.
 > Audience: the agent that will turn this into an implementation plan. Not a spec — it says
 > what and why, not how.
 
@@ -29,16 +29,21 @@ a manual export) and caps what features are possible. New features are built in 
 
 ## 3. Repositories
 
-- **New monorepo** (name `[OPEN]`): `packages/app` (Tauri), `packages/extension` (bridge-only
+- **New monorepo** — `image-storage` (see §11 for the name shortlist): `packages/app` (Tauri), `packages/extension` (bridge-only
   Chrome extension), `packages/shared` (transport contract types, site adapters' output types,
   anything both need). The app must be fully usable without the extension.
 - **This repo** becomes the legacy extension: ships Phase 0, then a README notice pointing to
-  the app, then archived. No further feature work. `[OPEN]` The unreleased refactor commits
-  after `130b0c7` (v0.0.33) — module extraction + SolidJS/characterization work — are dropped
-  or left as-is per the owner; either way nobody continues them.
-- **Two extensions coexist during migration** (different IDs). Both add a right-click "Save
-  image" menu; the new one must use a distinct label (e.g. "Save to Image Storage app") so the
-  user can tell them apart, and the migration notice ends with "disable the old extension".
+  the app, then archived. No further feature work. **Drop point: `26e84e8`** ("Fix full
+  re-render when saving new images", the commit right after v0.0.33; may already be
+  published). Everything after it — module extraction from `8ed740e`, SolidJS +
+  characterization work — is dropped. Procedure for whoever does it: `git reset --hard 26e84e8`
+  on `main`, then re-add this doc (`docs/native-app-requirements.md`) as a fresh commit; the
+  HANDOFF.md STOP banner disappears with the reset, which is fine because HANDOFF.md itself
+  did not exist at that point. `origin/main` already carries the refactor commits, so the
+  reset needs a force-push — owner does that.
+- **Two extensions coexist during migration** (different IDs). Both add a right-click menu
+  entry, so the user sees two; the new one uses a distinct label (e.g. "Save to Image Storage
+  app"), and the migration notice ends with "disable the old extension". Accepted as-is.
 
 ## 4. The bridge extension (new, in the monorepo)
 
@@ -70,7 +75,8 @@ advantage, and HTTP lets **any local source** (CLI, scripts, another browser) po
 zero registration.
 
 **Contract** (details are the planner's; these are the requirements):
-- App listens on `127.0.0.1:<fixed default port>` `[OPEN: port]`, port shown in app settings.
+- App listens on `127.0.0.1:47201` by default (unassigned, outside common dev-server ranges),
+  configurable and shown in app settings; the extension has a matching setting.
 - `POST /captures` — multipart: the file + one JSON part (id, imageUrl, pageUrl, pageTitle,
   capturedAt, site adapter record). **Idempotent by `id`** (UUID from the extension); a retry
   of an already-stored id returns success without duplicating.
@@ -91,10 +97,13 @@ zero registration.
 - **UI: redesign, not port.** The existing viewer is a reference for features and behaviors
   (Danbooru-style tag search, sidebars, lightbox, bulk ops, keyboard nav — see CLAUDE.md in
   this repo), not for code or look. Use a component library to stop hand-rolling CSS.
-  `[OPEN]` frontend framework + kit: the owner previously locked SolidJS (JSX fine, no React)
-  for the extension; if that still holds, a Kobalte-based kit (e.g. Park UI or shadcn-solid)
-  is the obvious pick. Pure logic worth lifting from this repo verbatim: `tag-utils`
-  (search parser), `filters`, `grouping`, `navigation-math` — all framework-free and tested.
+  **Frontend: Svelte 5 + shadcn-svelte (on Bits UI).** Constraint from the owner: anything
+  suited to Tauri, **no React**. Svelte is the most common Tauri pairing (first-class
+  `create-tauri-app` template), compiles to small output, and shadcn-svelte gives a complete,
+  themeable kit with copy-in components. Alternatives if the planner hits a wall: SolidJS +
+  a Kobalte-based kit (Park UI / shadcn-solid), or Vue 3 + PrimeVue. Pure logic worth lifting
+  from this repo verbatim, framework-free and tested: `tag-utils` (search parser), `filters`,
+  `grouping`, `navigation-math`.
 - **Sources:** bridge extension; **local file import** (drop files/folders; metadata =
   filename, mtime, dimensions); import of this repo's export bundle (§8). Per-source counts
   are visible so the user can verify a migration.
@@ -116,8 +125,8 @@ startup; zero admin; safe to copy as a folder; Rust bindings.
 
 | Candidate | Verdict |
 |---|---|
-| **SQLite** (rusqlite / tauri-plugin-sql) with normalized `images` / `tags` / `image_tags` + **FTS5** for title/URL text | **Recommended.** Single file, embedded, ACID, mature Rust support, FTS built in. Every comparable local media manager uses it (Hydrus, digiKam, Lightroom catalogs). We chose it before for browser compatibility; it happens to also be the right desktop choice, for different reasons. |
-| Per-image JSON sidecars as the canonical record, SQLite as a **rebuildable index** (Eagle-style) | Attractive add-on, not a replacement: makes the folder self-describing and lets a corrupted DB (e.g. cloud sync) be rebuilt by re-scanning. Costs a second write per edit. `[OPEN]` Adopt from day one, or keep as a documented later step. |
+| **SQLite** (rusqlite / tauri-plugin-sql) with normalized `images` / `tags` / `image_tags` + **FTS5** for title/URL text | **Locked for day one.** Single file, embedded, ACID, mature Rust support, FTS built in. Every comparable local media manager uses it (Hydrus, digiKam, Lightroom catalogs). We chose it before for browser compatibility; it happens to also be the right desktop choice, for different reasons. |
+| Per-image JSON sidecars as the canonical record, SQLite as a **rebuildable index** (Eagle-style) | Attractive add-on, not a replacement: makes the folder self-describing and lets a corrupted DB (e.g. cloud sync) be rebuilt by re-scanning. Costs a second write per edit. **Deferred**: SQLite-only on day one; sidecars are a Phase-3 candidate. |
 | Embedded KV stores (redb, sled, LMDB, RocksDB) | No query language; tag search would be reimplemented by hand. No. |
 | DuckDB | Analytical, columnar; poor fit for per-row edits. No. |
 | Embedded document/graph DBs (SurrealDB, PoloDB) | Immature or heavy for this; no advantage over SQLite+FTS5. No. |
@@ -174,15 +183,22 @@ Users who never do this keep working as before, indefinitely.
 - **Refactor commits in this repo attract continued work.** HANDOFF.md now says stop; the
   owner drops or leaves the commits (§3).
 
-## 11. Decisions still open
+## 11. Decision log (all closed 2026-09-06)
 
-1. **Does the dual-mode design from the first brief still stand?** The first brief asked the
-   *existing* extension to gain a serving-mode toggle and a Download History section. A
-   separate bridge-only extension makes that unnecessary, and this draft assumes it is
-   dropped (this repo gets Phase 0 only). Confirm, or say the old extension must also grow
-   history + mode.
-2. Which unreleased commits to drop in this repo: everything after `130b0c7` (v0.0.33), or
-   only the SolidJS/characterization steps from `2a8db63` onward (keeping the module split)?
-3. Monorepo name; frontend framework + component kit (§6).
-4. Sidecar JSON from day one, or SQLite-only first (§7)?
-5. Default port.
+| Decision | Outcome |
+|---|---|
+| Old extension gains modes / history? | **No.** Bridge-only extension lives in the monorepo; this repo gets Phase 0 only. |
+| Drop unreleased commits here | Yes, everything after `26e84e8` (§3). |
+| Transport | Localhost HTTP, port 47201, Origin check (§5). |
+| App stack | Tauri v2; Svelte 5 + shadcn-svelte; no React (§6). |
+| Storage | SQLite + FTS5, files on disk, no sidecars yet (§7). |
+| Browsers | Chrome only; others on request. |
+| Monorepo name | Owner picks from the shortlist below; the doc assumes `image-storage`. |
+
+**Repo name shortlist** (the app's product name can differ from the repo slug):
+- `image-storage` — continuity with the extension ("Image Storage"), just drop `chrome-`. Safe, boring, zero re-branding.
+- `imagekeep` — says "keep images", short, reads as a product.
+- `sourcekeep` — leads with the core value: images *with their source*.
+- `keepsake` — the same idea as a word; charming, slightly less literal.
+- `pictrove` — "picture trove"; playful, hints at a hoard.
+- `hoard` — one word, memorable, but generic on GitHub.
