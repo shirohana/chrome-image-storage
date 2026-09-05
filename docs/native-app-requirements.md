@@ -29,18 +29,22 @@ a manual export) and caps what features are possible. New features are built in 
 
 ## 3. Repositories
 
-- **New monorepo** — `image-storage` (see §11 for the name shortlist): `packages/app` (Tauri), `packages/extension` (bridge-only
+- **New monorepo** — name from the §11 shortlist (booru-flavored; the owner's first pick
+  `localbooru` is taken on GitHub, and `image-storage` is rejected because that name predates
+  the tagging system): `packages/app` (Tauri), `packages/extension` (bridge-only
   Chrome extension), `packages/shared` (transport contract types, site adapters' output types,
   anything both need). The app must be fully usable without the extension.
 - **This repo** becomes the legacy extension: ships Phase 0, then a README notice pointing to
-  the app, then archived. No further feature work. **Drop point: `26e84e8`** ("Fix full
-  re-render when saving new images", the commit right after v0.0.33; may already be
-  published). Everything after it — module extraction from `8ed740e`, SolidJS +
-  characterization work — is dropped. Procedure for whoever does it: `git reset --hard 26e84e8`
-  on `main`, then re-add this doc (`docs/native-app-requirements.md`) as a fresh commit; the
-  HANDOFF.md STOP banner disappears with the reset, which is fine because HANDOFF.md itself
-  did not exist at that point. `origin/main` already carries the refactor commits, so the
-  reset needs a force-push — owner does that.
+  the app, then archived. No further feature work. **The unreleased refactor commits after
+  v0.0.33 are kept, not dropped.** Reversal of an earlier call, with the argument: the owner
+  first wanted them dropped because they were never released and the reactive-grid plan is
+  abandoned. That was right for a repo that continues; it is wrong for a frozen one. Those
+  commits are where `filters`, `grouping`, `navigation-math`, `format` and 14 of the 19 test
+  files exist as standalone modules — at v0.0.33 the same logic is inlined in a 5260-line
+  `index.ts` with 5 test files. §6 tells the planner to lift exactly those modules, so dropping
+  the commits would delete the thing being lifted. Keeping costs nothing in a repo that gets
+  no further UI work; the SolidJS pieces are inert. Phase 0 builds on top of `main` as it is
+  and may ship as v0.0.34.
 - **Two extensions coexist during migration** (different IDs). Both add a right-click menu
   entry, so the user sees two; the new one uses a distinct label (e.g. "Save to Image Storage
   app"), and the migration notice ends with "disable the old extension". Accepted as-is.
@@ -188,17 +192,20 @@ Users who never do this keep working as before, indefinitely.
 | Decision | Outcome |
 |---|---|
 | Old extension gains modes / history? | **No.** Bridge-only extension lives in the monorepo; this repo gets Phase 0 only. |
-| Drop unreleased commits here | Yes, everything after `26e84e8` (§3). |
+| Drop unreleased commits here | **No** — kept; the extracted modules and tests are the lift source for the app (§3). |
 | Transport | Localhost HTTP, port 47201, Origin check (§5). |
 | App stack | Tauri v2; Svelte 5 + shadcn-svelte; no React (§6). |
 | Storage | SQLite + FTS5, files on disk, no sidecars yet (§7). |
 | Browsers | Chrome only; others on request. |
-| Monorepo name | Owner picks from the shortlist below; the doc assumes `image-storage`. |
+| Monorepo name | Owner picks from the shortlist below (all verified name-free on GitHub 2026-09-06). |
 
-**Repo name shortlist** (the app's product name can differ from the repo slug):
-- `image-storage` — continuity with the extension ("Image Storage"), just drop `chrome-`. Safe, boring, zero re-branding.
-- `imagekeep` — says "keep images", short, reads as a product.
-- `sourcekeep` — leads with the core value: images *with their source*.
-- `keepsake` — the same idea as a word; charming, slightly less literal.
-- `pictrove` — "picture trove"; playful, hints at a hoard.
-- `hoard` — one word, memorable, but generic on GitHub.
+**Repo name shortlist** — booru-flavored because the tag system descends from Danbooru;
+`localbooru` (owner's pick) is taken (73★), as are `homebooru`, `mybooru`, `deskbooru`,
+`pocketbooru`. No GitHub repo carries any of these names as of 2026-09-06:
+- `sourcebooru` — leads with the differentiator: a booru that keeps the *source* of every image. Recommended.
+- `keepbooru` — "keep" = preserve locally; short, verb-like.
+- `nestbooru` — your own local nest of images; warm, memorable.
+- `shelfbooru` — images on your own shelf, folder-as-library imagery.
+- `ownbooru` — you own the data; plain statement of the project's point.
+- `foldbooru` — nods to "stored in a folder you chose"; slightly awkward to say.
+- also free: `boorubox`, `boorukeep`, `sidebooru`, `kotobooru`, `trovebooru`.

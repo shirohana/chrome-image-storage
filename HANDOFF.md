@@ -1,9 +1,9 @@
 > **STOP (2026-09-06): this track is abandoned.** The owner decided the viewer will not be
 > completed here; a standalone desktop app replaces it. Read `docs/native-app-requirements.md`
-> first. This repo's only remaining work is Phase 0 of that doc (the export bundle). The
-> unreleased refactor commits after `130b0c7` (v0.0.33) are to be dropped or left frozen per the
-> owner — do not continue the reactive-grid plan below; it is kept only as a record of where
-> the code stands.
+> first. This repo's only remaining work is Phase 0 of that doc (the export bundle), built on
+> `main` as it stands. The refactor commits stay: the extracted pure modules and their tests
+> are what the new app lifts. Do not continue the reactive-grid plan below; it is kept only as
+> a record of where the code stands.
 
 # Handoff: UI-Lib / Light-MVC Migration (next phase)
 
